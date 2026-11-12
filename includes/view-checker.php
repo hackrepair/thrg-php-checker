@@ -1634,7 +1634,20 @@ if ( ! empty( $observations['engine_reason'] ) ) {
 
     <footer class="thrg-footer thrg-pc-coverage">
         <div class="thrg-pc-coverage__col">
-            <p><strong><?php esc_html_e( 'Limits:', 'thrg-php-checker' ); ?></strong> <?php esc_html_e( 'Static analysis inspects PHP source tokens without executing plugin or theme code. It catches removed functions, changed signatures, and deprecated syntax, and filters out version-guarded fallbacks, but cannot replace testing critical workflows on a staging server.', 'thrg-php-checker' ); ?></p>
+            <p>
+                <strong>
+                    <a href="https://hackguard.com/wordpress-managed-services.html#php-upgrade" target="_blank" rel="noopener noreferrer">
+                        <?php esc_html_e( 'Optional Service: PHP 8.2 / 8.3 Compatibility Upgrade ($79 Flat)', 'thrg-php-checker' ); ?>
+                        <?php echo wp_kses_post( THRG_PHP_Checker::NEW_TAB_HINT ); ?>
+                    </a>
+                </strong>
+                —
+                <?php esc_html_e( 'Fix "It does not work with your version of PHP" warnings, check older plugins and themes, upgrade your hosting PHP version, and test your live forms and pages.', 'thrg-php-checker' ); ?>
+                <a href="https://hackguard.com/contact.html?plan=PHP+8.3+Compatibility+Upgrade&amp;rate=%2479" target="_blank" rel="noopener noreferrer">
+                    <strong><?php esc_html_e( 'Request PHP Upgrade ($79) →', 'thrg-php-checker' ); ?></strong>
+                    <?php echo wp_kses_post( THRG_PHP_Checker::NEW_TAB_HINT ); ?>
+                </a>
+            </p>
         </div>
         <div class="thrg-pc-coverage__col thrg-pc-coverage__help">
             <img class="thrg-pc-mascot" src="<?php echo esc_url( plugins_url( 'assets/brand/thrg-heart-128.png', THRG_PHP_CHECKER_FILE ) ); ?>" alt="" width="44" height="44" />
