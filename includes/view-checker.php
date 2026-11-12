@@ -1637,14 +1637,14 @@ if ( ! empty( $observations['engine_reason'] ) ) {
             <p>
                 <strong>
                     <a href="https://hackguard.com/wordpress-managed-services.html#php-upgrade" target="_blank" rel="noopener noreferrer">
-                        <?php esc_html_e( 'Optional Service: PHP 8.2 / 8.3 Compatibility Upgrade ($79 Flat)', 'thrg-php-checker' ); ?>
+                        <?php esc_html_e( 'Hands-Off PHP 8.2 / 8.3 Upgrade Service ($79 Flat)', 'thrg-php-checker' ); ?>
                         <?php echo wp_kses_post( THRG_PHP_Checker::NEW_TAB_HINT ); ?>
                     </a>
                 </strong>
                 —
-                <?php esc_html_e( 'Fix "It does not work with your version of PHP" warnings, check older plugins and themes, upgrade your hosting PHP version, and test your live forms and pages.', 'thrg-php-checker' ); ?>
+                <?php esc_html_e( 'Worried about breaking your site when switching PHP versions? We\'ll review your plugins and theme, sort out compatibility roadblocks, update your hosting PHP version for you, and test your live pages and forms so you don\'t have to.', 'thrg-php-checker' ); ?>
                 <a href="https://hackguard.com/contact.html?plan=PHP+8.3+Compatibility+Upgrade&amp;rate=%2479" target="_blank" rel="noopener noreferrer">
-                    <strong><?php esc_html_e( 'Request PHP Upgrade ($79) →', 'thrg-php-checker' ); ?></strong>
+                    <strong><?php esc_html_e( 'Have Us Handle Your PHP Upgrade ($79) →', 'thrg-php-checker' ); ?></strong>
                     <?php echo wp_kses_post( THRG_PHP_Checker::NEW_TAB_HINT ); ?>
                 </a>
             </p>
