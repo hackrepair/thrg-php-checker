@@ -281,12 +281,15 @@ final class THRG_PC_Schedule {
         set_transient( self::LOCK, 1, 10 * MINUTE_IN_SECONDS );
 
         try {
+            if ( THRG_PC_Scanner::is_running() ) {
+                return array( 'result' => 'busy' );
+            }
             $now    = time();
             $target = self::resolve_target( $s );
             $run_by = 'weekly' === $s['frequency'] ? 'Weekly email' : 'Monthly email';
             if ( '' === THRG_PC_Engine::unavailable_reason() ) {
-                THRG_PC_Scanner::start( $target, false, 'all', '', 0, $run_by );
-                THRG_PC_Scanner::step( microtime( true ) + 30 );
+                $state = THRG_PC_Scanner::start( $target, false, 'all', '', 0, $run_by );
+                THRG_PC_Scanner::step( microtime( true ) + 30, $state['job_id'] );
                 if ( THRG_PC_Prescan::pending_offers() ) {
                     THRG_PC_Prescan::step( microtime( true ) + 15, true );
                 }

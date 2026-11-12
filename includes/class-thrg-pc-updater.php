@@ -64,28 +64,36 @@ final class THRG_PC_Updater {
         );
 
         $api->setReleaseFilter(
-            static function ( $version, $release ) {
-                if ( ! is_string( $version ) || ! preg_match( '/^[0-9]+(?:\.[0-9]+){2}$/', $version ) ||
-                    ! isset( $release->tag_name, $release->assets ) ||
-                    'v' . $version !== $release->tag_name || ! is_array( $release->assets ) ) {
-                    return false;
-                }
-
-                $expected = 'thrg-php-checker.' . $version . '.zip';
-                foreach ( $release->assets as $asset ) {
-                    if ( isset( $asset->name ) && is_string( $asset->name ) &&
-                        preg_match( self::ASSET_PATTERN, $asset->name ) ) {
-                        return $expected === $asset->name;
-                    }
-                }
-
-                return false;
-            },
+            array( __CLASS__, 'release_has_asset' ),
             Api::RELEASE_FILTER_SKIP_PRERELEASE,
             1
         );
 
         $this->checker->addFilter( 'request_info_result', array( __CLASS__, 'clean_info' ), 20, 2 );
+    }
+
+    /**
+     * Require an asset whose filename matches the release version exactly.
+     *
+     * @param mixed $version Release version.
+     * @param mixed $release GitHub release object.
+     * @return bool
+     */
+    public static function release_has_asset( $version, $release ) {
+        if ( ! is_string( $version ) || ! preg_match( '/^[0-9]+(?:\.[0-9]+){2}$/', $version ) ||
+            ! is_object( $release ) || ! isset( $release->tag_name, $release->assets ) ||
+            'v' . $version !== $release->tag_name || ! is_array( $release->assets ) ) {
+            return false;
+        }
+
+        $expected = 'thrg-php-checker.' . $version . '.zip';
+        foreach ( $release->assets as $asset ) {
+            if ( is_object( $asset ) && isset( $asset->name ) && $expected === $asset->name ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

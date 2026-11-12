@@ -20,6 +20,29 @@ final class THRG_PC_Email {
     const TABLE_ROWS     = 8;
     const WAIT_SECONDS   = 60;
 
+    /**
+     * Start a per-user send cooldown and record its key for uninstall cleanup.
+     *
+     * @param int $user_id Administrator user ID.
+     * @return void
+     */
+    public static function mark_cooldown( $user_id ) {
+        $user_id = absint( $user_id );
+        if ( ! $user_id ) {
+            return;
+        }
+
+        $key = 'thrg_pc_mail_' . $user_id;
+        if ( ! set_transient( $key, 1, self::WAIT_SECONDS ) ) {
+            return;
+        }
+
+        $keys             = get_option( 'thrg_pc_mail_cooldowns', array() );
+        $keys             = is_array( $keys ) ? $keys : array();
+        $keys[ $user_id ] = $key;
+        update_option( 'thrg_pc_mail_cooldowns', $keys, false );
+    }
+
     /** Shown at the top of scheduled emails. */
     const SCHEDULED_INTRO = 'This is your monthly PHP compatibility report from PHP Checker.';
 

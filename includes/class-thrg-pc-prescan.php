@@ -16,10 +16,13 @@ defined( 'ABSPATH' ) || exit;
  */
 final class THRG_PC_Prescan {
 
-    const STATE_OPTION = 'thrg_pc_prescan_state';
-    const HOOK         = 'thrg_pc_prescan_updates';
-    const MAX_TRIES    = 3;
-    const TIMEOUT      = 300;
+    const STATE_OPTION           = 'thrg_pc_prescan_state';
+    const HOOK                   = 'thrg_pc_prescan_updates';
+    const MAX_TRIES              = 3;
+    const TIMEOUT                = 300;
+    const MAX_ARCHIVE_BYTES      = 268435456;
+    const MAX_ARCHIVE_ENTRIES    = 20000;
+    const MAX_UNCOMPRESSED_BYTES = 1073741824;
 
     /**
      *Cached open archive handle for the current request.
@@ -254,6 +257,10 @@ final class THRG_PC_Prescan {
         if ( 0 === $mtime ) {
             return $error;
         }
+        $archive_bytes = filesize( $zip );
+        if ( false === $archive_bytes || $archive_bytes > self::MAX_ARCHIVE_BYTES ) {
+            return $error;
+        }
         // Respect WordPress core's unzip_file_use_ziparchive filter.
         $use_ziparchive = class_exists( 'ZipArchive', false ) && apply_filters( 'unzip_file_use_ziparchive', true ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
         if ( $use_ziparchive ) {
@@ -261,9 +268,19 @@ final class THRG_PC_Prescan {
             if ( true !== $archive->open( $zip, ZipArchive::CHECKCONS ) ) {
                 return $error;
             }
+            if ( $archive->numFiles > self::MAX_ARCHIVE_ENTRIES ) { // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+                $archive->close();
+                return $error;
+            }
+            $total_bytes = 0;
             for ( $i = 0; $i < $archive->numFiles; $i++ ) { // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
                 $stat = $archive->statIndex( $i );
                 if ( is_array( $stat ) ) {
+                    $total_bytes += (int) $stat['size'];
+                    if ( $total_bytes > self::MAX_UNCOMPRESSED_BYTES ) {
+                        $archive->close();
+                        return $error;
+                    }
                     $entries[ (string) $stat['name'] ] = array( $i, (int) $stat['size'] );
                 }
             }
@@ -274,7 +291,15 @@ final class THRG_PC_Prescan {
             if ( ! is_array( $list ) ) {
                 return $error;
             }
+            if ( count( $list ) > self::MAX_ARCHIVE_ENTRIES ) {
+                return $error;
+            }
+            $total_bytes = 0;
             foreach ( $list as $entry ) {
+                $total_bytes += (int) $entry['size'];
+                if ( $total_bytes > self::MAX_UNCOMPRESSED_BYTES ) {
+                    return $error;
+                }
                 $entries[ (string) $entry['filename'] ] = array( (int) $entry['index'], (int) $entry['size'] );
             }
         }

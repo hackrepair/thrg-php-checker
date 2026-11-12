@@ -8,7 +8,7 @@ Your friendly WordPress PHP compatibility checker. Tests your plugins, must-use 
 
 Upgrading PHP is one of the easiest ways to make WordPress faster and safer, right up until an older plugin throws a fatal error and leaves you with a white screen. Most compatibility scanners flood you with hundreds of false warnings from safe polyfills and `version_compare()` fallbacks, or bury the one broken plugin under pages of technical noise. PHP Checker runs entirely inside WordPress without `exec()`, automatically filters out guarded fallback code, and puts any plugin that will actually break your site right at the very top of the report.
 
-Current release: **1.2.0**. See [release notes](releases/v1.2.0.md).
+Current release: **1.2.1**. See [release notes](releases/v1.2.1.md).
 
 <p align="center">
   <a href="https://github.com/hackrepair/thrg-php-checker/releases/latest" title="Download the latest PHP Checker plugin zip from GitHub"><img src="https://img.shields.io/badge/%E2%AC%87%20%20Download%20the%20latest%20release-b34700?style=for-the-badge&labelColor=b34700" alt="Download the latest release" height="46"></a>

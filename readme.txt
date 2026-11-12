@@ -4,7 +4,7 @@ Tags: php, compatibility, php 8.3, php 8.4, php 8.5, upgrade, scanner, audit
 Requires at least: 6.4
 Requires PHP: 7.4
 Tested up to: 7.1.3
-Stable tag: 1.2.0
+Stable tag: 1.2.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Support link: https://github.com/hackrepair/thrg-php-checker/discussions
@@ -98,6 +98,12 @@ No. Scanning runs only when an administrator starts it (or opts into the monthly
 Unlike scanners that leave orphaned rows from deleted plugins in custom database tables forever, PHP Checker automatically prunes uninstalled plugins/themes and outdated component versions whenever results are loaded. Uninstalling PHP Checker itself removes all of its options and scheduled hooks cleanly.
 
 == Changelog ==
+
+= 1.2.1 =
+* Added limits for update ZIP archive size, entry count, and declared uncompressed bytes.
+* Bound scans to an owner and job token; added atomic scan claims and serialized scan steps.
+* Improved runtime deprecation path attribution and release ZIP selection.
+* Removed tracked email cooldowns during uninstall and reorganized report/controller view files.
 
 = 1.2.0 =
 * Added **Weekly** (default, with day-of-week selector) or **Monthly** (day 1–28) scheduled rescans against the next PHP version and pending updates, sending an email alert when an update or the next PHP version has known compatibility problems.

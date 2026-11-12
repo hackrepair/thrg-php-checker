@@ -23,6 +23,7 @@
     var active = false;
     var stopping = false;
     var rescanRequested = false;
+    var jobId = cfg.jobId || '';
 
     function postAjax( action, params ) {
         var body = new URLSearchParams();
@@ -110,7 +111,7 @@
         if ( stopping ) {
             return;
         }
-        postAjax( 'thrg_pc_scan_step', {} )
+        postAjax( 'thrg_pc_scan_step', { job_id: jobId } )
             .then( function ( res ) {
                 if ( stopping ) {
                     return;
@@ -160,6 +161,7 @@
                     redirectToTarget( res.data.target, hashAfter );
                     return;
                 }
+                jobId = res.data.job_id || '';
                 updateProgressUi( res.data );
                 stepLoop( hashAfter );
             } )
@@ -208,7 +210,7 @@
         btnStop.addEventListener( 'click', function ( e ) {
             e.preventDefault();
             stopping = true;
-            postAjax( 'thrg_pc_scan_stop', {} ).finally( function () {
+            postAjax( 'thrg_pc_scan_stop', { job_id: jobId } ).finally( function () {
                 redirectToTarget( targetSelect ? targetSelect.value : cfg.target );
             } );
         } );
@@ -239,6 +241,10 @@
     } );
 
     // Resume an already-running scan when page loads.
+    if ( cfg.busy ) {
+        if ( btnScan ) { btnScan.disabled = true; }
+        if ( btnRescan ) { btnRescan.disabled = true; }
+    }
     if ( cfg.running && window.fetch ) {
         setControlsBusy( true );
         if ( cfg.state ) {

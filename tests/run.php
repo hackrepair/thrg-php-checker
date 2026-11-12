@@ -18,6 +18,55 @@ define( 'HOUR_IN_SECONDS', 3600 );
 $GLOBALS['thrg_pc_test_options']    = array();
 $GLOBALS['thrg_pc_test_transients'] = array();
 
+class THRG_PC_Test_WPDB {
+    public $options = 'wp_options';
+
+    public function prepare( $query, ...$args ) {
+        return array( $query, $args );
+    }
+
+    public function query( $prepared ) {
+        list( $sql, $args ) = $prepared;
+        $name = $args[0];
+        if ( 0 === strpos( $sql, 'INSERT IGNORE' ) ) {
+            if ( array_key_exists( $name, $GLOBALS['thrg_pc_test_options'] ) ) {
+                return 0;
+            }
+            $GLOBALS['thrg_pc_test_options'][ $name ] = unserialize( $args[1] );
+            return 1;
+        }
+        if ( 0 === strpos( $sql, 'UPDATE' ) && isset( $GLOBALS['thrg_pc_test_options'][ $args[1] ] ) &&
+            maybe_serialize( $GLOBALS['thrg_pc_test_options'][ $args[1] ] ) === $args[2] ) {
+            $GLOBALS['thrg_pc_test_options'][ $args[1] ] = unserialize( $args[0] );
+            return 1;
+        }
+        if ( 0 === strpos( $sql, 'DELETE FROM' ) && isset( $GLOBALS['thrg_pc_test_options'][ $name ] ) &&
+            maybe_serialize( $GLOBALS['thrg_pc_test_options'][ $name ] ) === $args[1] ) {
+            unset( $GLOBALS['thrg_pc_test_options'][ $name ] );
+            return 1;
+        }
+        return 0;
+    }
+}
+$GLOBALS['wpdb'] = new THRG_PC_Test_WPDB();
+
+function maybe_serialize( $value ) {
+    return is_array( $value ) || is_object( $value ) ? serialize( $value ) : $value;
+}
+function wp_cache_delete( $key, $group = '' ) {
+    unset( $key, $group );
+    return true;
+}
+
+class WP_Error {
+    public function __construct( $code = '', $message = '' ) {
+        unset( $code, $message );
+    }
+}
+function is_wp_error( $value ) {
+    return $value instanceof WP_Error;
+}
+
 function get_option( $name, $default_value = false ) {
     return array_key_exists( $name, $GLOBALS['thrg_pc_test_options'] ) ? $GLOBALS['thrg_pc_test_options'][ $name ] : $default_value;
 }
@@ -47,6 +96,10 @@ function wp_strip_all_tags( $text ) {
 }
 function add_action() {}
 function add_filter() {}
+function apply_filters( $hook, $value ) {
+    unset( $hook );
+    return $value;
+}
 function register_deactivation_hook() {}
 function plugin_basename( $file ) {
     return basename( dirname( $file ) ) . '/' . basename( $file );
@@ -153,6 +206,42 @@ $guarded_findings = $scan_out['scanned'][ $guarded_file ];
 $guarded_counts   = THRG_PC_Results::count( $guarded_findings );
 assert_same( 0, $guarded_counts['errors'], 'Version-guarded create_function() must have 0 errors' );
 assert_true( $guarded_counts['notes'] > 0, 'Version-guarded create_function() must be downgraded to a note' );
+
+// Guard analysis must distinguish unreachable runtime calls from reachable ones.
+$guard_cases = array(
+    'nested'      => "<?php\nif ( PHP_VERSION_ID < 80000 ) {\n    if ( function_exists( 'create_function' ) ) {\n        create_function( '\$a', 'return \$a;' );\n    }\n}\n",
+    'short_and'   => "<?php\nPHP_VERSION_ID < 80000 && create_function( '\$a', 'return \$a;' );\n",
+    'short_or'    => "<?php\nPHP_VERSION_ID >= 80000 || create_function( '\$a', 'return \$a;' );\n",
+    'reachable_or'=> "<?php\nPHP_VERSION_ID < 80000 || create_function( '\$a', 'return \$a;' );\n",
+    'namespace'   => "<?php\nnamespace Demo;\nif ( function_exists( 'create_function' ) ) {\n    \\create_function( '\$a', 'return \$a;' );\n}\n",
+    'early_exit'  => "<?php\nfunction legacy_only() {\n    if ( PHP_VERSION_ID >= 80000 ) { return; }\n    create_function( '\$a', 'return \$a;' );\n}\n",
+    'wrong_exit'  => "<?php\nfunction modern_only() {\n    if ( PHP_VERSION_ID < 80000 ) { return; }\n    create_function( '\$a', 'return \$a;' );\n}\n",
+);
+$guard_paths = array();
+foreach ( $guard_cases as $name => $source ) {
+    $path = $tmp_dir . '/guard-' . $name . '.php';
+    file_put_contents( $path, $source );
+    $guard_paths[ $name ] = $path;
+}
+$guard_scan = THRG_PC_Engine::scan( array_values( $guard_paths ), '8.4', microtime( true ) + 30.0 );
+foreach ( array( 'nested', 'short_and', 'short_or', 'namespace', 'early_exit' ) as $name ) {
+    $counts = THRG_PC_Results::count( $guard_scan['scanned'][ $guard_paths[ $name ] ] );
+    assert_same( 0, $counts['errors'], $name . ' must not report a removed function as reachable on PHP 8.4' );
+    assert_true( $counts['notes'] > 0, $name . ' must retain a guarded note' );
+}
+$reachable_counts = THRG_PC_Results::count( $guard_scan['scanned'][ $guard_paths['reachable_or'] ] );
+assert_true( $reachable_counts['errors'] > 0, 'OR fallback reachable on PHP 8.4 must remain an error' );
+$wrong_exit_counts = THRG_PC_Results::count( $guard_scan['scanned'][ $guard_paths['wrong_exit'] ] );
+assert_true( $wrong_exit_counts['errors'] > 0, 'Return on old PHP must not hide a call reachable on PHP 8.4' );
+foreach ( $guard_paths as $path ) {
+    @unlink( $path );
+}
+
+$malformed_file = $tmp_dir . '/malformed.php';
+file_put_contents( $malformed_file, "<?php\nfunction broken( {\n" );
+$malformed_scan = THRG_PC_Engine::scan( array( $malformed_file ), '8.4', microtime( true ) + 30.0 );
+assert_true( isset( $malformed_scan['scanned'][ $malformed_file ] ), 'Malformed PHP must produce a scan result without crashing the request' );
+@unlink( $malformed_file );
 
 @unlink( $unguarded_file );
 @unlink( $guarded_file );
@@ -363,5 +452,198 @@ $rt_groups = THRG_PC_Runtime_Log::grouped( $installed_now );
 assert_same( 2, count( $rt_groups ), 'Runtime deprecations must be grouped into 2 components (alpha plugin and flavor theme)' );
 assert_same( 'Alpha Plugin', $rt_groups[0]['name'], 'First runtime group should resolve installed plugin name Alpha Plugin' );
 assert_same( 2, $rt_groups[0]['total_hits'], 'Duplicate deprecation lines for Alpha Plugin should aggregate to 2 hits' );
+
+// 9. Update ZIP indexing accepts ordinary packages and rejects oversized archives.
+if ( class_exists( 'ZipArchive' ) ) {
+    $zip_path = sys_get_temp_dir() . '/thrg-pc-test-' . uniqid() . '.zip';
+    $zip      = new ZipArchive();
+    assert_same( true, $zip->open( $zip_path, ZipArchive::CREATE ), 'Fixture ZIP should open for writing' );
+    $zip->addFromString( 'sample/main.php', '<?php echo "ready";' );
+    $zip->close();
+    $opened = THRG_PC_Prescan::zip_open( $zip_path );
+    assert_true( is_array( $opened ) && isset( $opened['entries']['sample/main.php'] ), 'Ordinary update ZIP should be indexed' );
+    assert_same( '<?php echo "ready";', THRG_PC_Prescan::zip_read( $zip_path, 'sample/main.php', 100 ), 'ZIP entry should be read in memory' );
+    THRG_PC_Prescan::zip_close();
+    @unlink( $zip_path );
+
+    $oversized_zip = sys_get_temp_dir() . '/thrg-pc-test-large-' . uniqid() . '.zip';
+    $handle = fopen( $oversized_zip, 'wb' );
+    ftruncate( $handle, THRG_PC_Prescan::MAX_ARCHIVE_BYTES + 1 );
+    fclose( $handle );
+    assert_true( is_wp_error( THRG_PC_Prescan::zip_open( $oversized_zip ) ), 'Oversized archive must be rejected before ZIP parsing' );
+    @unlink( $oversized_zip );
+
+    $many_entries_zip = sys_get_temp_dir() . '/thrg-pc-test-many-' . uniqid() . '.zip';
+    $zip = new ZipArchive();
+    assert_same( true, $zip->open( $many_entries_zip, ZipArchive::CREATE ), 'Many-entry fixture ZIP should open for writing' );
+    for ( $i = 0; $i <= THRG_PC_Prescan::MAX_ARCHIVE_ENTRIES; ++$i ) {
+        $zip->addEmptyDir( 'entry-' . $i );
+    }
+    $zip->close();
+    assert_true( is_wp_error( THRG_PC_Prescan::zip_open( $many_entries_zip ) ), 'Archive with too many entries must be rejected before indexing' );
+    @unlink( $many_entries_zip );
+
+    $compressed_zip = sys_get_temp_dir() . '/thrg-pc-test-compressed-' . uniqid() . '.zip';
+    $zip = new ZipArchive();
+    assert_same( true, $zip->open( $compressed_zip, ZipArchive::CREATE ), 'Compressed fixture ZIP should open for writing' );
+    $zip->addFromString( 'sample/large.php', str_repeat( 'A', 3 * 1024 * 1024 ) );
+    $zip->close();
+    $opened = THRG_PC_Prescan::zip_open( $compressed_zip );
+    assert_true( is_array( $opened ), 'Compressed but bounded package should index' );
+    assert_same( null, THRG_PC_Prescan::zip_read( $compressed_zip, 'sample/large.php', 2 * 1024 * 1024 ), 'Per-file limit rejects a highly compressed large entry' );
+    THRG_PC_Prescan::zip_close();
+    @unlink( $compressed_zip );
+
+    $broken_zip = sys_get_temp_dir() . '/thrg-pc-test-broken-' . uniqid() . '.zip';
+    file_put_contents( $broken_zip, "PK\x03\x04truncated" );
+    assert_true( is_wp_error( THRG_PC_Prescan::zip_open( $broken_zip ) ), 'Malformed ZIP is rejected without a fatal error' );
+    @unlink( $broken_zip );
+}
+
+// 10. A scan belongs to its initiating administrator and job token.
+$seed_job = array(
+    'job_id'     => str_repeat( 'a', 32 ),
+    'updated_at' => time(),
+    'user_id'    => 11,
+    'target'     => '8.4',
+    'queue'      => array( array( 'name' => 'Waiting' ) ),
+    'current'    => null,
+    'total'      => 1,
+    'finished'   => 0,
+);
+THRG_PC_Scanner::set_state( $seed_job );
+assert_true( THRG_PC_Scanner::is_running(), 'Seeded scan must be active' );
+assert_true( THRG_PC_Scanner::owns_job( $seed_job['job_id'], 11 ), 'Owner with matching token can control scan' );
+assert_true( ! THRG_PC_Scanner::owns_job( $seed_job['job_id'], 12 ), 'Another administrator cannot control scan' );
+assert_true( ! THRG_PC_Scanner::owns_job( str_repeat( 'b', 32 ), 11 ), 'Old or wrong token cannot control scan' );
+$step_rejected = false;
+try {
+    THRG_PC_Scanner::step( microtime( true ) + 1, str_repeat( 'b', 32 ) );
+} catch ( InvalidArgumentException $e ) {
+    $step_rejected = true;
+}
+assert_true( $step_rejected, 'Wrong token cannot advance a scan' );
+assert_same( $seed_job, THRG_PC_Scanner::start( '8.5', true, 'all', '', 11 ), 'Same administrator resumes existing job instead of replacing it' );
+$busy_rejected = false;
+try {
+    THRG_PC_Scanner::start( '8.5', true, 'all', '', 12 );
+} catch ( InvalidArgumentException $e ) {
+    $busy_rejected = true;
+}
+assert_true( $busy_rejected, 'Second administrator cannot replace an active scan' );
+assert_true( ! THRG_PC_Scanner::stop( $seed_job['job_id'], 12 ), 'Second administrator cannot stop active scan' );
+assert_true( THRG_PC_Scanner::is_running(), 'Rejected stop leaves scan intact' );
+assert_true( THRG_PC_Scanner::stop( $seed_job['job_id'], 11 ), 'Owner can stop active scan' );
+assert_true( ! THRG_PC_Scanner::is_running(), 'Successful stop clears scan' );
+
+$seed_job['user_id'] = 0;
+THRG_PC_Scanner::set_state( $seed_job );
+assert_true( THRG_PC_Scanner::owns_job( $seed_job['job_id'], 12 ), 'Administrator can resume a partial cron scan' );
+assert_same( $seed_job, THRG_PC_Scanner::start( '8.5', true, 'all', '', 12 ), 'Administrator resumes rather than replaces cron scan' );
+THRG_PC_Scanner::clear_state();
+
+$seed_job['updated_at'] = time() - THRG_PC_Scanner::STATE_TTL - 1;
+THRG_PC_Scanner::set_state( $seed_job );
+assert_same( array(), THRG_PC_Scanner::get_state(), 'Abandoned scan expires so another administrator can start later' );
+
+$claim = new ReflectionMethod( THRG_PC_Scanner::class, 'claim_state' );
+$first_job = $seed_job;
+$first_job['updated_at'] = time();
+$first_job['job_id'] = str_repeat( 'c', 32 );
+$second_job = $first_job;
+$second_job['job_id'] = str_repeat( 'd', 32 );
+assert_true( $claim->invoke( null, $first_job ), 'First claimant inserts the empty scan slot' );
+assert_true( ! $claim->invoke( null, $second_job ), 'Second claimant cannot replace the first job' );
+assert_same( $first_job, THRG_PC_Scanner::get_state(), 'Losing claim leaves first job intact' );
+assert_true( ! THRG_PC_Scanner::clear_state( $second_job ), 'Stale cleanup cannot delete a different job' );
+assert_same( $first_job, THRG_PC_Scanner::get_state(), 'Conditional delete preserves the current job' );
+assert_true( THRG_PC_Scanner::clear_state( $first_job ), 'Matching conditional cleanup removes the job' );
+
+$lock_method = new ReflectionMethod( THRG_PC_Scanner::class, 'claim_step_lock' );
+$lock = $lock_method->invoke( null, $first_job['job_id'] );
+$parallel_step_rejected = false;
+try {
+    $lock_method->invoke( null, $first_job['job_id'] );
+} catch ( InvalidArgumentException $e ) {
+    $parallel_step_rejected = true;
+}
+assert_true( $parallel_step_rejected, 'Overlapping step cannot claim a held lock' );
+delete_option( THRG_PC_Scanner::STEP_LOCK_OPTION );
+
+$replace = new ReflectionMethod( THRG_PC_Scanner::class, 'replace_state' );
+THRG_PC_Scanner::set_state( $first_job );
+assert_true( ! $replace->invoke( null, $second_job, $first_job ), 'Progress update rejects a different current state' );
+assert_same( $first_job, THRG_PC_Scanner::get_state(), 'Rejected progress update leaves current job intact' );
+$advanced_job = $first_job;
+$advanced_job['finished'] = 1;
+assert_true( $replace->invoke( null, $first_job, $advanced_job ), 'Matching progress update succeeds' );
+assert_same( $advanced_job, THRG_PC_Scanner::get_state(), 'Progress update stores the new state' );
+THRG_PC_Scanner::clear_state();
+
+// 11. Live runtime capture preserves an existing PHP error handler.
+THRG_PC_Runtime_Log::clear();
+$prior_calls  = array();
+$prior_return = true;
+$prior = static function ( $errno, $message, $file, $line ) use ( &$prior_calls, &$prior_return ) {
+    $prior_calls[] = array( $errno, $message, $file, $line );
+    return $prior_return;
+};
+$old_reporting = error_reporting( E_ALL );
+set_error_handler( $prior, E_DEPRECATED | E_USER_DEPRECATED );
+THRG_PC_Runtime_Log::register_handler();
+THRG_PC_Runtime_Log::register_handler();
+$installed = set_error_handler( static function () { return true; }, E_USER_DEPRECATED );
+assert_same( array( 'THRG_PC_Runtime_Log', 'handle_error' ), $installed, 'Repeated registration keeps one runtime capture handler on top' );
+restore_error_handler();
+
+$notice_dir = WP_PLUGIN_DIR . '/runtime-fixture';
+if ( ! is_dir( $notice_dir ) ) {
+    mkdir( $notice_dir, 0755, true );
+}
+$notice_file = $notice_dir . '/notice.php';
+file_put_contents( $notice_file, "<?php trigger_error( 'Fixture deprecation', E_USER_DEPRECATED );\n" );
+include $notice_file;
+assert_same( 1, count( $prior_calls ), 'Existing handler receives the deprecation exactly once' );
+assert_same( realpath( $notice_file ), $prior_calls[0][2], 'Existing handler receives the canonical file path' );
+THRG_PC_Runtime_Log::flush_buffer();
+$captured = array_values( THRG_PC_Runtime_Log::all() );
+assert_same( 1, count( $captured ), 'Runtime capture persists the plugin deprecation' );
+assert_same( 'runtime-fixture', $captured[0]['slug'], 'Runtime notice is attributed to the emitting plugin' );
+
+$prior_return = false;
+assert_same( false, THRG_PC_Runtime_Log::handle_error( E_USER_DEPRECATED, 'Second deprecation', $notice_file, 1 ), 'A false return from the previous handler remains false' );
+assert_same( 2, count( $prior_calls ), 'Direct callback still chains to previous handler' );
+restore_error_handler();
+restore_error_handler();
+error_reporting( $old_reporting );
+THRG_PC_Runtime_Log::clear();
+@unlink( $notice_file );
+@rmdir( $notice_dir );
+
+// Release selection must inspect all assets, and uninstall must remove tracked cooldowns.
+require_once dirname( __DIR__ ) . '/includes/class-thrg-pc-updater.php';
+$release = (object) array(
+    'tag_name' => 'v1.2.0',
+    'assets'   => array(
+        (object) array( 'name' => 'thrg-php-checker.1.1.9.zip' ),
+        (object) array( 'name' => 'thrg-php-checker.1.2.0.zip' ),
+    ),
+);
+assert_true( THRG_PC_Updater::release_has_asset( '1.2.0', $release ), 'Matching release asset can follow another version' );
+assert_true( ! THRG_PC_Updater::release_has_asset( '1.2.1', $release ), 'Mismatched release tag is rejected' );
+$release->assets = array( (object) array( 'name' => 'thrg-php-checker.1.1.9.zip' ) );
+assert_true( ! THRG_PC_Updater::release_has_asset( '1.2.0', $release ), 'Release without exact asset is rejected' );
+
+THRG_PC_Email::mark_cooldown( 11 );
+assert_same( 1, get_transient( 'thrg_pc_mail_11' ), 'Email cooldown is created' );
+assert_same( array( 11 => 'thrg_pc_mail_11' ), get_option( 'thrg_pc_mail_cooldowns' ), 'Cooldown key is tracked' );
+function is_multisite() { return false; }
+function wp_clear_scheduled_hook( $hook ) { unset( $hook ); }
+function delete_site_option( $name ) { unset( $name ); }
+function delete_site_transient( $name ) { unset( $name ); }
+define( 'WP_UNINSTALL_PLUGIN', 'index.php' );
+require dirname( __DIR__ ) . '/uninstall.php';
+assert_same( false, get_transient( 'thrg_pc_mail_11' ), 'Uninstall removes tracked cooldown' );
+assert_same( false, get_option( 'thrg_pc_mail_cooldowns' ), 'Uninstall removes cooldown registry' );
 
 echo "OK ({$assertions} assertions passed)\n";

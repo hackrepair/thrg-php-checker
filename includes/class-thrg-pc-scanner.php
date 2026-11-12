@@ -15,7 +15,10 @@ defined( 'ABSPATH' ) || exit;
  */
 final class THRG_PC_Scanner {
 
-    const STATE_OPTION = 'thrg_pc_scan_state';
+    const STATE_OPTION     = 'thrg_pc_scan_state';
+    const STATE_TTL        = 1800;
+    const STEP_LOCK_OPTION = 'thrg_pc_scan_step_lock';
+    const STEP_LOCK_TTL    = 90;
 
     /**
      * Normalize a component version string (never empty).
@@ -123,7 +126,123 @@ final class THRG_PC_Scanner {
      */
     public static function get_state() {
         $state = get_option( self::STATE_OPTION, array() );
-        return is_array( $state ) ? $state : array();
+        if ( ! is_array( $state ) ) {
+            return array();
+        }
+        if ( $state && ( empty( $state['job_id'] ) || empty( $state['updated_at'] ) || time() - (int) $state['updated_at'] > self::STATE_TTL ) ) {
+            self::clear_state( $state );
+            $fresh = get_option( self::STATE_OPTION, array() );
+            return is_array( $fresh ) && $fresh !== $state ? $fresh : array();
+        }
+        return $state;
+    }
+
+    /**
+     * Clear WordPress's cached copy after direct conditional option queries.
+     *
+     * @return void
+     */
+    private static function flush_state_cache( $name = self::STATE_OPTION ) {
+        wp_cache_delete( $name, 'options' );
+        wp_cache_delete( 'notoptions', 'options' );
+        wp_cache_delete( 'alloptions', 'options' );
+    }
+
+    /**
+     * Insert one non-autoloaded option only when the slot is empty.
+     *
+     * @param string $name Option name.
+     * @param array  $value Option value.
+     * @return bool
+     */
+    private static function claim_option( $name, array $value ) {
+        global $wpdb;
+        $inserted = $wpdb->query(
+            $wpdb->prepare(
+                "INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, %s)",
+                $name,
+                maybe_serialize( $value ),
+                'no'
+            )
+        );
+        if ( 1 !== $inserted ) {
+            return false;
+        }
+        self::flush_state_cache( $name );
+        return true;
+    }
+
+    /**
+     * Remove an option only if its value has not changed.
+     *
+     * @param string $name Option name.
+     * @param array  $expected Expected value.
+     * @return bool
+     */
+    private static function delete_if_unchanged( $name, array $expected ) {
+        global $wpdb;
+        $deleted = $wpdb->query(
+            $wpdb->prepare(
+                "DELETE FROM {$wpdb->options} WHERE option_name = %s AND option_value = %s",
+                $name,
+                maybe_serialize( $expected )
+            )
+        );
+        self::flush_state_cache( $name );
+        return 1 === $deleted;
+    }
+
+    /**
+     * Claim the scan slot with one insert that cannot replace another job.
+     *
+     * @param array $state New scan state.
+     * @return bool
+     */
+    private static function claim_state( array $state ) {
+        return self::claim_option( self::STATE_OPTION, $state );
+    }
+
+    /**
+     * Whether a scan has work remaining.
+     *
+     * @param array|null $state Optional known state.
+     * @return bool
+     */
+    public static function is_running( $state = null ) {
+        $state = is_array( $state ) ? $state : self::get_state();
+        return ! empty( $state['current'] ) || ! empty( $state['queue'] );
+    }
+
+    /**
+     * Check that a user and job token own the active scan. Cron jobs use user ID
+     * zero so any administrator holding the token may resume a partial run.
+     *
+     * @param string $job_id Job token.
+     * @param int    $user_id WordPress user ID.
+     * @return bool
+     */
+    public static function owns_job( $job_id, $user_id ) {
+        $state = self::get_state();
+        return self::is_running( $state ) && is_string( $job_id ) && '' !== $job_id &&
+            isset( $state['job_id'], $state['user_id'] ) && hash_equals( (string) $state['job_id'], $job_id ) &&
+            ( 0 === (int) $state['user_id'] || (int) $state['user_id'] === (int) $user_id );
+    }
+
+    /**
+     * Stop only the job owned by this user and token.
+     *
+     * @param string $job_id Job token.
+     * @param int    $user_id WordPress user ID.
+     * @return bool
+     */
+    public static function stop( $job_id, $user_id ) {
+        $state = self::get_state();
+        if ( ! self::is_running( $state ) || ! is_string( $job_id ) || '' === $job_id ||
+            ! hash_equals( (string) $state['job_id'], $job_id ) ||
+            ( 0 !== (int) $state['user_id'] && (int) $state['user_id'] !== (int) $user_id ) ) {
+            return false;
+        }
+        return self::clear_state( $state );
     }
 
     /**
@@ -137,12 +256,62 @@ final class THRG_PC_Scanner {
     }
 
     /**
-     * Clear any running scan state.
+     * Clear scan state, optionally only if it still matches the known job.
      *
-     * @return void
+     * @param array|null $expected Expected state for conditional deletion.
+     * @return bool
      */
-    public static function clear_state() {
-        delete_option( self::STATE_OPTION );
+    public static function clear_state( $expected = null ) {
+        if ( null === $expected ) {
+            return delete_option( self::STATE_OPTION );
+        }
+        return self::delete_if_unchanged( self::STATE_OPTION, $expected );
+    }
+
+    /**
+     * Replace progress only when no stop, reset, or other step changed it.
+     *
+     * @param array $expected State read before the scan slice.
+     * @param array $next New progress state.
+     * @return bool
+     */
+    private static function replace_state( array $expected, array $next ) {
+        global $wpdb;
+        $changed = $wpdb->query(
+            $wpdb->prepare(
+                "UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND option_value = %s",
+                maybe_serialize( $next ),
+                self::STATE_OPTION,
+                maybe_serialize( $expected )
+            )
+        );
+        self::flush_state_cache();
+        return 1 === $changed;
+    }
+
+    /**
+     * Claim a short-lived step lock, recovering an abandoned lock when needed.
+     *
+     * @param string $job_id Current job token.
+     * @return array Lock value for conditional release.
+     * @throws InvalidArgumentException When another step is active.
+     */
+    private static function claim_step_lock( $job_id ) {
+        $lock = array(
+            'job_id'  => (string) $job_id,
+            'token'   => bin2hex( random_bytes( 16 ) ),
+            'expires' => time() + self::STEP_LOCK_TTL,
+        );
+        if ( self::claim_option( self::STEP_LOCK_OPTION, $lock ) ) {
+            return $lock;
+        }
+        $previous = get_option( self::STEP_LOCK_OPTION, array() );
+        if ( is_array( $previous ) && isset( $previous['expires'] ) && time() > (int) $previous['expires'] &&
+            self::delete_if_unchanged( self::STEP_LOCK_OPTION, $previous ) &&
+            self::claim_option( self::STEP_LOCK_OPTION, $lock ) ) {
+            return $lock;
+        }
+        throw new InvalidArgumentException( 'A scan step is already running. Please try again.' );
     }
 
     /**
@@ -158,6 +327,13 @@ final class THRG_PC_Scanner {
      * @throws InvalidArgumentException When $target is invalid.
      */
     public static function start( $target, $rescan = false, $scope = 'all', $single_key = '', $user_id = 0, $user_name = '' ) {
+        $existing = self::get_state();
+        if ( self::is_running( $existing ) ) {
+            if ( 0 === (int) $existing['user_id'] || (int) $existing['user_id'] === (int) $user_id ) {
+                return $existing;
+            }
+            throw new InvalidArgumentException( 'Another scan is already running.' );
+        }
         $target = (string) $target;
         if ( ! in_array( $target, THRG_PHP_Checker::scan_targets(), true ) ) {
             throw new InvalidArgumentException( 'Unknown scan target' );
@@ -181,18 +357,26 @@ final class THRG_PC_Scanner {
         }
 
         $state = array(
-            'target'    => $target,
-            'scope'     => $scope,
-            'queue'     => $queue,
-            'total'     => count( $queue ),
-            'current'   => null,
-            'finished'  => 0,
-            'completed' => false,
-            'user_id'   => (int) $user_id,
-            'user_name' => (string) $user_name,
+            'job_id'     => bin2hex( random_bytes( 16 ) ),
+            'updated_at' => time(),
+            'target'     => $target,
+            'scope'      => $scope,
+            'queue'      => $queue,
+            'total'      => count( $queue ),
+            'current'    => null,
+            'finished'   => 0,
+            'completed'  => false,
+            'user_id'    => (int) $user_id,
+            'user_name'  => (string) $user_name,
         );
-        self::set_state( $state );
-        return $state;
+        if ( self::claim_state( $state ) ) {
+            return $state;
+        }
+        $existing = self::get_state();
+        if ( self::is_running( $existing ) && ( 0 === (int) $existing['user_id'] || (int) $existing['user_id'] === (int) $user_id ) ) {
+            return $existing;
+        }
+        throw new InvalidArgumentException( self::is_running( $existing ) ? 'Another scan is already running.' : 'Could not claim the scan job. Please try again.' );
     }
 
     /**
@@ -235,9 +419,28 @@ final class THRG_PC_Scanner {
      * @param float $deadline microtime(true) cutoff.
      * @return array{done:bool,total:int,finished:int,current:string,files_done:int,files_total:int,target:string}
      */
-    public static function step( $deadline ) {
+    public static function step( $deadline, $job_id ) {
+        $lock = self::claim_step_lock( $job_id );
+        try {
+            return self::step_locked( $deadline, $job_id );
+        } finally {
+            self::delete_if_unchanged( self::STEP_LOCK_OPTION, $lock );
+        }
+    }
+
+    /**
+     * Advance the job while the step lock is held.
+     *
+     * @param float  $deadline Time limit.
+     * @param string $job_id Job token.
+     * @return array Progress response.
+     */
+    private static function step_locked( $deadline, $job_id ) {
         $state = self::get_state();
-        $idle  = array(
+        if ( $state && ( ! is_string( $job_id ) || ! isset( $state['job_id'] ) || ! hash_equals( (string) $state['job_id'], $job_id ) ) ) {
+            throw new InvalidArgumentException( 'Scan job has changed.' );
+        }
+        $idle = array(
             'done'        => true,
             'total'       => isset( $state['total'] ) ? (int) $state['total'] : 0,
             'finished'    => isset( $state['finished'] ) ? (int) $state['finished'] : 0,
@@ -255,6 +458,7 @@ final class THRG_PC_Scanner {
         $files_total = 0;
 
         do {
+            $previous = $state;
             if ( empty( $state['current'] ) ) {
                 $next = array_shift( $state['queue'] );
                 if ( null === $next ) {
@@ -276,14 +480,21 @@ final class THRG_PC_Scanner {
             $comp['remaining'] = $out['remaining'];
             $files_done        = max( 0, $files_total - count( $comp['remaining'] ) );
 
+            $completed_comp = null;
             if ( $comp['remaining'] ) {
                 $state['current'] = $comp;
             } else {
-                THRG_PC_Results::save( $comp, $state['target'], $comp['findings'] );
+                $completed_comp = $comp;
                 ++$state['finished'];
                 $state['current'] = null;
             }
-            self::set_state( $state );
+            $state['updated_at'] = time();
+            if ( ! self::replace_state( $previous, $state ) ) {
+                throw new InvalidArgumentException( 'Scan job changed while this step was running.' );
+            }
+            if ( null !== $completed_comp ) {
+                THRG_PC_Results::save( $completed_comp, $state['target'], $completed_comp['findings'] );
+            }
         } while ( microtime( true ) < $deadline && ( $state['current'] || $state['queue'] ) );
 
         if ( $state['current'] || $state['queue'] ) {
@@ -299,8 +510,11 @@ final class THRG_PC_Scanner {
         }
 
         if ( empty( $state['completed'] ) ) {
+            $previous           = $state;
             $state['completed'] = true;
-            self::set_state( $state );
+            if ( ! self::replace_state( $previous, $state ) ) {
+                throw new InvalidArgumentException( 'Scan job changed while this step was running.' );
+            }
             if ( 'single' !== ( isset( $state['scope'] ) ? $state['scope'] : 'all' ) ) {
                 $rows      = THRG_PHP_Checker::evaluate( THRG_PHP_Checker::collect( $state['target'] ) );
                 $user_id   = isset( $state['user_id'] ) ? (int) $state['user_id'] : get_current_user_id();
@@ -312,7 +526,7 @@ final class THRG_PC_Scanner {
                 THRG_PC_History::add( $rows, $state['target'], wp_parse_url( home_url(), PHP_URL_HOST ), THRG_PHP_Checker::version(), $user_id, $user_name, time() );
             }
         }
-        self::clear_state();
+        self::clear_state( $state );
         return array(
             'done'        => true,
             'total'       => (int) $state['total'],

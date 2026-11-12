@@ -77,8 +77,8 @@ final class THRG_PC_Runtime_Log {
     /**
      * Error handler callback for E_DEPRECATED and E_USER_DEPRECATED.
      *
-     * Always chains to any previous handler and returns false so native PHP
-     * logging is never suppressed.
+     * Chains to any previous handler and preserves its return value. When no
+     * previous handler exists, false lets PHP's native handler run.
      *
      * @param int    $errno   Error level.
      * @param string $errstr  Error message.
@@ -135,12 +135,21 @@ final class THRG_PC_Runtime_Log {
      * @return array{kind:string,slug:string,rel_file:string}
      */
     public static function attribute_path( $abs_path ) {
-        $norm = str_replace( '\\', '/', (string) $abs_path );
+        $norm      = str_replace( '\\', '/', (string) $abs_path );
+        $real_file = realpath( (string) $abs_path );
 
         $plugin_dir = defined( 'WP_PLUGIN_DIR' ) ? rtrim( str_replace( '\\', '/', WP_PLUGIN_DIR ), '/' ) . '/' : '';
         if ( '' !== $plugin_dir && 0 === strpos( $norm, $plugin_dir ) ) {
             $rel = substr( $norm, strlen( $plugin_dir ) );
             return self::split_component_rel( 'plugin', $rel );
+        }
+        $real_plugin_dir = defined( 'WP_PLUGIN_DIR' ) ? realpath( WP_PLUGIN_DIR ) : false;
+        if ( false !== $real_file && false !== $real_plugin_dir ) {
+            $real_prefix = rtrim( str_replace( '\\', '/', $real_plugin_dir ), '/' ) . '/';
+            $real_norm   = str_replace( '\\', '/', $real_file );
+            if ( 0 === strpos( $real_norm, $real_prefix ) ) {
+                return self::split_component_rel( 'plugin', substr( $real_norm, strlen( $real_prefix ) ) );
+            }
         }
         if ( preg_match( '#/wp-content/plugins/(.+)$#', $norm, $m ) ) {
             return self::split_component_rel( 'plugin', $m[1] );
@@ -150,6 +159,14 @@ final class THRG_PC_Runtime_Log {
         if ( '' !== $mu_dir && 0 === strpos( $norm, $mu_dir ) ) {
             $rel = substr( $norm, strlen( $mu_dir ) );
             return self::split_component_rel( 'mu-plugin', $rel );
+        }
+        $real_mu_dir = defined( 'WPMU_PLUGIN_DIR' ) ? realpath( WPMU_PLUGIN_DIR ) : false;
+        if ( false !== $real_file && false !== $real_mu_dir ) {
+            $real_prefix = rtrim( str_replace( '\\', '/', $real_mu_dir ), '/' ) . '/';
+            $real_norm   = str_replace( '\\', '/', $real_file );
+            if ( 0 === strpos( $real_norm, $real_prefix ) ) {
+                return self::split_component_rel( 'mu-plugin', substr( $real_norm, strlen( $real_prefix ) ) );
+            }
         }
         if ( preg_match( '#/wp-content/mu-plugins/(.+)$#', $norm, $m ) ) {
             return self::split_component_rel( 'mu-plugin', $m[1] );
