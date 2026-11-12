@@ -95,8 +95,12 @@
 }
 
 .thrg-pc-meta-pill--target {
-    background: rgba(255, 153, 51, 0.16);
-    border-color: rgba(255, 153, 51, 0.45);
+    background: rgba(34, 160, 88, 0.28);
+    border-color: rgba(88, 214, 134, 0.65);
+}
+
+.thrg-pc-meta-pill--target .thrg-pc-meta-label {
+    color: #c8f5d6;
 }
 
 .thrg-pc-meta-label {
