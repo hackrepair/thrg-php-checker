@@ -12,9 +12,11 @@ define( 'THRG_PC_SKIP_UPDATER', true );
 define( 'WP_PLUGIN_DIR', sys_get_temp_dir() . '/thrg-pc-test-plugins' );
 define( 'WPMU_PLUGIN_DIR', sys_get_temp_dir() . '/thrg-pc-test-mu-plugins' );
 define( 'DAY_IN_SECONDS', 86400 );
+define( 'HOUR_IN_SECONDS', 3600 );
 
 // Minimal WordPress test doubles for isolated CLI execution.
-$GLOBALS['thrg_pc_test_options'] = array();
+$GLOBALS['thrg_pc_test_options']    = array();
+$GLOBALS['thrg_pc_test_transients'] = array();
 
 function get_option( $name, $default_value = false ) {
     return array_key_exists( $name, $GLOBALS['thrg_pc_test_options'] ) ? $GLOBALS['thrg_pc_test_options'][ $name ] : $default_value;
@@ -27,6 +29,21 @@ function update_option( $name, $value, $autoload = null ) {
 function delete_option( $name ) {
     unset( $GLOBALS['thrg_pc_test_options'][ $name ] );
     return true;
+}
+function get_transient( $name ) {
+    return array_key_exists( $name, $GLOBALS['thrg_pc_test_transients'] ) ? $GLOBALS['thrg_pc_test_transients'][ $name ] : false;
+}
+function set_transient( $name, $value, $expiration = 0 ) {
+    unset( $expiration );
+    $GLOBALS['thrg_pc_test_transients'][ $name ] = $value;
+    return true;
+}
+function delete_transient( $name ) {
+    unset( $GLOBALS['thrg_pc_test_transients'][ $name ] );
+    return true;
+}
+function wp_strip_all_tags( $text ) {
+    return strip_tags( (string) $text );
 }
 function add_action() {}
 function add_filter() {}
@@ -302,9 +319,49 @@ $subject = THRG_PC_Email::subject( $eval_rows, 'example.com', '8.4', null, false
 assert_true( 0 === strpos( $subject, '[example.com] [PHP Checker] PHP 8.4 Check:' ), 'Email subject must follow [domain] [PHP Checker] standard' );
 assert_same( '', THRG_PC_Email::reply_to( 'Admin', "bad@example.com\r\nBcc: attacker@evil.test" ), 'Reply-To must reject CRLF injection' );
 
-// 6. Schedule next_run calculation.
+// 6. Schedule next_run calculation (Monthly and Weekly).
 $tz   = new DateTimeZone( 'UTC' );
 $next = THRG_PC_Schedule::next_run( strtotime( '2026-05-10 12:00:00 UTC' ), 1, $tz );
 assert_same( '2026-06-01 08:00:00', gmdate( 'Y-m-d H:i:s', $next ), 'Monthly schedule should pick day 1 of next month at 08:00' );
+
+// 2026-05-10 is a Sunday; weekday 1 = Monday (2026-05-11 08:00:00).
+$next_weekly = THRG_PC_Schedule::next_run( strtotime( '2026-05-10 12:00:00 UTC' ), 1, $tz, 'weekly', 1 );
+assert_same( '2026-05-11 08:00:00', gmdate( 'Y-m-d H:i:s', $next_weekly ), 'Weekly schedule should pick next Monday at 08:00' );
+
+// 7. WordPress.org newer-version fix verification in component_finding().
+THRG_PC_Results::save_update( 'plugin', 'alpha', '1.1.0', '8.4', array() );
+$eval_fixed = THRG_PHP_Checker::evaluate(
+    array(
+        'now'             => strtotime( '2026-05-01 UTC' ),
+        'php_version'     => '8.3.10',
+        'running_php'     => '8.3',
+        'target'          => '8.4',
+        'engine_reason'   => '',
+        'components'      => $installed_now,
+        'results'         => $synced,
+        'prescan_enabled' => false,
+        'update_items'    => array(),
+    )
+);
+assert_same( 'fixed', $eval_fixed[0]['wporg_fix_status'], 'Plugin whose newer 1.1.0 version has 0 errors/warnings on target 8.4 must report wporg_fix_status = fixed' );
+assert_same( 'Fixed in v1.1.0 on WordPress.org', $eval_fixed[0]['wporg_fix_label'], 'Plugin card must display Fixed in v1.1.0 on WordPress.org badge' );
+
+// 8. Runtime PHP deprecation notice collector & debug.log parser grouped by plugin.
+THRG_PC_Runtime_Log::clear();
+$fake_log = sys_get_temp_dir() . '/thrg-pc-test-debug-' . uniqid() . '.log';
+file_put_contents(
+    $fake_log,
+    "[11-Nov-2026 12:00:00 UTC] PHP Deprecated:  Creation of dynamic property Alpha::\$foo is deprecated in /var/www/html/wp-content/plugins/alpha/includes/main.php on line 42\n" .
+    "[11-Nov-2026 12:01:00 UTC] PHP Deprecated:  Creation of dynamic property Alpha::\$foo is deprecated in /var/www/html/wp-content/plugins/alpha/includes/main.php on line 42\n" .
+    "[11-Nov-2026 12:02:00 UTC] PHP User Deprecated:  Function old_helper is deprecated since version 2.0 in /var/www/html/wp-content/themes/flavor/functions.php on line 19\n"
+);
+$imported_cnt = THRG_PC_Runtime_Log::import_debug_log( $fake_log );
+@unlink( $fake_log );
+assert_same( 3, $imported_cnt, 'import_debug_log() must parse 3 deprecation lines' );
+
+$rt_groups = THRG_PC_Runtime_Log::grouped( $installed_now );
+assert_same( 2, count( $rt_groups ), 'Runtime deprecations must be grouped into 2 components (alpha plugin and flavor theme)' );
+assert_same( 'Alpha Plugin', $rt_groups[0]['name'], 'First runtime group should resolve installed plugin name Alpha Plugin' );
+assert_same( 2, $rt_groups[0]['total_hits'], 'Duplicate deprecation lines for Alpha Plugin should aggregate to 2 hits' );
 
 echo "OK ({$assertions} assertions passed)\n";

@@ -91,6 +91,7 @@ $total_comps  = count( $components );
 
 $history_all     = THRG_PC_History::all();
 $history_enabled = THRG_PC_History::enabled();
+$runtime_groups  = THRG_PC_Runtime_Log::grouped( $components );
 $schedule        = THRG_PC_Schedule::settings();
 $schedule_log    = THRG_PC_Schedule::last_run();
 $schedule_next   = wp_next_scheduled( THRG_PC_Schedule::HOOK );
@@ -107,7 +108,11 @@ $hist_flag = isset( $_GET['thrg_pc_history'] ) ? sanitize_key( wp_unslash( $_GET
 // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 $set_flag = isset( $_GET['thrg_pc_settings'] ) ? sanitize_key( wp_unslash( $_GET['thrg_pc_settings'] ) ) : '';
 // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-$sched_ok = ! empty( $_GET['thrg_pc_schedule_saved'] );
+$rt_flag = isset( $_GET['thrg_pc_runtime'] ) ? sanitize_key( wp_unslash( $_GET['thrg_pc_runtime'] ) ) : '';
+// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+$done_flag = isset( $_GET['thrg_pc_done'] ) ? sanitize_key( wp_unslash( $_GET['thrg_pc_done'] ) ) : '';
+// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+$sched_ok = ! empty( $_GET['thrg_pc_schedule_saved'] ) || 'schedule-saved' === $done_flag;
 
 $status_class = static function ( $status ) {
     if ( 'Potential weakness' === $status ) {
@@ -590,7 +595,15 @@ if ( ! empty( $observations['engine_reason'] ) ) {
                 <h2 class="thrg-nav-heading"><?php esc_html_e( 'Tools & Settings', 'thrg-php-checker' ); ?></h2>
                 <ul class="thrg-nav-list">
                     <li><a href="#pc-share" class="thrg-nav-link"><?php esc_html_e( 'Export & Email Report', 'thrg-php-checker' ); ?></a></li>
-                    <li><a href="#pc-schedule" class="thrg-nav-link" data-open-details="pc-schedule-details"><?php esc_html_e( 'Monthly Readiness Email', 'thrg-php-checker' ); ?></a></li>
+                    <li><a href="#pc-schedule" class="thrg-nav-link" data-open-details="pc-schedule-details"><?php esc_html_e( 'Scheduled Readiness Email', 'thrg-php-checker' ); ?></a></li>
+                    <li>
+                        <a href="#pc-runtime-log" class="thrg-nav-link" data-open-details="pc-runtime-details">
+                            <span class="thrg-nav-text"><?php esc_html_e( 'Runtime Deprecation Log', 'thrg-php-checker' ); ?></span>
+                            <?php if ( ! empty( $runtime_groups ) ) : ?>
+                                <span class="thrg-nav-badge thrg-nav-badge--warn"><?php echo count( $runtime_groups ); ?></span>
+                            <?php endif; ?>
+                        </a>
+                    </li>
                     <li><a href="#pc-history" class="thrg-nav-link" data-open-details="pc-history-details"><?php esc_html_e( 'Saved Report History', 'thrg-php-checker' ); ?></a></li>
                     <li><a href="#pc-settings" class="thrg-nav-link" data-open-details="pc-settings-details"><?php esc_html_e( 'Scanner Settings', 'thrg-php-checker' ); ?></a></li>
                     <li><a href="#support" class="thrg-nav-link"><?php esc_html_e( 'Support & Help', 'thrg-php-checker' ); ?></a></li>
@@ -656,7 +669,11 @@ if ( ! empty( $observations['engine_reason'] ) ) {
                                     ?>
                                 </span>
                             <?php endif; ?>
-                            <?php if ( ! empty( $row['comp_update_version'] ) ) : ?>
+                            <?php if ( ! empty( $row['wporg_fix_status'] ) && ! empty( $row['wporg_fix_label'] ) ) : ?>
+                                <span class="thrg-pc-wporg-pill thrg-pc-wporg-pill--<?php echo esc_attr( $row['wporg_fix_status'] ); ?>">
+                                    <?php echo esc_html( $row['wporg_fix_label'] ); ?>
+                                </span>
+                            <?php elseif ( ! empty( $row['comp_update_version'] ) ) : ?>
                                 <span class="thrg-pc-update-pill">
                                     <?php
                                     printf(
@@ -680,9 +697,16 @@ if ( ! empty( $observations['engine_reason'] ) ) {
                                 <?php endif; ?>
                             </h2>
                             <?php if ( $is_comp_card ) : ?>
-                                <button type="button" class="button button-small thrg-pc-rescan-single" data-single-key="<?php echo esc_attr( $row['comp_key'] ); ?>" data-target="<?php echo esc_attr( $selected_target ); ?>">
-                                    <?php esc_html_e( 'Rescan', 'thrg-php-checker' ); ?>
-                                </button>
+                                <div class="thrg-pc-card-actions">
+                                    <?php if ( isset( $row['comp_kind'] ) && 'plugin' === $row['comp_kind'] && in_array( $row['verdict'], array( 'breaks', 'warnings' ), true ) ) : ?>
+                                        <button type="button" class="button button-small thrg-pc-check-wporg-fix" data-slug="<?php echo esc_attr( $row['comp_slug'] ); ?>" data-version="<?php echo esc_attr( $row['comp_version'] ); ?>" data-target="<?php echo esc_attr( $selected_target ); ?>">
+                                            <?php esc_html_e( 'Check if fixed on WP.org', 'thrg-php-checker' ); ?>
+                                        </button>
+                                    <?php endif; ?>
+                                    <button type="button" class="button button-small thrg-pc-rescan-single" data-single-key="<?php echo esc_attr( $row['comp_key'] ); ?>" data-target="<?php echo esc_attr( $selected_target ); ?>">
+                                        <?php esc_html_e( 'Rescan', 'thrg-php-checker' ); ?>
+                                    </button>
+                                </div>
                             <?php endif; ?>
                         </div>
                     </header>
@@ -697,6 +721,7 @@ if ( ! empty( $observations['engine_reason'] ) ) {
                             <div class="thrg-pc-action-box__meaning">
                                 <?php echo wp_kses_post( THRG_PHP_Checker::linkify( $row['meaning'] ) ); ?>
                             </div>
+                            <div class="thrg-pc-wporg-status" aria-live="polite" hidden></div>
                         </div>
                     <?php else : ?>
                         <dl class="thrg-card-dl">
@@ -1080,24 +1105,30 @@ if ( ! empty( $observations['engine_reason'] ) ) {
                 </details>
             </section>
 
-            <!-- Monthly PHP Readiness Email Section -->
+            <!-- Scheduled Weekly / Monthly PHP Readiness Email Section -->
             <section id="pc-schedule" class="thrg-card thrg-panel">
                 <header class="thrg-card-header">
                     <div class="thrg-card-meta">
                         <span class="thrg-area-badge"><?php esc_html_e( 'Scheduled Monitoring', 'thrg-php-checker' ); ?></span>
                         <span class="thrg-status-pill <?php echo ! empty( $schedule['enabled'] ) ? 'thrg-status-ok' : 'thrg-status-review'; ?>">
-                            <?php echo ! empty( $schedule['enabled'] ) ? esc_html__( 'Enabled', 'thrg-php-checker' ) : esc_html__( 'Off by default', 'thrg-php-checker' ); ?>
+                            <?php
+                            if ( ! empty( $schedule['enabled'] ) ) {
+                                echo 'weekly' === $schedule['frequency'] ? esc_html__( 'Weekly enabled', 'thrg-php-checker' ) : esc_html__( 'Monthly enabled', 'thrg-php-checker' );
+                            } else {
+                                esc_html_e( 'Off by default', 'thrg-php-checker' );
+                            }
+                            ?>
                         </span>
                     </div>
-                    <h2 class="thrg-card-title"><?php esc_html_e( 'Monthly PHP Readiness Email', 'thrg-php-checker' ); ?></h2>
+                    <h2 class="thrg-card-title"><?php esc_html_e( 'Weekly or Monthly PHP Readiness & Update Alert Email', 'thrg-php-checker' ); ?></h2>
                 </header>
                 <p class="thrg-pc-section-desc">
-                    <?php esc_html_e( 'Optionally run a monthly PHP compatibility check and email administrators a summary of PHP EOL countdowns, security patch status, and any plugin/theme incompatibilities.', 'thrg-php-checker' ); ?>
+                    <?php esc_html_e( 'Run a weekly or monthly rescan against the next PHP version and pending updates, with an email alert when an offered update or the next PHP version has known compatibility problems.', 'thrg-php-checker' ); ?>
                 </p>
 
                 <details id="pc-schedule-details" class="thrg-pc-tech-details" <?php echo ( $sched_ok || ! empty( $schedule['enabled'] ) ) ? 'open' : ''; ?>>
                     <summary class="thrg-pc-tech-summary">
-                        <span><?php esc_html_e( 'Configure monthly schedule & recipients', 'thrg-php-checker' ); ?></span>
+                        <span><?php esc_html_e( 'Configure weekly/monthly schedule & recipients', 'thrg-php-checker' ); ?></span>
                         <span class="thrg-pc-tech-summary__hint">
                             <?php echo $schedule_next ? esc_html( sprintf( 'Next: %s', wp_date( 'Y-m-d', $schedule_next ) ) ) : esc_html__( 'Click to configure', 'thrg-php-checker' ); ?>
                         </span>
@@ -1113,11 +1144,12 @@ if ( ! empty( $observations['engine_reason'] ) ) {
                         <p class="thrg-pc-schedule-status">
                             <strong><?php esc_html_e( 'Last scheduled check:', 'thrg-php-checker' ); ?></strong>
                             <?php
+                            $sched_status_val = isset( $schedule_log['result'] ) ? (string) $schedule_log['result'] : ( isset( $schedule_log['status'] ) ? (string) $schedule_log['status'] : 'sent' );
                             printf(
                                 /* translators: 1: date, 2: status code, 3: sent count */
                                 esc_html__( '%1$s — status: %2$s (%3$d sent)', 'thrg-php-checker' ),
                                 esc_html( wp_date( 'Y-m-d H:i T', (int) $schedule_log['time'] ) ),
-                                esc_html( (string) $schedule_log['status'] ),
+                                esc_html( $sched_status_val ),
                                 (int) $schedule_log['sent']
                             );
                             ?>
@@ -1131,11 +1163,19 @@ if ( ! empty( $observations['engine_reason'] ) ) {
                         <p>
                             <label>
                                 <input type="checkbox" name="enabled" value="1" <?php checked( ! empty( $schedule['enabled'] ) ); ?> />
-                                <strong><?php esc_html_e( 'Send a monthly PHP compatibility report email', 'thrg-php-checker' ); ?></strong>
+                                <strong><?php esc_html_e( 'Send a scheduled PHP compatibility & update alert email', 'thrg-php-checker' ); ?></strong>
                             </label>
                         </p>
 
                         <div class="thrg-pc-form-grid">
+                            <div>
+                                <label for="thrg-pc-sched-freq"><strong><?php esc_html_e( 'Cadence', 'thrg-php-checker' ); ?></strong></label><br />
+                                <select id="thrg-pc-sched-freq" name="frequency">
+                                    <option value="weekly" <?php selected( $schedule['frequency'], 'weekly' ); ?>><?php esc_html_e( 'Weekly (recommended)', 'thrg-php-checker' ); ?></option>
+                                    <option value="monthly" <?php selected( $schedule['frequency'], 'monthly' ); ?>><?php esc_html_e( 'Monthly', 'thrg-php-checker' ); ?></option>
+                                </select>
+                            </div>
+
                             <div>
                                 <label for="thrg-pc-sched-target"><strong><?php esc_html_e( 'Target PHP version', 'thrg-php-checker' ); ?></strong></label><br />
                                 <select id="thrg-pc-sched-target" name="target">
@@ -1157,7 +1197,29 @@ if ( ! empty( $observations['engine_reason'] ) ) {
                             </div>
 
                             <div>
-                                <label for="thrg-pc-sched-day"><strong><?php esc_html_e( 'Day of the month (1–28, 8:00 AM site time)', 'thrg-php-checker' ); ?></strong></label><br />
+                                <label for="thrg-pc-sched-weekday"><strong><?php esc_html_e( 'Day of week (if weekly, 8:00 AM)', 'thrg-php-checker' ); ?></strong></label><br />
+                                <?php
+                                $weekdays = array(
+                                    1 => __( 'Monday', 'thrg-php-checker' ),
+                                    2 => __( 'Tuesday', 'thrg-php-checker' ),
+                                    3 => __( 'Wednesday', 'thrg-php-checker' ),
+                                    4 => __( 'Thursday', 'thrg-php-checker' ),
+                                    5 => __( 'Friday', 'thrg-php-checker' ),
+                                    6 => __( 'Saturday', 'thrg-php-checker' ),
+                                    0 => __( 'Sunday', 'thrg-php-checker' ),
+                                );
+                                ?>
+                                <select id="thrg-pc-sched-weekday" name="weekday">
+                                    <?php foreach ( $weekdays as $w_idx => $w_name ) : ?>
+                                        <option value="<?php echo (int) $w_idx; ?>" <?php selected( (int) $schedule['weekday'], $w_idx ); ?>>
+                                            <?php echo esc_html( $w_name ); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="thrg-pc-sched-day"><strong><?php esc_html_e( 'Day of month (if monthly, 1–28)', 'thrg-php-checker' ); ?></strong></label><br />
                                 <select id="thrg-pc-sched-day" name="day">
                                     <?php for ( $d = 1; $d <= THRG_PC_Schedule::LAST_DAY; $d++ ) : ?>
                                         <option value="<?php echo (int) $d; ?>" <?php selected( (int) $schedule['day'], $d ); ?>>
@@ -1171,12 +1233,12 @@ if ( ! empty( $observations['engine_reason'] ) ) {
                         <p>
                             <label>
                                 <input type="checkbox" name="only_issues" value="1" <?php checked( ! empty( $schedule['only_issues'] ) ); ?> />
-                                <?php esc_html_e( 'Only send the monthly email when errors or warnings are found', 'thrg-php-checker' ); ?>
+                                <?php esc_html_e( 'Only send the email alert when an offered update or the next PHP version has errors or warnings', 'thrg-php-checker' ); ?>
                             </label>
                         </p>
 
                         <fieldset class="thrg-pc-fieldset">
-                            <legend><strong><?php esc_html_e( 'Who should receive the monthly report?', 'thrg-php-checker' ); ?></strong></legend>
+                            <legend><strong><?php esc_html_e( 'Who should receive the scheduled report?', 'thrg-php-checker' ); ?></strong></legend>
                             <p>
                                 <label>
                                     <input type="radio" name="who" value="all" <?php checked( $schedule['who'], 'all' ); ?> />
@@ -1201,14 +1263,148 @@ if ( ! empty( $observations['engine_reason'] ) ) {
                         </fieldset>
 
                         <p>
-                            <label for="thrg-pc-sched-note"><strong><?php esc_html_e( 'Optional monthly note', 'thrg-php-checker' ); ?></strong></label><br />
+                            <label for="thrg-pc-sched-note"><strong><?php esc_html_e( 'Optional note', 'thrg-php-checker' ); ?></strong></label><br />
                             <textarea id="thrg-pc-sched-note" name="note" rows="2" class="large-text" maxlength="<?php echo (int) THRG_PC_Email::NOTE_LENGTH; ?>"><?php echo esc_textarea( (string) $schedule['note'] ); ?></textarea>
                         </p>
 
                         <p>
-                            <button type="submit" class="button button-primary"><?php esc_html_e( 'Save Monthly Schedule', 'thrg-php-checker' ); ?></button>
+                            <button type="submit" class="button button-primary"><?php esc_html_e( 'Save Schedule', 'thrg-php-checker' ); ?></button>
                         </p>
                     </form>
+                </details>
+            </section>
+
+            <!-- Runtime PHP Deprecation Log Section -->
+            <section id="pc-runtime-log" class="thrg-card thrg-panel">
+                <header class="thrg-card-header">
+                    <div class="thrg-card-meta">
+                        <span class="thrg-area-badge"><?php esc_html_e( 'Runtime Log', 'thrg-php-checker' ); ?></span>
+                        <span class="thrg-status-pill <?php echo ! empty( $settings['runtime_log'] ) ? 'thrg-status-ok' : 'thrg-status-review'; ?>">
+                            <?php echo ! empty( $settings['runtime_log'] ) ? esc_html__( 'Live capture active', 'thrg-php-checker' ) : esc_html__( 'On-demand / Off by default', 'thrg-php-checker' ); ?>
+                        </span>
+                    </div>
+                    <h2 class="thrg-card-title"><?php esc_html_e( 'Runtime PHP Deprecation Notices (Grouped by Plugin)', 'thrg-php-checker' ); ?></h2>
+                </header>
+                <p class="thrg-pc-section-desc">
+                    <?php esc_html_e( 'Capture live E_DEPRECATED and E_USER_DEPRECATED notices (including WordPress _deprecated_function() calls via backtrace) or import existing PHP Deprecated lines from wp-content/debug.log, grouped by plugin or theme.', 'thrg-php-checker' ); ?>
+                </p>
+
+                <details id="pc-runtime-details" class="thrg-pc-tech-details" <?php echo ( '' !== $rt_flag || ! empty( $runtime_groups ) ) ? 'open' : ''; ?>>
+                    <summary class="thrg-pc-tech-summary">
+                        <span>
+                            <?php
+                            printf(
+                                /* translators: %d: number of plugins/themes with logged runtime deprecations */
+                                esc_html__( 'Logged runtime deprecation groups (%d)', 'thrg-php-checker' ),
+                                count( $runtime_groups )
+                            );
+                            ?>
+                        </span>
+                        <span class="thrg-pc-tech-summary__hint"><?php esc_html_e( 'Click to view or manage runtime deprecations', 'thrg-php-checker' ); ?></span>
+                    </summary>
+
+                    <div class="thrg-pc-history-actions">
+                        <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="thrg-pc-inline-form">
+                            <input type="hidden" name="action" value="thrg_pc_runtime_log" />
+                            <input type="hidden" name="subaction" value="toggle" />
+                            <input type="hidden" name="target" value="<?php echo esc_attr( $selected_target ); ?>" />
+                            <?php wp_nonce_field( 'thrg_pc_runtime_log' ); ?>
+                            <button type="submit" class="button button-primary">
+                                <?php echo ! empty( $settings['runtime_log'] ) ? esc_html__( 'Pause Live Deprecation Capture', 'thrg-php-checker' ) : esc_html__( 'Enable Live Deprecation Capture', 'thrg-php-checker' ); ?>
+                            </button>
+                        </form>
+
+                        <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="thrg-pc-inline-form">
+                            <input type="hidden" name="action" value="thrg_pc_runtime_log" />
+                            <input type="hidden" name="subaction" value="import" />
+                            <input type="hidden" name="target" value="<?php echo esc_attr( $selected_target ); ?>" />
+                            <?php wp_nonce_field( 'thrg_pc_runtime_log' ); ?>
+                            <button type="submit" class="button button-secondary">
+                                <?php esc_html_e( 'Import Deprecations from debug.log', 'thrg-php-checker' ); ?>
+                            </button>
+                        </form>
+
+                        <?php if ( ! empty( $runtime_groups ) ) : ?>
+                            <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="thrg-pc-inline-form">
+                                <input type="hidden" name="action" value="thrg_pc_runtime_log" />
+                                <input type="hidden" name="subaction" value="clear" />
+                                <input type="hidden" name="target" value="<?php echo esc_attr( $selected_target ); ?>" />
+                                <?php wp_nonce_field( 'thrg_pc_runtime_log' ); ?>
+                                <button type="submit" class="button button-link-delete">
+                                    <?php esc_html_e( 'Clear Runtime Log', 'thrg-php-checker' ); ?>
+                                </button>
+                            </form>
+                        <?php endif; ?>
+                    </div>
+
+                    <?php if ( empty( $runtime_groups ) ) : ?>
+                        <p class="description">
+                            <?php esc_html_e( 'No runtime deprecation notices recorded yet. Enable live capture above or click "Import Deprecations from debug.log" to inspect existing log entries.', 'thrg-php-checker' ); ?>
+                        </p>
+                    <?php else : ?>
+                        <?php foreach ( $runtime_groups as $rt_group ) : ?>
+                            <div class="thrg-pc-runtime-group">
+                                <h3 class="thrg-pc-runtime-group__title">
+                                    <?php echo esc_html( $rt_group['name'] ); ?>
+                                    <?php if ( '' !== $rt_group['version'] ) : ?>
+                                        <span class="thrg-pc-comp-ver">v<?php echo esc_html( $rt_group['version'] ); ?></span>
+                                    <?php endif; ?>
+                                    <span class="thrg-pc-origin-badge thrg-pc-origin-badge--own">
+                                        <?php
+                                        printf(
+                                            /* translators: 1: unique notice count, 2: total hit count */
+                                            esc_html__( '%1$d notice(s) · %2$d total hit(s)', 'thrg-php-checker' ),
+                                            count( $rt_group['items'] ),
+                                            (int) $rt_group['total_hits']
+                                        );
+                                        ?>
+                                    </span>
+                                </h3>
+                                <div class="thrg-pc-findings-wrap">
+                                    <table class="widefat striped thrg-pc-findings-table">
+                                        <thead>
+                                            <tr>
+                                                <th class="thrg-pc-col-sev"><?php esc_html_e( 'Hits & PHP', 'thrg-php-checker' ); ?></th>
+                                                <th class="thrg-pc-col-loc"><?php esc_html_e( 'File : Line', 'thrg-php-checker' ); ?></th>
+                                                <th class="thrg-pc-col-msg"><?php esc_html_e( 'Runtime Deprecation Notice', 'thrg-php-checker' ); ?></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ( $rt_group['items'] as $rt_item ) : ?>
+                                                <tr>
+                                                    <td>
+                                                        <span class="thrg-pc-sev thrg-pc-sev--warning">
+                                                            <?php echo (int) $rt_item['count']; ?>&times;
+                                                        </span>
+                                                        <?php if ( '' !== $rt_item['php'] ) : ?>
+                                                            <span class="thrg-pc-target-tag">PHP <?php echo esc_html( $rt_item['php'] ); ?></span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                    <td>
+                                                        <code><?php echo esc_html( $rt_item['line'] > 0 ? $rt_item['file'] . ':' . $rt_item['line'] : $rt_item['file'] ); ?></code>
+                                                    </td>
+                                                    <td>
+                                                        <div><?php echo esc_html( $rt_item['message'] ); ?></div>
+                                                        <?php if ( ! empty( $rt_item['last_seen'] ) ) : ?>
+                                                            <div class="thrg-pc-rule-meta">
+                                                                <?php
+                                                                printf(
+                                                                    /* translators: %s: formatted date of last notice */
+                                                                    esc_html__( 'Last seen: %s', 'thrg-php-checker' ),
+                                                                    esc_html( wp_date( 'Y-m-d H:i', (int) $rt_item['last_seen'] ) )
+                                                                );
+                                                                ?>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </details>
             </section>
 

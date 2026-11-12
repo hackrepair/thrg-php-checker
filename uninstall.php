@@ -25,6 +25,7 @@ if ( ! function_exists( 'thrg_pc_uninstall_site' ) ) {
             'thrg_pc_update_results',
             'thrg_pc_scan_state',
             'thrg_pc_prescan_state',
+            'thrg_pc_runtime_deprecations',
             'thrg_pc_history',
             'thrg_pc_history_paused',
             'thrg_pc_schedule',

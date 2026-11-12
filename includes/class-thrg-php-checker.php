@@ -15,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class THRG_PHP_Checker {
 
-    const VERSION               = '1.1.0';
+    const VERSION               = '1.2.0';
     const SLUG                  = 'thrg-php-checker';
     const PAGE_URL              = 'tools.php?page=thrg-php-checker';
     const NEW_TAB_HINT          = '<span class="screen-reader-text"> (opens in a new tab)</span>';
@@ -161,6 +161,7 @@ final class THRG_PHP_Checker {
         add_action( 'wp_ajax_thrg_pc_scan_step', array( __CLASS__, 'ajax_scan_step' ) );
         add_action( 'wp_ajax_thrg_pc_scan_stop', array( __CLASS__, 'ajax_scan_stop' ) );
         add_action( 'wp_ajax_thrg_pc_prescan_now', array( __CLASS__, 'ajax_prescan_now' ) );
+        add_action( 'wp_ajax_thrg_pc_check_wporg_fix', array( __CLASS__, 'ajax_check_wporg_fix' ) );
 
         add_action( 'admin_post_thrg_pc_start', array( __CLASS__, 'handle_start_post' ) );
         add_action( 'admin_post_thrg_pc_save_settings', array( __CLASS__, 'handle_save_settings' ) );
@@ -234,19 +235,20 @@ final class THRG_PHP_Checker {
     /**
      * Default plugin settings.
      *
-     * @return array{prescan_updates:int,default_scope:string}
+     * @return array{prescan_updates:int,default_scope:string,runtime_log:int}
      */
     public static function settings_defaults() {
         return array(
             'prescan_updates' => 0,
             'default_scope'   => 'all',
+            'runtime_log'     => 0,
         );
     }
 
     /**
      * Normalized plugin settings.
      *
-     * @return array{prescan_updates:int,default_scope:string}
+     * @return array{prescan_updates:int,default_scope:string,runtime_log:int}
      */
     public static function settings() {
         $raw = get_option( self::SETTINGS_OPTION, array() );
@@ -254,6 +256,7 @@ final class THRG_PHP_Checker {
         return array(
             'prescan_updates' => empty( $s['prescan_updates'] ) ? 0 : 1,
             'default_scope'   => 'active' === $s['default_scope'] ? 'active' : 'all',
+            'runtime_log'     => empty( $s['runtime_log'] ) ? 0 : 1,
         );
     }
 
@@ -941,6 +944,55 @@ final class THRG_PHP_Checker {
             $next = 'No action required.';
         }
 
+        $wporg_fix_status = '';
+        $wporg_fix_label  = '';
+        if ( 'plugin' === $kind && in_array( $verdict, array( 'breaks', 'warnings' ), true ) ) {
+            $folder_slug = dirname( $slug );
+            $short_slug  = '.' === $folder_slug ? basename( $slug, '.php' ) : $folder_slug;
+            $check_ver   = $update_ver;
+            if ( '' === $check_ver && function_exists( 'get_transient' ) ) {
+                $cached_wporg = get_transient( 'thrg_pc_wporg_' . substr( md5( sanitize_key( $short_slug ) ), 0, 12 ) );
+                if ( is_array( $cached_wporg ) && ! empty( $cached_wporg['version'] ) && version_compare( (string) $cached_wporg['version'], $version, '>' ) ) {
+                    $check_ver = (string) $cached_wporg['version'];
+                }
+            }
+            if ( '' !== $check_ver ) {
+                $upd_res = THRG_PC_Results::get_update( 'plugin', sanitize_key( $short_slug ), $check_ver, $target );
+                if ( is_array( $upd_res ) && isset( $upd_res['verdict'] ) ) {
+                    if ( in_array( $upd_res['verdict'], array( 'ok', 'clean' ), true ) ) {
+                        $wporg_fix_status = 'fixed';
+                        $wporg_fix_label  = sprintf( 'Fixed in v%s on WordPress.org', $check_ver );
+                        $next             = sprintf(
+                            'Good news: We scanned v%1$s from WordPress.org against PHP %2$s and confirmed all compatibility issues are fixed (0 errors, 0 warnings). Update %3$s now.',
+                            $check_ver,
+                            $target,
+                            $name
+                        );
+                    } elseif ( 'breaks' === $verdict && in_array( $upd_res['verdict'], array( 'warnings', 'works' ), true ) ) {
+                        $wporg_fix_status = 'warnings_only';
+                        $wporg_fix_label  = sprintf( 'Fatal errors fixed in v%s (%d warnings)', $check_ver, (int) $upd_res['warnings'] );
+                        $next             = sprintf(
+                            'Good news: v%1$s on WordPress.org fixes all fatal PHP %2$s errors (%3$d deprecation warning(s) remain). Update %4$s before upgrading PHP.',
+                            $check_ver,
+                            $target,
+                            (int) $upd_res['warnings'],
+                            $name
+                        );
+                    } elseif ( 'breaks' === $upd_res['verdict'] ) {
+                        $wporg_fix_status = 'still_fails';
+                        $wporg_fix_label  = sprintf( 'Still fails in v%s (%d errors)', $check_ver, (int) $upd_res['errors'] );
+                        $next             = sprintf(
+                            'We scanned the newer v%1$s on WordPress.org and it still has %2$d fatal error(s) on PHP %3$s. Updating alone will not fix this — contact the author or replace %4$s.',
+                            $check_ver,
+                            (int) $upd_res['errors'],
+                            $target,
+                            $name
+                        );
+                    }
+                }
+            }
+        }
+
         $own_issues     = 0;
         $bundled_issues = 0;
         $has_dyn_prop   = false;
@@ -1064,6 +1116,8 @@ final class THRG_PHP_Checker {
             'comp_network_active' => $network,
             'comp_parent_theme'   => $parent,
             'comp_update_version' => $update_ver,
+            'wporg_fix_status'    => $wporg_fix_status,
+            'wporg_fix_label'     => $wporg_fix_label,
             'verdict'             => $verdict,
             'errors'              => $errors,
             'warnings'            => $warnings,
@@ -1408,6 +1462,23 @@ final class THRG_PHP_Checker {
     }
 
     /**
+     * AJAX: check whether a failing plugin is fixed in a newer WordPress.org release.
+     *
+     * @return void
+     */
+    public static function ajax_check_wporg_fix() {
+        check_ajax_referer( 'thrg_pc_prescan' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => 'Forbidden' ), 403 );
+        }
+        $slug    = isset( $_POST['slug'] ) ? sanitize_text_field( wp_unslash( $_POST['slug'] ) ) : '';
+        $version = isset( $_POST['version'] ) ? sanitize_text_field( wp_unslash( $_POST['version'] ) ) : '';
+        $target  = isset( $_POST['target'] ) ? sanitize_text_field( wp_unslash( $_POST['target'] ) ) : self::default_target();
+        $out     = THRG_PC_Prescan::check_wporg_fix( $slug, $version, $target, microtime( true ) + 20.0 );
+        wp_send_json_success( $out );
+    }
+
+    /**
      * Non-JS form fallback for starting or stopping a scan.
      *
      * @return void
@@ -1499,14 +1570,16 @@ final class THRG_PHP_Checker {
             exit;
         }
 
-        $prescan = ! empty( $_POST['prescan_updates'] ) ? 1 : 0;
-        $scope   = isset( $_POST['default_scope'] ) && 'active' === $_POST['default_scope'] ? 'active' : 'all';
+        $prescan     = ! empty( $_POST['prescan_updates'] ) ? 1 : 0;
+        $scope       = isset( $_POST['default_scope'] ) && 'active' === $_POST['default_scope'] ? 'active' : 'all';
+        $runtime_log = isset( $_POST['runtime_log'] ) ? ( ! empty( $_POST['runtime_log'] ) ? 1 : 0 ) : self::settings()['runtime_log'];
 
         update_option(
             self::SETTINGS_OPTION,
             array(
                 'prescan_updates' => $prescan,
                 'default_scope'   => $scope,
+                'runtime_log'     => $runtime_log,
             ),
             false
         );

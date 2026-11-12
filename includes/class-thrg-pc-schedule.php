@@ -22,7 +22,7 @@ final class THRG_PC_Schedule {
     const HOUR         = 8;
     const LAST_DAY     = 28;
     const LATE_SECONDS = 21600;
-    const RUN_BY       = 'Monthly email';
+    const RUN_BY       = 'Scheduled email';
 
     /**
      * Register hooks.
@@ -43,6 +43,8 @@ final class THRG_PC_Schedule {
     public static function defaults() {
         return array(
             'enabled'     => 0,
+            'frequency'   => 'weekly',
+            'weekday'     => 1,
             'target'      => 'auto',
             'day'         => 1,
             'only_issues' => 0,
@@ -60,9 +62,11 @@ final class THRG_PC_Schedule {
      * @return array
      */
     public static function normalize( $s ) {
-        $s   = array_merge( self::defaults(), is_array( $s ) ? $s : array() );
-        $day = (int) $s['day'];
-        $ids = array();
+        $s       = array_merge( self::defaults(), is_array( $s ) ? $s : array() );
+        $day     = (int) $s['day'];
+        $weekday = (int) $s['weekday'];
+        $freq    = isset( $s['frequency'] ) && 'monthly' === $s['frequency'] ? 'monthly' : 'weekly';
+        $ids     = array();
         foreach ( (array) $s['users'] as $id ) {
             $id = is_scalar( $id ) ? (int) $id : 0;
             if ( $id > 0 && ! in_array( $id, $ids, true ) ) {
@@ -74,6 +78,8 @@ final class THRG_PC_Schedule {
         $target  = is_scalar( $s['target'] ) && in_array( (string) $s['target'], $targets, true ) ? (string) $s['target'] : 'auto';
         return array(
             'enabled'     => empty( $s['enabled'] ) ? 0 : 1,
+            'frequency'   => $freq,
+            'weekday'     => max( 0, min( 6, $weekday ) ),
             'target'      => $target,
             'day'         => max( 1, min( self::LAST_DAY, $day ) ),
             'only_issues' => empty( $s['only_issues'] ) ? 0 : 1,
@@ -98,17 +104,30 @@ final class THRG_PC_Schedule {
     }
 
     /**
-     * Compute next due timestamp on $day at HOUR site time strictly after $now.
+     * Compute next due timestamp on $day (or $weekday when weekly) at HOUR site time strictly after $now.
      *
-     * @param int          $now Current timestamp.
-     * @param int          $day Day of month (1-28).
-     * @param DateTimeZone $tz  Site timezone.
+     * @param int          $now       Current timestamp.
+     * @param int          $day       Day of month (1-28).
+     * @param DateTimeZone $tz        Site timezone.
+     * @param string       $frequency 'monthly' or 'weekly'.
+     * @param int          $weekday   Day of week (0=Sunday .. 6=Saturday).
      * @return int
      */
-    public static function next_run( $now, $day, DateTimeZone $tz ) {
-        $day   = max( 1, min( self::LAST_DAY, (int) $day ) );
+    public static function next_run( $now, $day, DateTimeZone $tz, $frequency = 'monthly', $weekday = 1 ) {
         $local = ( new DateTimeImmutable( '@' . (int) $now ) )->setTimezone( $tz );
-        $due   = $local->setDate( (int) $local->format( 'Y' ), (int) $local->format( 'n' ), $day )->setTime( self::HOUR, 0, 0 );
+        if ( 'weekly' === $frequency ) {
+            $weekday = max( 0, min( 6, (int) $weekday ) );
+            $cur_dow = (int) $local->format( 'w' );
+            $delta   = ( $weekday - $cur_dow + 7 ) % 7;
+            $due     = $local->modify( '+' . $delta . ' days' )->setTime( self::HOUR, 0, 0 );
+            if ( $due->getTimestamp() <= $now ) {
+                $due = $local->modify( '+7 days' )->setTime( self::HOUR, 0, 0 );
+            }
+            return $due->getTimestamp();
+        }
+
+        $day = max( 1, min( self::LAST_DAY, (int) $day ) );
+        $due = $local->setDate( (int) $local->format( 'Y' ), (int) $local->format( 'n' ), $day )->setTime( self::HOUR, 0, 0 );
         if ( $due->getTimestamp() <= $now ) {
             $due = $local->setDate( (int) $local->format( 'Y' ), (int) $local->format( 'n' ) + 1, $day )->setTime( self::HOUR, 0, 0 );
         }
@@ -207,7 +226,10 @@ final class THRG_PC_Schedule {
         wp_clear_scheduled_hook( self::HOOK );
         $s = self::settings();
         if ( $s['enabled'] ) {
-            wp_schedule_single_event( self::next_run( time(), $s['day'], wp_timezone() ), self::HOOK );
+            wp_schedule_single_event(
+                self::next_run( time(), $s['day'], wp_timezone(), $s['frequency'], $s['weekday'] ),
+                self::HOOK
+            );
         }
     }
 
@@ -244,7 +266,7 @@ final class THRG_PC_Schedule {
     }
 
     /**
-     * Execute the scheduled monthly PHP compatibility check and send emails.
+     * Execute the scheduled weekly or monthly PHP compatibility check and send emails.
      *
      * @return array
      */
@@ -261,12 +283,16 @@ final class THRG_PC_Schedule {
         try {
             $now    = time();
             $target = self::resolve_target( $s );
+            $run_by = 'weekly' === $s['frequency'] ? 'Weekly email' : 'Monthly email';
             if ( '' === THRG_PC_Engine::unavailable_reason() ) {
-                THRG_PC_Scanner::start( $target, false, 'all', '', 0, self::RUN_BY );
+                THRG_PC_Scanner::start( $target, false, 'all', '', 0, $run_by );
                 THRG_PC_Scanner::step( microtime( true ) + 30 );
+                if ( THRG_PC_Prescan::pending_offers() ) {
+                    THRG_PC_Prescan::step( microtime( true ) + 15, true );
+                }
             }
             $rows = THRG_PHP_Checker::evaluate( THRG_PHP_Checker::collect( $target ) );
-            $id   = THRG_PC_History::add( $rows, $target, wp_parse_url( home_url(), PHP_URL_HOST ), THRG_PHP_Checker::version(), 0, self::RUN_BY, $now );
+            $id   = THRG_PC_History::add( $rows, $target, wp_parse_url( home_url(), PHP_URL_HOST ), THRG_PHP_Checker::version(), 0, $run_by, $now );
             $all  = THRG_PC_History::all();
 
             $entry = array(
@@ -322,6 +348,8 @@ final class THRG_PC_Schedule {
         // phpcs:disable WordPress.Security.NonceVerification.Missing -- Nonce checked above.
         $raw = array(
             'enabled'     => ! empty( $_POST['enabled'] ),
+            'frequency'   => isset( $_POST['frequency'] ) ? sanitize_key( wp_unslash( $_POST['frequency'] ) ) : 'weekly',
+            'weekday'     => isset( $_POST['weekday'] ) ? absint( $_POST['weekday'] ) : 1,
             'target'      => isset( $_POST['target'] ) ? sanitize_text_field( wp_unslash( $_POST['target'] ) ) : 'auto',
             'day'         => isset( $_POST['day'] ) ? absint( $_POST['day'] ) : 1,
             'only_issues' => isset( $_POST['only_issues'] ) && '1' === $_POST['only_issues'],

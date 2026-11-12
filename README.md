@@ -8,7 +8,7 @@ Your friendly WordPress PHP compatibility checker. Tests your plugins, must-use 
 
 Upgrading PHP is one of the easiest ways to make WordPress faster and safer, right up until an older plugin throws a fatal error and leaves you with a white screen. Most compatibility scanners flood you with hundreds of false warnings from safe polyfills and `version_compare()` fallbacks, or bury the one broken plugin under pages of technical noise. PHP Checker runs entirely inside WordPress without `exec()`, automatically filters out guarded fallback code, and puts any plugin that will actually break your site right at the very top of the report.
 
-Current release: **1.1.0**. See [release notes](releases/v1.1.0.md).
+Current release: **1.2.0**. See [release notes](releases/v1.2.0.md).
 
 <p align="center">
   <a href="https://github.com/hackrepair/thrg-php-checker/releases/latest" title="Download the latest PHP Checker plugin zip from GitHub"><img src="https://img.shields.io/badge/%E2%AC%87%20%20Download%20the%20latest%20release-b34700?style=for-the-badge&labelColor=b34700" alt="Download the latest release" height="46"></a>
@@ -24,6 +24,8 @@ Current release: **1.1.0**. See [release notes](releases/v1.1.0.md).
 - **Version-guard and polyfill context filtering** (`THRG_PC_Context`), automatically recognizing `version_compare()`, `PHP_VERSION_ID`, `function_exists()`, `class_exists()`, `interface_exists()`, `trait_exists()`, `defined()`, and `extension_loaded()` guards so safe backward-compatible code is downgraded to informational notes instead of false errors
 - **PHP 8.2+ dynamic property deprecation analysis** with built-in false-positive prevention for `#[AllowDynamicProperties]` (including class inheritance), `stdClass` (and subclasses), magic `__set()` handlers, constructor-promoted properties, and declared class properties
 - **Actionable finding metadata** on every match: exact `file:line`, target PHP version, triggered rule code (`source`), and whether the file belongs to the **plugin/theme's own code** or a **bundled third-party dependency** (`vendor/`, `freemius/`, `action-scheduler/`, `pear/`, `phpmailer/`, etc.)
+- **"Fixed in a newer WordPress.org version" verification** (`THRG_PC_Prescan::check_wporg_fix()`), checking whether a plugin from WordPress.org that fails a scan has a newer release, stream-scanning the newer package in memory against your target PHP version, and badging the card (`Fixed in vX.Y on WordPress.org`, `Fatal errors fixed in vX.Y`, or `Still fails in vX.Y`)
+- **Runtime PHP deprecation notice log, grouped by plugin** (`THRG_PC_Runtime_Log`), with an opt-in live `E_DEPRECATED` / `E_USER_DEPRECATED` collector (including backtrace attribution for WordPress `_deprecated_function()` calls) and an on-demand `wp-content/debug.log` deprecation importer
 - **Server PHP version, end-of-life countdown, and missing PHP security fixes** (including PHP2Shell, CVE-2026-109618 and CVE-2026-109619)
 - **Optional in-memory Pending Update Pre-Scan** (off by default): inspects offered plugin and theme update zip packages in memory against your running PHP version before you apply them
 
@@ -33,9 +35,9 @@ Each finding is ordered by urgency: **fatal incompatibilities appear first** rig
 
 **Share a report.** Copy it as plain text for a developer or support ticket, download a `.txt` report, print a clean summary, or email a formatted "PHP readiness" briefing to some or all of the site's administrators.
 
-**Monthly PHP readiness email.** Off until you turn it on. On a day you choose (1–28), PHP Checker evaluates your chosen PHP target, saves the report, and emails administrators every month or only when errors or warnings are found. Subjects say `Monthly PHP X.Y Check`.
+**Weekly or monthly PHP readiness & update-alert email.** Off until you turn it on. Choose a **Weekly** day of the week (default) or **Monthly** day of the month (1–28): PHP Checker rescans against your chosen PHP target (and pre-scans pending updates) and emails administrators on schedule or only when an update or the next PHP version has errors or warnings.
 
-**Support.** A Support container at the bottom of the screen links to the buy-Jim-a-coffee page and to GitHub Discussions.
+**Support.** A Support container at the bottom of the screen recommends pairing PHP Checker with our free **The Hack Repair Guy's Plugin Detective** plugin and links to the buy-Jim-a-coffee page and GitHub Discussions.
 
 ## Email a report to administrators
 

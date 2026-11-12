@@ -352,7 +352,7 @@
                     prescanBtn.disabled = false;
                     if ( res && res.success && res.data ) {
                         if ( prescanStatus ) {
-                            prescanStatus.textContent = 'Checked ' + res.data.checked + ' of ' + res.data.offers + ' pending update(s). Reloading…';
+                            prescanStatus.textContent = res.data.done ? 'Finished checking pending updates. Reloading…' : 'Pre-scan step completed (' + res.data.pending + ' pending). Reloading…';
                         }
                         redirectToTarget( targetSelect ? targetSelect.value : cfg.target, '#update-checks' );
                     } else if ( prescanStatus ) {
@@ -367,4 +367,71 @@
                 } );
         } );
     }
+
+    // "Check if fixed on WP.org" buttons on failing plugin cards.
+    document.querySelectorAll( '.thrg-pc-check-wporg-fix' ).forEach( function ( btn ) {
+        btn.addEventListener( 'click', function () {
+            if ( ! window.fetch ) {
+                return;
+            }
+            var slug = btn.getAttribute( 'data-slug' ) || '';
+            var version = btn.getAttribute( 'data-version' ) || '';
+            var target = btn.getAttribute( 'data-target' ) || ( targetSelect ? targetSelect.value : cfg.target );
+            var card = btn.closest( 'article.thrg-card' );
+            var statusEl = card ? card.querySelector( '.thrg-pc-wporg-status' ) : null;
+            var origLabel = btn.textContent;
+
+            btn.disabled = true;
+            btn.textContent = 'Checking WP.org…';
+            if ( statusEl ) {
+                statusEl.hidden = false;
+                statusEl.textContent = 'Checking WordPress.org for a newer release and scanning in memory…';
+            }
+
+            var body = new URLSearchParams();
+            body.set( 'action', 'thrg_pc_check_wporg_fix' );
+            body.set( '_ajax_nonce', cfg.prescanNonce || '' );
+            body.set( 'slug', slug );
+            body.set( 'version', version );
+            body.set( 'target', target );
+
+            window.fetch( cfg.ajaxUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                },
+                body: body.toString()
+            } )
+                .then( function ( r ) {
+                    return r.json();
+                } )
+                .then( function ( res ) {
+                    btn.disabled = false;
+                    btn.textContent = origLabel;
+                    if ( res && res.success && res.data ) {
+                        var d = res.data;
+                        if ( statusEl ) {
+                            statusEl.hidden = false;
+                            statusEl.textContent = d.message || '';
+                        }
+                        if ( 'fixed' === d.status || 'warnings_only' === d.status || 'still_fails' === d.status ) {
+                            var hash = card && card.id ? '#' + card.id : '';
+                            redirectToTarget( target, hash );
+                        }
+                    } else if ( statusEl ) {
+                        statusEl.hidden = false;
+                        statusEl.textContent = 'Could not reach WordPress.org right now.';
+                    }
+                } )
+                .catch( function () {
+                    btn.disabled = false;
+                    btn.textContent = origLabel;
+                    if ( statusEl ) {
+                        statusEl.hidden = false;
+                        statusEl.textContent = 'Network error while checking WordPress.org.';
+                    }
+                } );
+        } );
+    } );
 }() );

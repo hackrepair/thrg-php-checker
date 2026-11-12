@@ -3,7 +3,7 @@
  * Plugin Name:       The Hack Repair Guy's PHP Checker
  * Plugin URI:        https://github.com/hackrepair/thrg-php-checker
  * Description:       In-process PHP 8.1–8.5 static compatibility analyzer for plugins, must-use plugins, themes, and pending updates — powered by PHP_CodeSniffer & PHPCompatibilityWP with version-guard awareness, report history, and scheduled readiness emails.
- * Version:           1.1.0
+ * Version:           1.2.0
  * Author:            The Hack Repair Guy
  * Author URI:        https://hackrepair.com/
  * Update URI:        https://github.com/hackrepair/thrg-php-checker
@@ -18,7 +18,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const THRG_PHP_CHECKER_VERSION = '1.1.0';
+const THRG_PHP_CHECKER_VERSION = '1.2.0';
 const THRG_PHP_CHECKER_FILE    = __FILE__;
 const THRG_PHP_CHECKER_DIR     = __DIR__ . '/';
 
@@ -45,6 +45,7 @@ require_once __DIR__ . '/includes/class-thrg-pc-engine.php';
 require_once __DIR__ . '/includes/class-thrg-pc-results.php';
 require_once __DIR__ . '/includes/class-thrg-pc-scanner.php';
 require_once __DIR__ . '/includes/class-thrg-pc-prescan.php';
+require_once __DIR__ . '/includes/class-thrg-pc-runtime-log.php';
 require_once __DIR__ . '/includes/class-thrg-pc-history.php';
 require_once __DIR__ . '/includes/class-thrg-pc-email.php';
 require_once __DIR__ . '/includes/class-thrg-pc-schedule.php';
@@ -53,6 +54,7 @@ require_once __DIR__ . '/includes/companion-plugins.php';
 
 THRG_PHP_Checker::boot();
 THRG_PC_Prescan::boot();
+THRG_PC_Runtime_Log::boot();
 THRG_PC_Schedule::boot();
 
 register_deactivation_hook(

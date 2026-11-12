@@ -4,7 +4,7 @@ Tags: php, compatibility, php 8.3, php 8.4, php 8.5, upgrade, scanner, audit
 Requires at least: 6.4
 Requires PHP: 7.4
 Tested up to: 7.1.3
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Support link: https://github.com/hackrepair/thrg-php-checker/discussions
@@ -98,6 +98,12 @@ No. Scanning runs only when an administrator starts it (or opts into the monthly
 Unlike scanners that leave orphaned rows from deleted plugins in custom database tables forever, PHP Checker automatically prunes uninstalled plugins/themes and outdated component versions whenever results are loaded. Uninstalling PHP Checker itself removes all of its options and scheduled hooks cleanly.
 
 == Changelog ==
+
+= 1.2.0 =
+* Added **Weekly** (default, with day-of-week selector) or **Monthly** (day 1–28) scheduled rescans against the next PHP version and pending updates, sending an email alert when an update or the next PHP version has known compatibility problems.
+* Added **"Fixed in a newer WordPress.org version" verification** (`THRG_PC_Prescan::check_wporg_fix()`), checking whether a plugin from WordPress.org that fails a scan has a newer release, stream-scanning the newer package in memory against the target PHP version, and badging the card (`Fixed in vX.Y on WordPress.org`, `Fatal errors fixed in vX.Y`, or `Still fails in vX.Y`) with a one-click **Check if fixed on WP.org** button.
+* Added **Runtime PHP Deprecation Notices (Grouped by Plugin)** (`THRG_PC_Runtime_Log`), with an opt-in live `E_DEPRECATED` / `E_USER_DEPRECATED` collector (including backtrace attribution for WordPress `_deprecated_function()` calls) plus an on-demand `wp-content/debug.log` deprecation importer.
+* Added a recommendation in **Support & Companion Tools** for pairing PHP Checker with our free **The Hack Repair Guy's Plugin Detective** plugin while testing plugins and PHP upgrades.
 
 = 1.1.0 =
 * Client-first report hierarchy: incompatible plugins and themes (`breaks`) now appear at the very top of Checks & Findings above the fold, followed by deprecation warnings, server lifecycle status, and a collapsible table of compatible components.

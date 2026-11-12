@@ -899,6 +899,62 @@
     color: #1e6f30;
 }
 
+.thrg-pc-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.thrg-pc-wporg-pill {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    line-height: 1.4;
+}
+
+.thrg-pc-wporg-pill--fixed {
+    background: #edfaef;
+    color: #1e6f30;
+    border: 1px solid #8bd49b;
+}
+
+.thrg-pc-wporg-pill--warnings_only {
+    background: #fcf9e8;
+    color: #7c5600;
+    border: 1px solid #f0c33c;
+}
+
+.thrg-pc-wporg-pill--still_fails {
+    background: #fdecea;
+    color: #b32d2e;
+    border: 1px solid #f1a6a8;
+}
+
+.thrg-pc-wporg-status {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed #dcdcde;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #2271b1;
+}
+
+.thrg-pc-runtime-group {
+    margin-top: 16px;
+}
+
+.thrg-pc-runtime-group__title {
+    margin: 0 0 8px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
 .thrg-pc-coverage {
     margin-top: 24px;
     padding: 18px 22px;
