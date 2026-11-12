@@ -1642,11 +1642,7 @@ if ( ! empty( $observations['engine_reason'] ) ) {
                     </a>
                 </strong>
                 —
-                <?php esc_html_e( 'Worried about breaking your site when switching PHP versions? We\'ll review your plugins and theme, sort out compatibility roadblocks, update your hosting PHP version for you, and test your live pages and forms so you don\'t have to.', 'thrg-php-checker' ); ?>
-                <a href="https://hackguard.com/contact.html?plan=PHP+8.3+Compatibility+Upgrade&amp;rate=%2479" target="_blank" rel="noopener noreferrer">
-                    <strong><?php esc_html_e( 'Have Us Handle Your PHP Upgrade ($79) →', 'thrg-php-checker' ); ?></strong>
-                    <?php echo wp_kses_post( THRG_PHP_Checker::NEW_TAB_HINT ); ?>
-                </a>
+                <?php esc_html_e( 'Worried about breaking your site when switching PHP versions? We\'ll review your plugins and theme, sort out compatibility issues, update your hosting PHP version for you, and test your live pages and forms so you don\'t have to.', 'thrg-php-checker' ); ?>
             </p>
         </div>
         <div class="thrg-pc-coverage__col thrg-pc-coverage__help">
