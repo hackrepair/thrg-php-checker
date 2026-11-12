@@ -20,7 +20,7 @@ defined( 'ABSPATH' ) || exit;
                     <span class="thrg-version-pill">v<?php echo esc_html( THRG_PHP_Checker::version() ); ?></span>
                 </h1>
                 <p class="thrg-brand-subtitle">
-                    <?php esc_html_e( 'Check if your plugins and themes are ready for PHP 8.1–8.5 before you upgrade — with automatic version-guard filtering to eliminate false alarms.', 'thrg-php-checker' ); ?>
+                    <?php esc_html_e( 'Check if your plugins and themes are ready for PHP 8.1–8.5 before you upgrade.', 'thrg-php-checker' ); ?>
                 </p>
             </div>
             <div class="thrg-pc-header-meta">
