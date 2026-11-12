@@ -1,0 +1,14 @@
+{
+    "name": "thrg/scan-engine",
+    "description": "The runtime PHP compatibility scan engine bundled in this folder. See readme.txt.",
+    "license": "GPL-2.0-or-later",
+    "require": {
+        "squizlabs/php_codesniffer": "4.0.4",
+        "phpcsstandards/phpcsutils": "1.2.3",
+        "phpcompatibility/php-compatibility": "dev-develop",
+        "phpcompatibility/phpcompatibility-wp": "3.0.0-alpha2",
+        "phpcompatibility/phpcompatibility-paragonie": "*@dev"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

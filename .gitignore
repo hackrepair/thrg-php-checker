@@ -1,0 +1,12 @@
+.DS_Store
+.AppleDouble
+*.swp
+
+# Local reference material; not part of PHP Checker.
+/other plugins/
+
+# Generated release artifacts.
+/dist/
+
+# Python bytecode from running scripts/tests locally.
+__pycache__/

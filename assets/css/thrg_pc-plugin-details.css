@@ -1,0 +1,42 @@
+/**
+ * Styles for the View Details companion plugins tab (Tools > PHP Checker).
+ */
+.thrg_pc-toolkit {
+    max-width: 680px;
+    line-height: 1.6;
+}
+
+.thrg_pc-toolkit-intro {
+    font-size: 15px;
+    font-weight: 700;
+    color: #2b170d;
+    margin-bottom: 4px;
+}
+
+.thrg_pc-toolkit-card {
+    background: #faf6f2;
+    border: 1px solid #ead9cc;
+    border-left: 4px solid #b34700;
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin: 12px 0;
+}
+
+.thrg_pc-toolkit-card h3 {
+    margin: 0 0 6px;
+    font-size: 14px;
+}
+
+.thrg_pc-toolkit-card p {
+    margin: 0 0 6px;
+}
+
+.thrg_pc-toolkit-card p:last-child {
+    margin-bottom: 0;
+}
+
+.thrg_pc-toolkit-note {
+    font-size: 12px;
+    color: #646970;
+    margin-top: 12px;
+}
