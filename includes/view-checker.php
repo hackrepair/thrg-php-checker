@@ -1623,7 +1623,7 @@ if ( ! empty( $observations['engine_reason'] ) ) {
                     <div class="thrg-pc-action-box__next">
                         <span class="dashicons dashicons-search" aria-hidden="true"></span>
                         <strong><?php esc_html_e( 'Recommended while testing plugins & PHP upgrades:', 'thrg-php-checker' ); ?></strong>
-                        <?php echo wp_kses_post( __( 'Pair this scanner with our free <a href="https://github.com/hackrepair/hackrepair-plugin-detective" target="_blank" rel="noopener noreferrer"><strong>The Hack Repair Guy\'s Plugin Detective</strong></a> plugin. While PHP Checker flags incompatible code before you upgrade, Plugin Detective helps you pinpoint live plugin conflicts during testing and includes emergency recovery tools in case an update or PHP switch ever locks you out of your WordPress dashboard.', 'thrg-php-checker' ) ); ?>
+                        <?php echo wp_kses_post( __( 'Pair this scanner with our free <a href="https://hackrepair.github.io/hackrepair-plugin-detective/" target="_blank" rel="noopener noreferrer"><strong>The Hack Repair Guy\'s Plugin Detective</strong></a> plugin. While PHP Checker flags incompatible code before you upgrade, Plugin Detective helps you pinpoint live plugin conflicts during testing and includes emergency recovery tools in case an update or PHP switch ever locks you out of your WordPress dashboard.', 'thrg-php-checker' ) ); ?>
                     </div>
                 </div>
                 <p>&#9749; <?php echo wp_kses_post( __( 'If you found this plugin helpful, please <a href="https://hackrepair.com/donations/buy-jim-a-coffee" target="_blank" rel="noopener noreferrer">buy Jim a cup of coffee?</a>', 'thrg-php-checker' ) ); ?></p>
