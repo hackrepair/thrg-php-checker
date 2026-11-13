@@ -13,7 +13,7 @@ Your friendly WordPress PHP compatibility checker. Tests plugins and themes for 
 
 == Description ==
 
-Upgrading PHP is one of the best ways to keep WordPress fast and secure, right up until an older plugin throws a fatal error on upgrade day. Most PHP compatibility scanners either flood you with hundreds of false warnings from safe polyfills and `version_compare()` guards, or bury the one broken plugin under pages of technical noise.
+Upgrading PHP is one of the best ways to keep WordPress fast and secure, right up until an older plugin throws a fatal error on upgrade day. PHP Checker helps you find that plugin before you switch.
 
 The Hack Repair Guy's PHP Checker runs entirely inside WordPress (no `exec()` or shell access needed), automatically filters out runtime version guards and polyfills, and puts any plugin or theme that will actually break your site right at the top of the report.
 
@@ -80,9 +80,9 @@ https://wordpress.org/support/plugin/thrg-php-checker/
 * **Incompatible (Fatal Error — Red):** The plugin or theme uses a function, class, or syntax that was removed or fatally changed in the target PHP version (without a runtime version guard). If that code path runs on the target PHP version, PHP will halt the request with a fatal error. Update, replace, or deactivate red items before upgrading PHP.
 * **Deprecation Warning (Amber):** The plugin or theme uses a feature that still works in the target PHP version, but PHP logs an `E_DEPRECATED` notice to let developers know it will be removed in a future PHP version. Your site can still run on the target PHP version today (keep `WP_DEBUG_DISPLAY` off on live production sites and update the plugin as new releases arrive).
 
-= Why does PHP Checker report fewer false positives than other scanners? =
+= How does PHP Checker handle version guards and polyfills? =
 
-Many WordPress plugins support both older and newer PHP versions by wrapping legacy calls in `version_compare( PHP_VERSION, '8.0', '<' )` or `if ( ! function_exists( 'str_contains' ) )` polyfills. Basic regex or raw PHPCS scanners flag those lines as errors even though they never run on newer PHP versions. PHP Checker's token-stream analyzer (`THRG_PC_Context`) inspects surrounding `if`/`elseif`/`else` conditions and early-return guards, automatically downgrading safe fallbacks to collapsed informational notes.
+Many WordPress plugins support both older and newer PHP versions by wrapping legacy calls in `version_compare( PHP_VERSION, '8.0', '<' )` or `if ( ! function_exists( 'str_contains' ) )` polyfills. Those lines never run on newer PHP versions, so they are not real problems. PHP Checker's token-stream analyzer (`THRG_PC_Context`) inspects surrounding `if`/`elseif`/`else` conditions and early-return guards, automatically downgrading safe fallbacks to collapsed informational notes.
 
 = How does the PHP 8.2+ dynamic property check avoid noisy false alarms? =
 
@@ -98,7 +98,7 @@ No. Scanning runs only when an administrator starts it (or turns on the schedule
 
 = What happens when I uninstall or delete a plugin that had errors? =
 
-Unlike scanners that leave orphaned rows from deleted plugins in custom database tables forever, PHP Checker automatically prunes uninstalled plugins/themes and outdated component versions whenever results are loaded. Uninstalling PHP Checker itself removes all of its options and scheduled hooks cleanly.
+PHP Checker automatically prunes uninstalled plugins/themes and outdated component versions whenever results are loaded. Uninstalling PHP Checker itself removes all of its options and scheduled hooks cleanly.
 
 == Screenshots ==
 

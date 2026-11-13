@@ -693,4 +693,20 @@ foreach ( array( 'require_admin_ajax', 'require_admin_post' ) as $helper ) {
     assert_true( ! empty( $helper_body[1] ) && false !== strpos( $helper_body[1], "current_user_can( 'manage_options' )" ), $helper . '() must check manage_options' );
 }
 
+// Every request handler verifies a nonce and an administrator capability.
+$handler_sources = array(
+    'includes/class-thrg-php-checker.php'    => array( 'ajax_scan_start', 'ajax_scan_step', 'ajax_scan_stop', 'ajax_prescan_now', 'ajax_check_wporg_fix', 'handle_start_post', 'handle_save_settings', 'handle_delete_report', 'handle_clear_history', 'handle_toggle_history', 'handle_email_report' ),
+    'includes/class-thrg-pc-runtime-log.php' => array( 'handle_post' ),
+    'includes/class-thrg-pc-schedule.php'    => array( 'handle_save' ),
+);
+foreach ( $handler_sources as $handler_file => $handler_names ) {
+    $handler_src = file_get_contents( dirname( __DIR__ ) . '/' . $handler_file );
+    foreach ( $handler_names as $handler_name ) {
+        preg_match( '/function ' . $handler_name . '\(\) \{(.{0,900})/s', $handler_src, $handler_head );
+        $handler_head = isset( $handler_head[1] ) ? $handler_head[1] : '';
+        assert_true( (bool) preg_match( '/check_ajax_referer|check_admin_referer|wp_verify_nonce/', $handler_head ), $handler_name . '() verifies a nonce' );
+        assert_true( (bool) preg_match( '/current_user_can|require_admin_ajax|require_admin_post/', $handler_head ), $handler_name . '() checks capability' );
+    }
+}
+
 echo "OK ({$assertions} assertions passed)\n";
