@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
     <header class="thrg-brand-header">
         <div class="thrg-brand-header__inner">
             <a class="thrg-brand-logo" href="https://hackrepair.com/" target="_blank" rel="noopener noreferrer" aria-label="<?php esc_attr_e( 'The Hack Repair Guy website (opens in a new tab)', 'thrg-php-checker' ); ?>">
-                <img src="<?php echo esc_url( plugins_url( 'assets/brand/thrg-heart-128.png', THRG_PHP_CHECKER_FILE ) ); ?>" alt="" width="48" height="48" />
+                <img class="thrg-brand-heart" src="<?php echo esc_url( plugins_url( 'assets/brand/thrg-heart-128.png', THRG_PHP_CHECKER_FILE ) ); ?>" alt="" width="48" height="48" />
             </a>
             <div class="thrg-brand-header__text">
                 <div class="thrg-brand-eyebrow"><?php esc_html_e( "The Hack Repair Guy's", 'thrg-php-checker' ); ?></div>
