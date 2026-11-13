@@ -638,8 +638,7 @@
 
 .thrg-card.thrg-status-review,
 .thrg-card.thrg-status-ok,
-.thrg-card.thrg-panel,
-.thrg-card.thrg-card--inactive {
+.thrg-card.thrg-panel {
     opacity: 0.6;
     transition: opacity 0.15s ease-in-out;
 }
@@ -647,21 +646,16 @@
 .thrg-card.thrg-status-review:hover,
 .thrg-card.thrg-status-ok:hover,
 .thrg-card.thrg-panel:hover,
-.thrg-card.thrg-card--inactive:hover,
 .thrg-card.thrg-status-review:focus-within,
 .thrg-card.thrg-status-ok:focus-within,
-.thrg-card.thrg-panel:focus-within,
-.thrg-card.thrg-card--inactive:focus-within {
+.thrg-card.thrg-panel:focus-within {
     opacity: 1;
-}
-
-.thrg-card.thrg-status-weakness:not(.thrg-card--inactive) {
-    opacity: 1;
-    box-shadow: 0 2px 8px rgba(214, 54, 56, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .thrg-card.thrg-status-weakness {
+    opacity: 1;
     border-left-color: #d63638;
+    box-shadow: 0 2px 8px rgba(214, 54, 56, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .thrg-card.thrg-status-review {
