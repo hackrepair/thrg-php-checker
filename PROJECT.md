@@ -92,7 +92,7 @@ The `--wporg` build follows the Stickies WordPress.org edition (`thrg-stickies`,
 
 ## Release 1.2.6 — in progress, November 13, 2026
 
-Notices from WordPress and other plugins now land below the PHP Checker header instead of inside it: `includes/view-header.php` prints `<hr class="wp-header-end" />` after the header, the same pattern Stickies uses. See `releases/v1.2.6.md`.
+Post-approval release; **do not upload to WordPress.org until 1.2.5 is accepted.** Notices from WordPress and other plugins land below the PHP Checker header instead of inside it (`includes/view-header.php` prints `<hr class="wp-header-end" />` after the header, the same pattern Stickies uses), and on the PHP Checker screen they are tucked away behind a small "N notices hidden. Show" bar (`admin_body_class` marker, CSS in `assets/checker.css`, script at the end of `assets/js/checker.js`; PHP Checker's own notices carry `thrg-pc-own` and stay visible). See `releases/v1.2.6.md`.
 
 ## Release 1.2.5 — submitted to WordPress.org, November 12, 2026
 

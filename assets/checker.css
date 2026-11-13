@@ -1097,3 +1097,28 @@
         grid-template-columns: 1fr !important;
     }
 }
+
+/* Tuck other plugins' admin notices away on this screen (shown again with the Show link). Needs JavaScript so the notices stay visible without it. */
+body.js.thrg-pc-screen:not(.thrg-pc-notices-shown) #wpbody-content > .notice,
+body.js.thrg-pc-screen:not(.thrg-pc-notices-shown) #wpbody-content > .update-nag,
+body.js.thrg-pc-screen:not(.thrg-pc-notices-shown) .thrg-pc-wrap > .notice:not(.thrg-pc-own),
+body.js.thrg-pc-screen:not(.thrg-pc-notices-shown) .thrg-pc-wrap > .updated:not(.thrg-pc-own),
+body.js.thrg-pc-screen:not(.thrg-pc-notices-shown) .thrg-pc-wrap > .error:not(.thrg-pc-own) {
+    display: none !important;
+}
+
+.thrg-pc-notice-bar {
+    margin: 0 0 16px;
+    padding: 8px 14px;
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-left: 4px solid #ff9933;
+    border-radius: 4px;
+    color: #50575e;
+    font-size: 13px;
+}
+
+.thrg-pc-notice-bar .button-link {
+    margin-left: 6px;
+    font-weight: 600;
+}

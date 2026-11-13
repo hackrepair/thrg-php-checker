@@ -563,3 +563,71 @@
         } );
     }
 }() );
+
+/**
+ * Other plugins' admin notices are tucked away on this screen; this adds a
+ * small bar that says how many are hidden and lets the user show them again.
+ */
+( function () {
+    'use strict';
+
+    var cfg = window.thrgPcData || {};
+    var text = cfg.i18n || {};
+    var body = document.body;
+    var selector = '#wpbody-content > .notice, #wpbody-content > .update-nag, .thrg-pc-wrap > .notice:not(.thrg-pc-own), .thrg-pc-wrap > .updated:not(.thrg-pc-own), .thrg-pc-wrap > .error:not(.thrg-pc-own)';
+    var bar = null;
+    var message = null;
+    var toggle = null;
+
+    if ( ! body || ! body.classList.contains( 'thrg-pc-screen' ) ) {
+        return;
+    }
+
+    function hiddenCount() {
+        var count = 0;
+        Array.prototype.forEach.call( document.querySelectorAll( selector ), function ( node ) {
+            if ( node.hasAttribute( 'hidden' ) || node.classList.contains( 'hidden' ) || ( node.style && 'none' === node.style.display ) ) {
+                return;
+            }
+            count++;
+        } );
+        return count;
+    }
+
+    function refresh() {
+        var count = hiddenCount();
+        var shown = body.classList.contains( 'thrg-pc-notices-shown' );
+        if ( ! bar ) {
+            if ( 0 === count ) {
+                return;
+            }
+            var anchor = document.querySelector( '.thrg-pc-wrap > .wp-header-end' );
+            if ( ! anchor ) {
+                return;
+            }
+            bar = document.createElement( 'div' );
+            bar.className = 'thrg-pc-notice-bar';
+            message = document.createElement( 'span' );
+            toggle = document.createElement( 'button' );
+            toggle.type = 'button';
+            toggle.className = 'button-link';
+            toggle.addEventListener( 'click', function () {
+                body.classList.toggle( 'thrg-pc-notices-shown' );
+                refresh();
+            } );
+            bar.appendChild( message );
+            bar.appendChild( toggle );
+            anchor.parentNode.insertBefore( bar, anchor.nextSibling );
+        }
+        bar.hidden = 0 === count;
+        message.textContent = ( 1 === count ? ( text.noticesOne || '' ) : ( text.noticesMany || '%d' ).replace( '%d', count ) );
+        toggle.textContent = shown ? ( text.hide || 'Hide' ) : ( text.show || 'Show' );
+        toggle.setAttribute( 'aria-expanded', shown ? 'true' : 'false' );
+    }
+
+    document.addEventListener( 'DOMContentLoaded', function () {
+        refresh();
+        window.setTimeout( refresh, 1500 );
+    } );
+    window.addEventListener( 'load', refresh );
+}() );

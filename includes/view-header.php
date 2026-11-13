@@ -38,47 +38,47 @@ defined( 'ABSPATH' ) || exit;
     <hr class="wp-header-end" />
 
     <?php if ( 'emailed' === $mail_flag || 'mail-partial' === $mail_flag ) : ?>
-        <div class="notice notice-success is-dismissible"><p><?php echo esc_html( THRG_PC_Email::feedback( $mail_sent, $mail_fail ) ); ?></p></div>
+        <div class="thrg-pc-own notice notice-success is-dismissible"><p><?php echo esc_html( THRG_PC_Email::feedback( $mail_sent, $mail_fail ) ); ?></p></div>
     <?php elseif ( 'mail-failed' === $mail_flag ) : ?>
-        <div class="notice notice-error is-dismissible"><p><?php echo esc_html( THRG_PC_Email::feedback( 0, $mail_fail ) ); ?></p></div>
+        <div class="thrg-pc-own notice notice-error is-dismissible"><p><?php echo esc_html( THRG_PC_Email::feedback( 0, $mail_fail ) ); ?></p></div>
     <?php elseif ( 'mail-none' === $mail_flag ) : ?>
-        <div class="notice notice-warning is-dismissible"><p><?php esc_html_e( 'Select at least one administrator recipient before sending an email report.', 'thrg-php-checker' ); ?></p></div>
+        <div class="thrg-pc-own notice notice-warning is-dismissible"><p><?php esc_html_e( 'Select at least one administrator recipient before sending an email report.', 'thrg-php-checker' ); ?></p></div>
     <?php elseif ( 'mail-wait' === $mail_flag ) : ?>
-        <div class="notice notice-warning is-dismissible"><p><?php esc_html_e( 'Please wait a minute before sending another report email.', 'thrg-php-checker' ); ?></p></div>
+        <div class="thrg-pc-own notice notice-warning is-dismissible"><p><?php esc_html_e( 'Please wait a minute before sending another report email.', 'thrg-php-checker' ); ?></p></div>
     <?php endif; ?>
 
     <?php if ( 'deleted' === $hist_flag ) : ?>
-        <div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Saved report deleted from history.', 'thrg-php-checker' ); ?></p></div>
+        <div class="thrg-pc-own notice notice-success is-dismissible"><p><?php esc_html_e( 'Saved report deleted from history.', 'thrg-php-checker' ); ?></p></div>
     <?php elseif ( 'cleared' === $hist_flag ) : ?>
-        <div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Report history cleared.', 'thrg-php-checker' ); ?></p></div>
+        <div class="thrg-pc-own notice notice-success is-dismissible"><p><?php esc_html_e( 'Report history cleared.', 'thrg-php-checker' ); ?></p></div>
     <?php elseif ( 'paused' === $hist_flag ) : ?>
-        <div class="notice notice-info is-dismissible"><p><?php esc_html_e( 'Report history paused. New scans will not be added to history until resumed.', 'thrg-php-checker' ); ?></p></div>
+        <div class="thrg-pc-own notice notice-info is-dismissible"><p><?php esc_html_e( 'Report history paused. New scans will not be added to history until resumed.', 'thrg-php-checker' ); ?></p></div>
     <?php elseif ( 'resumed' === $hist_flag ) : ?>
-        <div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Report history resumed.', 'thrg-php-checker' ); ?></p></div>
+        <div class="thrg-pc-own notice notice-success is-dismissible"><p><?php esc_html_e( 'Report history resumed.', 'thrg-php-checker' ); ?></p></div>
     <?php endif; ?>
 
     <?php if ( 'saved' === $set_flag ) : ?>
-        <div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'PHP Checker settings saved.', 'thrg-php-checker' ); ?></p></div>
+        <div class="thrg-pc-own notice notice-success is-dismissible"><p><?php esc_html_e( 'PHP Checker settings saved.', 'thrg-php-checker' ); ?></p></div>
     <?php elseif ( 'cleared' === $set_flag ) : ?>
-        <div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Cached scan results cleared.', 'thrg-php-checker' ); ?></p></div>
+        <div class="thrg-pc-own notice notice-success is-dismissible"><p><?php esc_html_e( 'Cached scan results cleared.', 'thrg-php-checker' ); ?></p></div>
     <?php endif; ?>
 
     <?php if ( $sched_ok ) : ?>
-        <div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Scheduled PHP readiness email settings updated.', 'thrg-php-checker' ); ?></p></div>
+        <div class="thrg-pc-own notice notice-success is-dismissible"><p><?php esc_html_e( 'Scheduled PHP readiness email settings updated.', 'thrg-php-checker' ); ?></p></div>
     <?php elseif ( 'schedule-none' === $done_flag ) : ?>
-        <div class="notice notice-warning is-dismissible"><p><?php esc_html_e( 'Scheduled email disabled because no valid administrator recipients were selected.', 'thrg-php-checker' ); ?></p></div>
+        <div class="thrg-pc-own notice notice-warning is-dismissible"><p><?php esc_html_e( 'Scheduled email disabled because no valid administrator recipients were selected.', 'thrg-php-checker' ); ?></p></div>
     <?php endif; ?>
 
     <?php if ( 'enabled' === $rt_flag ) : ?>
-        <div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Live runtime PHP deprecation capture enabled.', 'thrg-php-checker' ); ?></p></div>
+        <div class="thrg-pc-own notice notice-success is-dismissible"><p><?php esc_html_e( 'Live runtime PHP deprecation capture enabled.', 'thrg-php-checker' ); ?></p></div>
     <?php elseif ( 'disabled' === $rt_flag ) : ?>
-        <div class="notice notice-info is-dismissible"><p><?php esc_html_e( 'Live runtime PHP deprecation capture disabled.', 'thrg-php-checker' ); ?></p></div>
+        <div class="thrg-pc-own notice notice-info is-dismissible"><p><?php esc_html_e( 'Live runtime PHP deprecation capture disabled.', 'thrg-php-checker' ); ?></p></div>
     <?php elseif ( 'imported' === $rt_flag ) : ?>
-        <div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Imported PHP deprecation notices from wp-content/debug.log.', 'thrg-php-checker' ); ?></p></div>
+        <div class="thrg-pc-own notice notice-success is-dismissible"><p><?php esc_html_e( 'Imported PHP deprecation notices from wp-content/debug.log.', 'thrg-php-checker' ); ?></p></div>
     <?php elseif ( 'empty-import' === $rt_flag ) : ?>
-        <div class="notice notice-info is-dismissible"><p><?php esc_html_e( 'No new plugin or theme PHP deprecation notices were found in wp-content/debug.log.', 'thrg-php-checker' ); ?></p></div>
+        <div class="thrg-pc-own notice notice-info is-dismissible"><p><?php esc_html_e( 'No new plugin or theme PHP deprecation notices were found in wp-content/debug.log.', 'thrg-php-checker' ); ?></p></div>
     <?php elseif ( 'cleared' === $rt_flag ) : ?>
-        <div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Runtime PHP deprecation log cleared.', 'thrg-php-checker' ); ?></p></div>
+        <div class="thrg-pc-own notice notice-success is-dismissible"><p><?php esc_html_e( 'Runtime PHP deprecation log cleared.', 'thrg-php-checker' ); ?></p></div>
     <?php endif; ?>
 
     <?php if ( $viewed_entry ) : ?>

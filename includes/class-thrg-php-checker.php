@@ -277,6 +277,7 @@ final class THRG_PHP_Checker {
     public static function boot() {
         add_action( 'admin_menu', array( __CLASS__, 'register_menu' ) );
         add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
+        add_filter( 'admin_body_class', array( __CLASS__, 'admin_body_class' ) );
         add_filter( 'plugin_action_links_' . plugin_basename( THRG_PHP_CHECKER_FILE ), array( __CLASS__, 'action_links' ) );
 
         add_action( 'wp_ajax_thrg_pc_scan_start', array( __CLASS__, 'ajax_scan_start' ) );
@@ -412,6 +413,20 @@ final class THRG_PHP_Checker {
     }
 
     /**
+     * Mark the PHP Checker screen so its stylesheet can tuck other plugins' notices away.
+     *
+     * @param string $classes Space-separated body classes.
+     * @return string
+     */
+    public static function admin_body_class( $classes ) {
+        $screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+        if ( $screen && 'tools_page_' . self::SLUG === $screen->id ) {
+            $classes .= ' thrg-pc-screen';
+        }
+        return $classes;
+    }
+
+    /**
      * Enqueue brand styles, checker styles, and AJAX scan script on Tools > PHP Checker.
      *
      * @param string $hook_suffix Current admin page hook.
@@ -458,6 +473,13 @@ final class THRG_PHP_Checker {
                 'busy'         => $running && ! $owned,
                 'jobId'        => $owned ? (string) $state['job_id'] : '',
                 'target'       => $target,
+                'i18n'         => array(
+                    'noticesOne'  => __( '1 notice from another plugin or WordPress is hidden on this page.', 'thrg-php-checker' ),
+                    /* translators: %d: number of hidden notices */
+                    'noticesMany' => __( '%d notices from other plugins or WordPress are hidden on this page.', 'thrg-php-checker' ),
+                    'show'        => __( 'Show', 'thrg-php-checker' ),
+                    'hide'        => __( 'Hide', 'thrg-php-checker' ),
+                ),
                 'state'        => array(
                     'total'       => isset( $state['total'] ) ? (int) $state['total'] : 0,
                     'finished'    => isset( $state['finished'] ) ? (int) $state['finished'] : 0,
