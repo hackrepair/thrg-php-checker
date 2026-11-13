@@ -2,7 +2,7 @@
 
 Developer notes for contributors. For what the plugin does, see [README.md](README.md "What the plugin does and how to install it").
 
-Current version: **1.2.5** (not yet released; latest tag `v1.2.4`, November 12, 2026). See `releases/v1.2.5.md`.
+Current version: **1.2.6** (not yet released; latest tag `v1.2.4`, November 12, 2026; 1.2.5 is in WordPress.org review). See `releases/v1.2.6.md`.
 
 ## Scope
 
@@ -10,7 +10,7 @@ An in-process, read-only static PHP 8.1–8.5 compatibility analyzer for install
 
 ## Architecture
 
-- `index.php`: plugin header (`Version: 1.2.5`), constants (`THRG_PHP_CHECKER_VERSION`, `THRG_PHP_CHECKER_FILE`, `THRG_PHP_CHECKER_DIR`), GitHub release updater bootstrap, class includes, and deactivation cleanup for scheduled hooks and transient scan state.
+- `index.php`: plugin header (`Version: 1.2.6`), constants (`THRG_PHP_CHECKER_VERSION`, `THRG_PHP_CHECKER_FILE`, `THRG_PHP_CHECKER_DIR`), GitHub release updater bootstrap, class includes, and deactivation cleanup for scheduled hooks and transient scan state.
 - `includes/class-thrg-php-checker.php`: main controller (`Tools > PHP Checker`), admin request handlers (with shared `require_admin_ajax()` / `require_admin_post()` helpers), and page bootstrap; delegates evaluation, server advisories, and plain-text formatting to:
   - `includes/class-thrg-pc-server-advisory.php`: server PHP EOL & security advisory checks (`PHP_SUPPORT`, `PHP_ADVISORIES`, `PATCH_LIST_AS_OF`).
   - `includes/class-thrg-pc-evaluator.php`: `collect()` and `evaluate()` pipeline with client-first priority ordering (incompatible components first, warning components second, server/update checks third, clean components last).
@@ -90,7 +90,11 @@ The `--wporg` build follows the Stickies WordPress.org edition (`thrg-stickies`,
 - **Release Packaging (`scripts/build-release.py`):** Builds `dist/thrg-php-checker.X.Y.Z.zip` with normalized `0644` permissions on every entry, verified byte-for-byte against source files, and writes `dist/thrg-php-checker.X.Y.Z.zip.sha256`.
 - **Architecture Refactoring:** See [REFACTOR.md](REFACTOR.md) for the structural breakdown and completed modularization passes.
 
-## Release 1.2.5 — in progress, November 12, 2026
+## Release 1.2.6 — in progress, November 13, 2026
+
+Notices from WordPress and other plugins now land below the PHP Checker header instead of inside it: `includes/view-header.php` prints `<hr class="wp-header-end" />` after the header, the same pattern Stickies uses. See `releases/v1.2.6.md`.
+
+## Release 1.2.5 — submitted to WordPress.org, November 12, 2026
 
 HTTPS and host check for WordPress.org package downloads, uninstall cleanup for cached lookups, scheduled email wording, the report and evaluation refactor, the WordPress.org edition build and new store banners. See `releases/v1.2.5.md`.
 

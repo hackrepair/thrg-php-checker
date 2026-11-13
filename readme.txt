@@ -4,7 +4,7 @@ Tags: php, compatibility, php 8.3, php 8.4, upgrade
 Requires at least: 6.4
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 1.2.5
+Stable tag: 1.2.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Support link: https://github.com/hackrepair/thrg-php-checker/discussions
@@ -98,6 +98,9 @@ No. Scanning runs only when an administrator starts it (or turns on the schedule
 PHP Checker automatically prunes uninstalled plugins/themes and outdated component versions whenever results are loaded. Uninstalling PHP Checker itself removes all of its options and scheduled hooks cleanly.
 
 == Changelog ==
+
+= 1.2.6 =
+* Notices from WordPress and other plugins now appear below the PHP Checker header instead of inside it.
 
 = 1.2.5 =
 * WordPress.org package checks now accept only HTTPS downloads from downloads.wordpress.org.

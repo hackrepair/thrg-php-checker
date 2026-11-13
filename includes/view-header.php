@@ -35,6 +35,7 @@ defined( 'ABSPATH' ) || exit;
             </div>
         </div>
     </header>
+    <hr class="wp-header-end" />
 
     <?php if ( 'emailed' === $mail_flag || 'mail-partial' === $mail_flag ) : ?>
         <div class="notice notice-success is-dismissible"><p><?php echo esc_html( THRG_PC_Email::feedback( $mail_sent, $mail_fail ) ); ?></p></div>
