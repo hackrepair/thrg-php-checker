@@ -105,6 +105,7 @@ Unlike scanners that leave orphaned rows from deleted plugins in custom database
 * The scheduled email intro no longer says "monthly" for weekly emails.
 * Reorganized report and evaluation code into smaller classes. Nothing changes in the report you see.
 * Added a WordPress.org edition of the plugin, built from the same source, and new store banners.
+* Friendlier contact and support wording, a help request linking to HackGuard in place of the upgrade-service line, and the Plugin Detective recommendation removed for now.
 
 = 1.2.4 =
 * Excluded PHPCS `Internal.*` formatting/line-ending sniffs (such as `Internal.LineEndings.Mixed`) from compatibility scan results.

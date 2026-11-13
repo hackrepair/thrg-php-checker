@@ -70,7 +70,7 @@ PHP Checker has no account, license server, analytics or advertising requests. T
 
 == Support ==
 
-For questions, ideas and help, visit the plugin's support forum on WordPress.org:
+Hi, I'm Jim, the author. Questions, ideas, or stuck on something? I'd love to hear from you and I'm happy to help. Visit the plugin's support forum on WordPress.org:
 https://wordpress.org/support/plugin/thrg-php-checker/
 
 == Frequently Asked Questions ==
@@ -114,6 +114,7 @@ Unlike scanners that leave orphaned rows from deleted plugins in custom database
 * The scheduled email intro no longer says "monthly" for weekly emails.
 * Reorganized report and evaluation code into smaller classes. Nothing changes in the report you see.
 * New store banners.
+* Friendlier contact and support wording, a help request linking to HackGuard in place of the upgrade-service line, and the Plugin Detective recommendation removed for now.
 
 = 1.2.4 =
 * Excluded PHPCS `Internal.*` formatting/line-ending sniffs (such as `Internal.LineEndings.Mixed`) from compatibility scan results.

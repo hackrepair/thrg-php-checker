@@ -410,7 +410,7 @@ final class THRG_PC_Email {
             $h .= self::e( self::SCHEDULED_FOOTER ) . ' ';
         }
         $h .= 'Static analysis reads code without executing it; it can miss dynamic issues or report false positives. ';
-        $h .= 'Need a hand with a tricky PHP upgrade? Contact <a href="https://hackguard.com/" title="The Hack Repair Guy: WordPress security and hack repair" style="color:#8f3a00;">The Hack Repair Guy</a>.';
+        $h .= 'Stuck on a tricky PHP upgrade? Jim and the team are happy to help &mdash; <a href="https://hackguard.com/" title="The Hack Repair Guy: WordPress security and hack repair" style="color:#8f3a00;">say hello at hackguard.com</a>.';
         $h .= '</td></tr></table></td></tr></table></body></html>';
         return $h;
     }
@@ -472,7 +472,7 @@ final class THRG_PC_Email {
         if ( '' !== (string) $a['view_url'] ) {
             $out .= "\nOpen the full report (administrator login required):\n" . $a['view_url'] . "\n";
         }
-        $out .= "\n--\nSent by " . $a['sender'] . ' from ' . $site . " with The Hack Repair Guy's PHP Checker. " . ( $a['scheduled'] ? self::SCHEDULED_FOOTER . ' ' : '' ) . "Static analysis reads code without executing it. Need a hand? https://hackrepair.com/\n";
+        $out .= "\n--\nSent by " . $a['sender'] . ' from ' . $site . " with The Hack Repair Guy's PHP Checker. " . ( $a['scheduled'] ? self::SCHEDULED_FOOTER . ' ' : '' ) . "Static analysis reads code without executing it. Stuck on a tricky PHP upgrade? Jim and the team are happy to help: https://hackguard.com/\n";
         return $out;
     }
 

@@ -351,17 +351,10 @@ defined( 'ABSPATH' ) || exit;
                     <div class="thrg-card-meta">
                         <span class="thrg-area-badge"><?php esc_html_e( 'Support', 'thrg-php-checker' ); ?></span>
                     </div>
-                    <h2 id="pc-support-title" class="thrg-card-title"><?php esc_html_e( 'Support & Companion Tools', 'thrg-php-checker' ); ?></h2>
+                    <h2 id="pc-support-title" class="thrg-card-title"><?php esc_html_e( 'Support & Say Hello', 'thrg-php-checker' ); ?></h2>
                 </header>
-                <div class="thrg-pc-action-box">
-                    <div class="thrg-pc-action-box__next">
-                        <span class="dashicons dashicons-search" aria-hidden="true"></span>
-                        <strong><?php esc_html_e( 'Recommended while testing plugins & PHP upgrades:', 'thrg-php-checker' ); ?></strong>
-                        <?php echo wp_kses_post( __( 'Pair this scanner with our free <a href="https://hackrepair.github.io/hackrepair-plugin-detective/" target="_blank" rel="noopener noreferrer"><strong>The Hack Repair Guy\'s Plugin Detective</strong></a> plugin. While PHP Checker flags incompatible code before you upgrade, Plugin Detective helps you pinpoint live plugin conflicts during testing and includes emergency recovery tools in case an update or PHP switch ever locks you out of your WordPress dashboard.', 'thrg-php-checker' ) ); ?>
-                    </div>
-                </div>
-                <p>&#9749; <?php echo wp_kses_post( __( 'If you found this plugin helpful, please <a href="https://hackrepair.com/donations/buy-jim-a-coffee" target="_blank" rel="noopener noreferrer">buy Jim a cup of coffee?</a>', 'thrg-php-checker' ) ); ?></p>
-                <p><span class="dashicons dashicons-editor-help" aria-hidden="true"></span> <?php echo wp_kses_post( __( 'Questions and Feedback: For questions, ideas, or help with the plugin, <a href="https://github.com/hackrepair/thrg-php-checker/discussions" target="_blank" rel="noopener noreferrer">visit GitHub Discussions</a>.', 'thrg-php-checker' ) ); ?></p>
+                <p>&#9749; <?php echo wp_kses_post( __( 'Hi, I&rsquo;m Jim. If PHP Checker saved you some worry, I&rsquo;d be so grateful if you&rsquo;d <a href="https://hackrepair.com/donations/buy-jim-a-coffee" target="_blank" rel="noopener noreferrer">buy me a cup of coffee</a>. Thank you!', 'thrg-php-checker' ) ); ?></p>
+                <p><span class="dashicons dashicons-editor-help" aria-hidden="true"></span> <?php echo wp_kses_post( __( 'Questions, ideas, or stuck on something? I&rsquo;d love to hear from you and I&rsquo;m happy to help &mdash; <a href="https://github.com/hackrepair/thrg-php-checker/discussions" target="_blank" rel="noopener noreferrer">visit GitHub Discussions</a>.', 'thrg-php-checker' ) ); ?></p>
             </section>
 
 <?php

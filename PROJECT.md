@@ -69,7 +69,7 @@ The `--wporg` build follows the Stickies WordPress.org edition (`thrg-stickies`,
 - [x] Screenshots taken on a clean sandbox and added to `.wordpress-org/` with a `== Screenshots ==` section.
 - [x] Plugin Check 2.2.0 on WordPress 7.0.1 against the `--wporg` ZIP: 0 errors, 7 warnings (direct database calls in `class-thrg-pc-scanner.php` and one `$_POST['users']` sanitization notice in `class-thrg-pc-schedule.php`, all reviewed). Nov 12, 2026.
 - [ ] Confirm the `hackrepair` and `tvcnet` WordPress.org accounts and the slug.
-- [x] Footer: the $79 upgrade-service line is gone; the footer is now one help request linking to hackguard.com (the scheduled email footer links there too). The Plugin Detective recommendation is still in the Support panel; decide before submitting whether it stays in the `--wporg` build.
+- [x] Footer: the $79 upgrade-service line is gone; the footer is now one help request linking to hackguard.com (the scheduled email footer links there too). The Plugin Detective recommendation and its companion card are removed from every build for now; add a new link later if wanted.
 
 ## Verification & Quality Gates
 

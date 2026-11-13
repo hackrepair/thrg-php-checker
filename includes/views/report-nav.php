@@ -116,7 +116,7 @@ defined( 'ABSPATH' ) || exit;
                     </li>
                     <li class="thrg-nav-item-with-tip">
                         <a href="#support" class="thrg-nav-link"><span class="thrg-nav-text"><?php esc_html_e( 'Support & Help', 'thrg-php-checker' ); ?></span></a>
-                        <button type="button" class="thrg-nav-tip" aria-label="<?php esc_attr_e( 'About Support & Help', 'thrg-php-checker' ); ?>" data-tip="<?php esc_attr_e( 'Recommended companion tools like Plugin Detective, developer support links, and ways to share feedback.', 'thrg-php-checker' ); ?>">?</button>
+                        <button type="button" class="thrg-nav-tip" aria-label="<?php esc_attr_e( 'About Support & Help', 'thrg-php-checker' ); ?>" data-tip="<?php esc_attr_e( 'Ways to ask for help, say hello, and share feedback.', 'thrg-php-checker' ); ?>">?</button>
                     </li>
                 </ul>
             </div>
