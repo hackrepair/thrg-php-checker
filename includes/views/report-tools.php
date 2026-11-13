@@ -354,7 +354,7 @@ defined( 'ABSPATH' ) || exit;
                     <h2 id="pc-support-title" class="thrg-card-title"><?php esc_html_e( 'Support & Say Hello', 'thrg-php-checker' ); ?></h2>
                 </header>
                 <p><span class="dashicons dashicons-editor-help" aria-hidden="true"></span> <?php echo wp_kses_post( __( 'Questions, ideas, or stuck on something? I&rsquo;d love to hear from you and I&rsquo;m happy to help &mdash; <a href="https://wordpress.org/support/plugin/thrg-php-checker/" target="_blank" rel="noopener noreferrer">visit WordPress.org</a>.', 'thrg-php-checker' ) ); ?></p>
-                <p><span class="dashicons dashicons-star-filled" aria-hidden="true"></span> <?php echo wp_kses_post( __( 'Oh, and please don&rsquo;t forget to leave <a href="https://wordpress.org/support/plugin/thrg-php-checker/reviews/?filter=5" target="_blank" rel="noopener noreferrer">a nice review</a> to help me get the word out. Thank you!', 'thrg-php-checker' ) ); ?></p>
+                <p><span aria-hidden="true">&#128522;</span> <?php echo wp_kses_post( __( 'Oh, and please don&rsquo;t forget to leave <a href="https://wordpress.org/support/plugin/thrg-php-checker/reviews/?filter=5" target="_blank" rel="noopener noreferrer">a nice review</a> to help me get the word out. Thank you!', 'thrg-php-checker' ) ); ?></p>
             </section>
 
 <?php
