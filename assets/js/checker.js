@@ -535,4 +535,31 @@
         } );
         window.addEventListener( 'scroll', hideNavTip, true );
     }
+
+    var filterBtns = document.querySelectorAll( '.thrg-pc-filter-btn' );
+    if ( filterBtns.length ) {
+        var filterCards = document.querySelectorAll( 'main.thrg-main > article.thrg-card' );
+        filterBtns.forEach( function ( btn ) {
+            btn.addEventListener( 'click', function () {
+                var mode = btn.getAttribute( 'data-filter' ) || 'all';
+                filterBtns.forEach( function ( b ) {
+                    var on = b === btn;
+                    b.classList.toggle( 'is-active', on );
+                    b.setAttribute( 'aria-pressed', on ? 'true' : 'false' );
+                } );
+                filterCards.forEach( function ( card ) {
+                    var isComp = '1' === card.getAttribute( 'data-comp' );
+                    var verdict = card.getAttribute( 'data-verdict' ) || '';
+                    var ownCount = parseInt( card.getAttribute( 'data-own-issues' ) || '0', 10 );
+                    var show = true;
+                    if ( 'breaks' === mode && isComp ) {
+                        show = 'breaks' === verdict;
+                    } else if ( 'own' === mode && isComp ) {
+                        show = ownCount > 0;
+                    }
+                    card.hidden = ! show;
+                } );
+            } );
+        } );
+    }
 }() );

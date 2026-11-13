@@ -23,6 +23,7 @@ final class THRG_PC_Prescan {
     const MAX_ARCHIVE_BYTES      = 268435456;
     const MAX_ARCHIVE_ENTRIES    = 20000;
     const MAX_UNCOMPRESSED_BYTES = 1073741824;
+    const WPORG_KEYS_OPTION      = 'thrg_pc_wporg_keys';
 
     /**
      *Cached open archive handle for the current request.
@@ -692,16 +693,99 @@ final class THRG_PC_Prescan {
         }
 
         if ( '' === $short ) {
-            return array(
-                'status'   => 'error',
+            return self::wporg_result( 'error', __( 'Invalid plugin slug.', 'thrg-php-checker' ) );
+        }
+
+        $resolved = self::resolve_wporg_package( (string) $slug, $short );
+        if ( isset( $resolved['result'] ) ) {
+            return $resolved['result'];
+        }
+
+        $remote_version = $resolved['version'];
+        $package_url    = $resolved['package'];
+
+        if ( '' !== $installed_version && version_compare( $remote_version, (string) $installed_version, '<=' ) ) {
+            return self::wporg_result(
+                'latest_installed',
+                sprintf(
+                    /* translators: %s: latest version on WordPress.org */
+                    __( 'You already have the latest WordPress.org release (v%s) installed.', 'thrg-php-checker' ),
+                    $remote_version
+                ),
+                array( 'version' => $remote_version )
+            );
+        }
+
+        // Check if we already scanned this newer version against $target.
+        $existing = THRG_PC_Results::get_update( 'plugin', $short, $remote_version, $target );
+        if ( null === $existing && '' !== $package_url ) {
+            $existing = self::scan_wporg_package( $short, $remote_version, $package_url, $target, $deadline );
+        }
+
+        if ( null === $existing ) {
+            return self::wporg_result(
+                'pending',
+                sprintf(
+                    /* translators: %s: newer version number */
+                    __( 'Newer version v%s is available on WordPress.org, but its package could not be completely scanned right now.', 'thrg-php-checker' ),
+                    $remote_version
+                ),
+                array( 'version' => $remote_version )
+            );
+        }
+
+        return self::summarize_wporg_fix( $existing, $remote_version, $target );
+    }
+
+    /**
+     * Cache a WordPress.org lookup for 12 hours and record its key for uninstall cleanup.
+     *
+     * @param string $key   Transient name (thrg_pc_wporg_ plus 12 hex characters).
+     * @param array  $value Cached lookup result.
+     * @return void
+     */
+    private static function wporg_cache( $key, array $value ) {
+        if ( ! set_transient( $key, $value, 12 * HOUR_IN_SECONDS ) ) {
+            return;
+        }
+        $keys = get_option( self::WPORG_KEYS_OPTION, array() );
+        $keys = is_array( $keys ) ? $keys : array();
+        if ( ! in_array( $key, $keys, true ) ) {
+            $keys[] = $key;
+            update_option( self::WPORG_KEYS_OPTION, $keys, false );
+        }
+    }
+
+    /**
+     * Build a standardized WordPress.org fix-check response array.
+     *
+     * @param string $status  Status key.
+     * @param string $message Human-readable explanation.
+     * @param array  $extra   Optional overrides (version, verdict, errors, warnings).
+     * @return array
+     */
+    private static function wporg_result( $status, $message, array $extra = array() ) {
+        return array_merge(
+            array(
+                'status'   => (string) $status,
                 'version'  => '',
                 'verdict'  => '',
                 'errors'   => 0,
                 'warnings' => 0,
-                'message'  => __( 'Invalid plugin slug.', 'thrg-php-checker' ),
-            );
-        }
+                'message'  => (string) $message,
+            ),
+            $extra
+        );
+    }
 
+    /**
+     * Resolve the latest WordPress.org version and download URL for a plugin slug.
+     *
+     * @param string $slug  Plugin file slug (dir/file.php).
+     * @param string $short Sanitized short folder/slug.
+     * @return array Either ['version' => ..., 'package' => ...] or ['result' => ...].
+     */
+    private static function resolve_wporg_package( $slug, $short ) {
         $remote_version = '';
         $package_url    = '';
 
@@ -721,12 +805,10 @@ final class THRG_PC_Prescan {
             if ( is_array( $cached ) && isset( $cached['status'] ) ) {
                 if ( 'not_found' === $cached['status'] ) {
                     return array(
-                        'status'   => 'not_wporg',
-                        'version'  => '',
-                        'verdict'  => '',
-                        'errors'   => 0,
-                        'warnings' => 0,
-                        'message'  => __( 'This plugin is not listed in the public WordPress.org directory.', 'thrg-php-checker' ),
+                        'result' => self::wporg_result(
+                            'not_wporg',
+                            __( 'This plugin is not listed in the public WordPress.org directory.', 'thrg-php-checker' )
+                        ),
                     );
                 }
                 $remote_version = isset( $cached['version'] ) ? (string) $cached['version'] : '';
@@ -739,17 +821,16 @@ final class THRG_PC_Prescan {
                     if ( is_array( $body ) && ! empty( $body['version'] ) && ! empty( $body['download_link'] ) ) {
                         $remote_version = (string) $body['version'];
                         $package_url    = (string) $body['download_link'];
-                        set_transient(
+                        self::wporg_cache(
                             $cache_key,
                             array(
                                 'status'  => 'ok',
                                 'version' => $remote_version,
                                 'package' => $package_url,
-                            ),
-                            12 * HOUR_IN_SECONDS
+                            )
                         );
                     } else {
-                        set_transient( $cache_key, array( 'status' => 'not_found' ), 12 * HOUR_IN_SECONDS );
+                        self::wporg_cache( $cache_key, array( 'status' => 'not_found' ) );
                     }
                 }
             }
@@ -757,88 +838,86 @@ final class THRG_PC_Prescan {
 
         if ( '' === $remote_version ) {
             return array(
-                'status'   => 'not_wporg',
-                'version'  => '',
-                'verdict'  => '',
-                'errors'   => 0,
-                'warnings' => 0,
-                'message'  => __( 'No public WordPress.org release information found for this plugin.', 'thrg-php-checker' ),
-            );
-        }
-
-        if ( '' !== $installed_version && version_compare( $remote_version, (string) $installed_version, '<=' ) ) {
-            return array(
-                'status'   => 'latest_installed',
-                'version'  => $remote_version,
-                'verdict'  => '',
-                'errors'   => 0,
-                'warnings' => 0,
-                'message'  => sprintf(
-                    /* translators: %s: latest version on WordPress.org */
-                    __( 'You already have the latest WordPress.org release (v%s) installed.', 'thrg-php-checker' ),
-                    $remote_version
+                'result' => self::wporg_result(
+                    'not_wporg',
+                    __( 'No public WordPress.org release information found for this plugin.', 'thrg-php-checker' )
                 ),
             );
         }
 
-        // Check if we already scanned this newer version against $target.
-        $existing = THRG_PC_Results::get_update( 'plugin', $short, $remote_version, $target );
-        if ( null === $existing && '' !== $package_url ) {
-            $host = (string) wp_parse_url( $package_url, PHP_URL_HOST );
-            if ( 0 === strpos( $package_url, 'https://' ) && ( 'downloads.wordpress.org' === $host || '' !== $host ) ) {
-                $opened = self::open_offer(
-                    array(
-                        'kind'        => 'plugin',
-                        'slug'        => $short,
-                        'new_version' => $remote_version,
-                        'package'     => $package_url,
-                    ),
-                    $target
-                );
-                if ( ! is_wp_error( $opened ) ) {
-                    $zip      = (string) $opened['zip'];
-                    $root     = (string) $opened['root'];
-                    $out      = THRG_PC_Engine::scan(
-                        $opened['remaining'],
-                        $target,
-                        (float) $deadline,
-                        static function ( $entry, $limit ) use ( $zip ) {
-                            return THRG_PC_Prescan::zip_read( $zip, $entry, $limit );
-                        }
-                    );
-                    $findings = array();
-                    foreach ( $out['scanned'] as $entry => $file_findings ) {
-                        $path = str_replace( '\\', '/', (string) $entry );
-                        $rel  = '' !== $root && 0 === strpos( $path, $root ) ? substr( $path, strlen( $root ) ) : $path;
-                        foreach ( $file_findings as $finding ) {
-                            $findings[] = THRG_PC_Context::place_finding( $finding, $rel );
-                        }
-                    }
-                    self::delete_zip( $zip );
-                    self::zip_close();
-                    if ( empty( $out['remaining'] ) ) {
-                        THRG_PC_Results::save_update( 'plugin', $short, $remote_version, $target, $findings );
-                        $existing = THRG_PC_Results::get_update( 'plugin', $short, $remote_version, $target );
-                    }
-                }
+        return array(
+            'version' => $remote_version,
+            'package' => $package_url,
+        );
+    }
+
+    /**
+     * Download, scan, and persist a WordPress.org release ZIP for fix verification.
+     *
+     * @param string $short          Sanitized short slug.
+     * @param string $remote_version Remote version string.
+     * @param string $package_url    Package ZIP URL.
+     * @param string $target         Target PHP version.
+     * @param float  $deadline       Unix timestamp deadline.
+     * @return array|null Saved update record or null when incomplete.
+     */
+    private static function scan_wporg_package( $short, $remote_version, $package_url, $target, $deadline ) {
+        $host = (string) wp_parse_url( $package_url, PHP_URL_HOST );
+        if ( 0 !== strpos( $package_url, 'https://' ) || 'downloads.wordpress.org' !== $host ) {
+            return null;
+        }
+
+        $opened = self::open_offer(
+            array(
+                'kind'        => 'plugin',
+                'slug'        => $short,
+                'new_version' => $remote_version,
+                'package'     => $package_url,
+            ),
+            $target
+        );
+        if ( is_wp_error( $opened ) ) {
+            return null;
+        }
+
+        $zip      = (string) $opened['zip'];
+        $root     = (string) $opened['root'];
+        $out      = THRG_PC_Engine::scan(
+            $opened['remaining'],
+            $target,
+            (float) $deadline,
+            static function ( $entry, $limit ) use ( $zip ) {
+                return THRG_PC_Prescan::zip_read( $zip, $entry, $limit );
+            }
+        );
+        $findings = array();
+        foreach ( $out['scanned'] as $entry => $file_findings ) {
+            $path = str_replace( '\\', '/', (string) $entry );
+            $rel  = '' !== $root && 0 === strpos( $path, $root ) ? substr( $path, strlen( $root ) ) : $path;
+            foreach ( $file_findings as $finding ) {
+                $findings[] = THRG_PC_Context::place_finding( $finding, $rel );
             }
         }
+        self::delete_zip( $zip );
+        self::zip_close();
 
-        if ( null === $existing ) {
-            return array(
-                'status'   => 'pending',
-                'version'  => $remote_version,
-                'verdict'  => '',
-                'errors'   => 0,
-                'warnings' => 0,
-                'message'  => sprintf(
-                    /* translators: %s: newer version number */
-                    __( 'Newer version v%s is available on WordPress.org, but its package could not be completely scanned right now.', 'thrg-php-checker' ),
-                    $remote_version
-                ),
-            );
+        if ( ! empty( $out['remaining'] ) ) {
+            return null;
         }
 
+        THRG_PC_Results::save_update( 'plugin', $short, $remote_version, $target, $findings );
+        return THRG_PC_Results::get_update( 'plugin', $short, $remote_version, $target );
+    }
+
+    /**
+     * Summarize a scanned WordPress.org release into a fix-check status payload.
+     *
+     * @param array  $existing       Saved update record.
+     * @param string $remote_version Remote version string.
+     * @param string $target         Target PHP version.
+     * @return array
+     */
+    private static function summarize_wporg_fix( array $existing, $remote_version, $target ) {
         $verdict  = (string) $existing['verdict'];
         $errors   = (int) $existing['errors'];
         $warnings = (int) $existing['warnings'];
@@ -871,13 +950,15 @@ final class THRG_PC_Prescan {
             );
         }
 
-        return array(
-            'status'   => $status,
-            'version'  => $remote_version,
-            'verdict'  => $verdict,
-            'errors'   => $errors,
-            'warnings' => $warnings,
-            'message'  => $msg,
+        return self::wporg_result(
+            $status,
+            $msg,
+            array(
+                'version'  => $remote_version,
+                'verdict'  => $verdict,
+                'errors'   => $errors,
+                'warnings' => $warnings,
+            )
         );
     }
 

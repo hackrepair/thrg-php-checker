@@ -10,44 +10,52 @@
 
 defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
 
-if ( ! function_exists( 'thrg_pc_uninstall_site' ) ) {
-    /**
-     * Remove all plugin options, transients, and scheduled hooks for the current site.
-     *
-     * @return void
-     */
-    function thrg_pc_uninstall_site() {
-        wp_clear_scheduled_hook( 'thrg_pc_scheduled_report' );
-        wp_clear_scheduled_hook( 'thrg_pc_prescan_updates' );
+/**
+ * Remove all plugin options, transients, and scheduled hooks for the current site.
+ *
+ * @return void
+ */
+function thrg_pc_uninstall_site() {
+    wp_clear_scheduled_hook( 'thrg_pc_scheduled_report' );
+    wp_clear_scheduled_hook( 'thrg_pc_prescan_updates' );
 
-        $cooldowns = get_option( 'thrg_pc_mail_cooldowns', array() );
-        if ( is_array( $cooldowns ) ) {
-            foreach ( $cooldowns as $key ) {
-                if ( is_string( $key ) && preg_match( '/^thrg_pc_mail_[1-9][0-9]*$/', $key ) ) {
-                    delete_transient( $key );
-                }
+    $cooldowns = get_option( 'thrg_pc_mail_cooldowns', array() );
+    if ( is_array( $cooldowns ) ) {
+        foreach ( $cooldowns as $key ) {
+            if ( is_string( $key ) && preg_match( '/^thrg_pc_mail_[1-9][0-9]*$/', $key ) ) {
+                delete_transient( $key );
             }
         }
-
-        $options = array(
-            'thrg_pc_results',
-            'thrg_pc_update_results',
-            'thrg_pc_scan_state',
-            'thrg_pc_scan_step_lock',
-            'thrg_pc_prescan_state',
-            'thrg_pc_runtime_deprecations',
-            'thrg_pc_history',
-            'thrg_pc_history_paused',
-            'thrg_pc_schedule',
-            'thrg_pc_schedule_log',
-            'thrg_pc_settings',
-            'thrg_pc_mail_cooldowns',
-        );
-        foreach ( $options as $option_name ) {
-            delete_option( $option_name );
-        }
-        delete_transient( 'thrg_pc_schedule_lock' );
     }
+
+    $wporg_keys = get_option( 'thrg_pc_wporg_keys', array() );
+    if ( is_array( $wporg_keys ) ) {
+        foreach ( $wporg_keys as $key ) {
+            if ( is_string( $key ) && preg_match( '/^thrg_pc_wporg_[a-f0-9]{12}$/', $key ) ) {
+                delete_transient( $key );
+            }
+        }
+    }
+
+    $options = array(
+        'thrg_pc_results',
+        'thrg_pc_update_results',
+        'thrg_pc_scan_state',
+        'thrg_pc_scan_step_lock',
+        'thrg_pc_prescan_state',
+        'thrg_pc_runtime_deprecations',
+        'thrg_pc_history',
+        'thrg_pc_history_paused',
+        'thrg_pc_schedule',
+        'thrg_pc_schedule_log',
+        'thrg_pc_settings',
+        'thrg_pc_mail_cooldowns',
+        'thrg_pc_wporg_keys',
+    );
+    foreach ( $options as $option_name ) {
+        delete_option( $option_name );
+    }
+    delete_transient( 'thrg_pc_schedule_lock' );
 }
 
 if ( is_multisite() ) {

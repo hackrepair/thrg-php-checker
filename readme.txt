@@ -1,10 +1,10 @@
 === The Hack Repair Guy's PHP Checker ===
 Contributors: hackrepair
-Tags: php, compatibility, php 8.3, php 8.4, php 8.5, upgrade, scanner, audit
+Tags: php, compatibility, php 8.3, php 8.4, upgrade
 Requires at least: 6.4
 Requires PHP: 7.4
-Tested up to: 7.1.3
-Stable tag: 1.2.4
+Tested up to: 7.1
+Stable tag: 1.2.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Support link: https://github.com/hackrepair/thrg-php-checker/discussions
@@ -32,7 +32,7 @@ Open **Tools > PHP Checker**, pick your target PHP version (**8.1, 8.2, 8.3, 8.4
 
 **Share or email a report.** Copy the plain-text report for a developer or support ticket, download a `.txt` file, print a clean summary, or email a formatted HTML and plain-text PHP readiness briefing to site administrators with `[domain] [PHP Checker]` subject tags.
 
-**Optional monthly PHP readiness email.** Off by default. Pick a day of the month (1 to 28) to automatically email site administrators a PHP readiness report every month, or only when errors or warnings are found.
+**Optional scheduled PHP readiness email.** Off by default. Choose weekly (with a day of the week) or monthly (day 1 to 28) to automatically email site administrators a PHP readiness report, or only when errors or warnings are found.
 
 **More tools from The Hack Repair Guy.** The plugin's View Details window includes an Other THRG Plugins guide to companion security and maintenance tools.
 
@@ -58,7 +58,7 @@ Update checks use [Plugin Update Checker](https://github.com/YahnisElsts/plugin-
 2. Activate The Hack Repair Guy's PHP Checker.
 3. Open Tools > PHP Checker, select your target PHP version (defaults to the recommended next PHP branch above your server's current PHP), and click Scan.
 4. Review the plain-English Readiness Verdict banner at the top and any red "Action Needed" plugin cards first.
-5. Optional: open Share, Download, Print, or Email This Report to send a copy to your developer or other administrators, or configure the Monthly PHP Readiness Email.
+5. Optional: open Share, Download, Print, or Email This Report to send a copy to your developer or other administrators, or set up the Scheduled Readiness Email.
 
 == Support ==
 
@@ -91,13 +91,20 @@ Every `file:line` finding shows whether the file lives in the plugin/theme's own
 
 = Does scanning slow down visitors or time out on large plugins? =
 
-No. Scanning runs only when an administrator starts it (or opts into the monthly schedule) and processes files in 5-second time-boxed AJAX slices. If a single large plugin has thousands of files, PHP Checker saves file-level progress after 5 seconds and resumes on the next slice automatically. Files larger than 2 MB are skipped safely and marked as partial rather than crashing PHP memory.
+No. Scanning runs only when an administrator starts it (or turns on the scheduled readiness email) and processes files in 5-second time-boxed AJAX slices. If a single large plugin has thousands of files, PHP Checker saves file-level progress after 5 seconds and resumes on the next slice automatically. Files larger than 2 MB are skipped safely and marked as partial rather than crashing PHP memory.
 
 = What happens when I uninstall or delete a plugin that had errors? =
 
 Unlike scanners that leave orphaned rows from deleted plugins in custom database tables forever, PHP Checker automatically prunes uninstalled plugins/themes and outdated component versions whenever results are loaded. Uninstalling PHP Checker itself removes all of its options and scheduled hooks cleanly.
 
 == Changelog ==
+
+= 1.2.5 =
+* WordPress.org package checks now accept only HTTPS downloads from downloads.wordpress.org.
+* Cached WordPress.org lookups are removed when the plugin is deleted.
+* The scheduled email intro no longer says "monthly" for weekly emails.
+* Reorganized report and evaluation code into smaller classes. Nothing changes in the report you see.
+* Added a WordPress.org edition of the plugin, built from the same source, and new store banners.
 
 = 1.2.4 =
 * Excluded PHPCS `Internal.*` formatting/line-ending sniffs (such as `Internal.LineEndings.Mixed`) from compatibility scan results.

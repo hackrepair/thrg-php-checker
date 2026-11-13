@@ -10,14 +10,132 @@
 
 defined( 'ABSPATH' ) || exit;
 
-require_once __DIR__ . '/trait-thrg-pc-report-methods.php';
+require_once __DIR__ . '/class-thrg-pc-server-advisory.php';
+require_once __DIR__ . '/class-thrg-pc-evaluator.php';
+require_once __DIR__ . '/class-thrg-pc-text-report.php';
 
 /**
  * Core controller, lifecycle evaluator, and admin request router.
  */
 final class THRG_PHP_Checker {
 
-    use THRG_PC_Report_Methods;
+    /**
+     * Days remaining until an EOL date (negative if past).
+     *
+     * @param string $eol_date YYYY-MM-DD.
+     * @param int    $now      Optional reference timestamp.
+     * @return int|null
+     */
+    public static function eol_days_left( $eol_date, $now = 0 ) {
+        return THRG_PC_Server_Advisory::eol_days_left( $eol_date, $now );
+    }
+
+    /**
+     * Classify an EOL date into ok | warn | bad.
+     *
+     * @param string $eol_date YYYY-MM-DD.
+     * @param int    $now      Optional reference timestamp.
+     * @return array
+     */
+    public static function eol_status( $eol_date, $now = 0 ) {
+        return THRG_PC_Server_Advisory::eol_status( $eol_date, $now );
+    }
+
+    /**
+     * Evaluate a PHP version string against official php.net security EOL dates.
+     *
+     * @param string $php_version PHP version string.
+     * @param int    $now         Optional reference timestamp.
+     * @return array
+     */
+    public static function php_status( $php_version, $now = 0 ) {
+        return THRG_PC_Server_Advisory::php_status( $php_version, $now );
+    }
+
+    /**
+     * Compare a running PHP version against the latest known patch release.
+     *
+     * @param string $php_version PHP version string.
+     * @param int    $now         Optional reference timestamp.
+     * @return array
+     */
+    public static function php_patch( $php_version, $now = 0 ) {
+        return THRG_PC_Server_Advisory::php_patch( $php_version, $now );
+    }
+
+    /**
+     * Allowlisted link key for the php.net migration guide matching a target PHP version.
+     *
+     * @param string $target Target PHP version ("8.4" style).
+     * @return string
+     */
+    public static function migration_link_key( $target ) {
+        return THRG_PC_Server_Advisory::migration_link_key( $target );
+    }
+
+    /**
+     * Collect live site inputs for evaluation.
+     *
+     * @param string $target Optional target PHP version.
+     * @return array
+     */
+    public static function collect( $target = '' ) {
+        return THRG_PC_Evaluator::collect( $target );
+    }
+
+    /**
+     * Evaluate collected inputs into prioritized finding rows.
+     *
+     * @param array $o Collected inputs.
+     * @return array[]
+     */
+    public static function evaluate( array $o ) {
+        return THRG_PC_Evaluator::evaluate( $o );
+    }
+
+    /**
+     * Resolve an allowlisted link key to [label, url].
+     *
+     * @param string $link Link token key.
+     * @return array|null
+     */
+    public static function href( $link ) {
+        return THRG_PC_Text_Report::href( $link );
+    }
+
+    /**
+     * Convert [[token]] placeholders in HTML-escaped text into safe links.
+     *
+     * @param string $text Raw text.
+     * @return string Safe HTML.
+     */
+    public static function linkify( $text ) {
+        return THRG_PC_Text_Report::linkify( $text );
+    }
+
+    /**
+     * Convert [[token]] placeholders into plain-text labels and URLs.
+     *
+     * @param string $text Raw text.
+     * @return string
+     */
+    public static function strip_links( $text ) {
+        return THRG_PC_Text_Report::strip_links( $text );
+    }
+
+    /**
+     * Build a plain-text report suitable for clipboard export or email.
+     *
+     * @param array  $rows      Evaluated rows.
+     * @param string $site_host Site hostname.
+     * @param string $timestamp Report timestamp.
+     * @param string $version   Plugin version.
+     * @param string $target    Target PHP version.
+     * @return string
+     */
+    public static function plain_text( array $rows, $site_host = '', $timestamp = '', $version = '', $target = '' ) {
+        return THRG_PC_Text_Report::plain_text( $rows, $site_host, $timestamp, $version, $target );
+    }
 
     const VERSION               = '1.2.1';
     const SLUG                  = 'thrg-php-checker';
@@ -370,11 +488,32 @@ final class THRG_PHP_Checker {
      *
      * @return void
      */
+    /**
+     * Require administrator capability for AJAX handlers.
+     *
+     * @return void
+     */
+    private static function require_admin_ajax() {
+        self::require_admin_ajax();
+    }
+
+    /**
+     * Require administrator capability for admin-post handlers.
+     *
+     * @return void
+     */
+    private static function require_admin_post() {
+        self::require_admin_post();
+    }
+
+    /**
+     * AJAX: start a scan job.
+     *
+     * @return void
+     */
     public static function ajax_scan_start() {
         check_ajax_referer( 'thrg_pc_scan' );
-        if ( ! current_user_can( 'manage_options' ) ) {
-            wp_send_json_error( array( 'message' => 'Forbidden' ), 403 );
-        }
+        self::require_admin_ajax();
         $reason = THRG_PC_Engine::unavailable_reason();
         if ( '' !== $reason ) {
             wp_send_json_error( array( 'message' => $reason ), 500 );
@@ -436,9 +575,7 @@ final class THRG_PHP_Checker {
      */
     public static function ajax_scan_step() {
         check_ajax_referer( 'thrg_pc_scan' );
-        if ( ! current_user_can( 'manage_options' ) ) {
-            wp_send_json_error( array( 'message' => 'Forbidden' ), 403 );
-        }
+        self::require_admin_ajax();
         $reason = THRG_PC_Engine::unavailable_reason();
         if ( '' !== $reason ) {
             wp_send_json_error( array( 'message' => $reason ), 500 );
@@ -461,9 +598,7 @@ final class THRG_PHP_Checker {
      */
     public static function ajax_scan_stop() {
         check_ajax_referer( 'thrg_pc_scan' );
-        if ( ! current_user_can( 'manage_options' ) ) {
-            wp_send_json_error( array( 'message' => 'Forbidden' ), 403 );
-        }
+        self::require_admin_ajax();
         $job_id = isset( $_POST['job_id'] ) ? sanitize_key( wp_unslash( $_POST['job_id'] ) ) : '';
         if ( ! THRG_PC_Scanner::stop( $job_id, get_current_user_id() ) ) {
             wp_send_json_error( array( 'message' => 'This scan is no longer available to your account.' ), 409 );
@@ -478,9 +613,7 @@ final class THRG_PHP_Checker {
      */
     public static function ajax_prescan_now() {
         check_ajax_referer( 'thrg_pc_prescan' );
-        if ( ! current_user_can( 'manage_options' ) ) {
-            wp_send_json_error( array( 'message' => 'Forbidden' ), 403 );
-        }
+        self::require_admin_ajax();
         $out = THRG_PC_Prescan::run_slice( 8.0 );
         wp_send_json_success( $out );
     }
@@ -492,9 +625,7 @@ final class THRG_PHP_Checker {
      */
     public static function ajax_check_wporg_fix() {
         check_ajax_referer( 'thrg_pc_prescan' );
-        if ( ! current_user_can( 'manage_options' ) ) {
-            wp_send_json_error( array( 'message' => 'Forbidden' ), 403 );
-        }
+        self::require_admin_ajax();
         $slug    = isset( $_POST['slug'] ) ? sanitize_text_field( wp_unslash( $_POST['slug'] ) ) : '';
         $version = isset( $_POST['version'] ) ? sanitize_text_field( wp_unslash( $_POST['version'] ) ) : '';
         $target  = isset( $_POST['target'] ) ? sanitize_text_field( wp_unslash( $_POST['target'] ) ) : self::default_target();
@@ -508,9 +639,7 @@ final class THRG_PHP_Checker {
      * @return void
      */
     public static function handle_start_post() {
-        if ( ! current_user_can( 'manage_options' ) ) {
-            wp_die( esc_html__( 'Forbidden', 'thrg-php-checker' ), 403 );
-        }
+        self::require_admin_post();
         check_admin_referer( 'thrg_pc_start' );
 
         $target = isset( $_POST['target'] ) ? sanitize_text_field( wp_unslash( $_POST['target'] ) ) : self::default_target();
@@ -574,9 +703,7 @@ final class THRG_PHP_Checker {
      * @return void
      */
     public static function handle_save_settings() {
-        if ( ! current_user_can( 'manage_options' ) ) {
-            wp_die( esc_html__( 'Forbidden', 'thrg-php-checker' ), 403 );
-        }
+        self::require_admin_post();
         check_admin_referer( 'thrg_pc_save_settings' );
 
         $target = isset( $_POST['target'] ) ? sanitize_text_field( wp_unslash( $_POST['target'] ) ) : self::default_target();
@@ -640,9 +767,7 @@ final class THRG_PHP_Checker {
      * @return void
      */
     public static function handle_delete_report() {
-        if ( ! current_user_can( 'manage_options' ) ) {
-            wp_die( esc_html__( 'Forbidden', 'thrg-php-checker' ), 403 );
-        }
+        self::require_admin_post();
         check_admin_referer( 'thrg_pc_delete_report' );
         $id = isset( $_POST['report_id'] ) ? sanitize_text_field( wp_unslash( $_POST['report_id'] ) ) : '';
         THRG_PC_History::delete( $id );
@@ -664,9 +789,7 @@ final class THRG_PHP_Checker {
      * @return void
      */
     public static function handle_clear_history() {
-        if ( ! current_user_can( 'manage_options' ) ) {
-            wp_die( esc_html__( 'Forbidden', 'thrg-php-checker' ), 403 );
-        }
+        self::require_admin_post();
         check_admin_referer( 'thrg_pc_clear_history' );
         THRG_PC_History::clear();
         wp_safe_redirect(
@@ -687,9 +810,7 @@ final class THRG_PHP_Checker {
      * @return void
      */
     public static function handle_toggle_history() {
-        if ( ! current_user_can( 'manage_options' ) ) {
-            wp_die( esc_html__( 'Forbidden', 'thrg-php-checker' ), 403 );
-        }
+        self::require_admin_post();
         check_admin_referer( 'thrg_pc_toggle_history' );
         $enable = ! empty( $_POST['enable'] );
         THRG_PC_History::set_enabled( $enable );
@@ -711,9 +832,7 @@ final class THRG_PHP_Checker {
      * @return void
      */
     public static function handle_email_report() {
-        if ( ! current_user_can( 'manage_options' ) ) {
-            wp_die( esc_html__( 'Forbidden', 'thrg-php-checker' ), 403 );
-        }
+        self::require_admin_post();
         check_admin_referer( 'thrg_pc_email_report' );
 
         $report_id = isset( $_POST['report_id'] ) ? sanitize_key( wp_unslash( $_POST['report_id'] ) ) : '';

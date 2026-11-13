@@ -8,7 +8,7 @@ Your friendly WordPress PHP compatibility checker. Tests your plugins, must-use 
 
 Upgrading PHP is one of the easiest ways to make WordPress faster and safer, right up until an older plugin throws a fatal error and leaves you with a white screen. Most compatibility scanners flood you with hundreds of false warnings from safe polyfills and `version_compare()` fallbacks, or bury the one broken plugin under pages of technical noise. PHP Checker runs entirely inside WordPress without `exec()`, automatically filters out guarded fallback code, and puts any plugin that will actually break your site right at the very top of the report.
 
-Current release: **1.2.4**. See [release notes](releases/v1.2.4.md).
+Current release: **1.2.4**; **1.2.5** is in preparation. See [release notes](releases/v1.2.5.md).
 
 <p align="center">
   <a href="https://github.com/hackrepair/thrg-php-checker/releases/latest" title="Download the latest PHP Checker plugin zip from GitHub"><img src="https://img.shields.io/badge/%E2%AC%87%20%20Download%20the%20latest%20release-b34700?style=for-the-badge&labelColor=b34700" alt="Download the latest release" height="46"></a>
@@ -49,9 +49,9 @@ Subjects follow the THRG email standard: `[domain] [PHP Checker] PHP X.Y Check: 
 
 The branded HTML email fills the available width and includes a plain-text alternative. It contains a personal greeting, optional note, readiness narrative, change comparison against the previous report for the same PHP target, findings grouped by urgency, up to eight `file:line` table rows per component, and a link to open the full report in WordPress. Each recipient gets a separate message; `Reply-To` uses the sender's validated email address. Sending is rate-limited to once per minute per user.
 
-## Monthly PHP readiness email
+## Scheduled PHP readiness email
 
-Under **Tools → PHP Checker**, open **Monthly PHP Readiness Email** and expand **Configure monthly schedule & recipients**. Tick **Send a monthly PHP compatibility report email**, choose your target PHP version (or **Recommended next PHP**), pick a day of the month from 1 to 28 (around 8:00 AM site time), choose whether to send every month or **Only send the monthly email when errors or warnings are found**, and select **All site administrators** or specific administrators.
+Under **Tools → PHP Checker**, open **Scheduled Readiness Email** and expand the schedule and recipients settings. Choose **Weekly** (the default, with a day of the week) or **Monthly**. Tick **Send a monthly PHP compatibility report email**, choose your target PHP version (or **Recommended next PHP**), pick a day of the month from 1 to 28 (around 8:00 AM site time), choose whether to send every month or **Only send the monthly email when errors or warnings are found**, and select **All site administrators** or specific administrators.
 
 - Off by default; nothing is scheduled until an administrator enables and saves it.
 - Uses WordPress's own scheduler with a single queued event (`thrg_pc_scheduled_report`), a 10-minute run lock, and automatic schedule healing on `admin_init`.
@@ -72,6 +72,10 @@ Scan results and report history are stored locally in non-autoloaded WordPress o
 Upload the plugin ZIP under **Plugins → Add New → Upload Plugin**, or place the `thrg-php-checker` folder in `wp-content/plugins/`, then activate it and open **Tools → PHP Checker**.
 
 The plugin lives in the `thrg-php-checker` folder and starts from `index.php`. Updates come from this repository's [GitHub releases](https://github.com/hackrepair/thrg-php-checker/releases "All PHP Checker releases and download files").
+
+### WordPress.org
+
+A WordPress.org directory listing is planned and not yet live. The address is expected to be `https://wordpress.org/plugins/thrg-php-checker/` (notional until the plugin is approved). Copies installed from WordPress.org update through WordPress.org; copies installed from this repository keep updating from GitHub releases. The two editions share one source tree; see [PROJECT.md](PROJECT.md#wordpressorg-edition) for how the WordPress.org build differs.
 
 ## Author and support
 

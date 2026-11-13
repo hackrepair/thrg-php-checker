@@ -1,162 +1,22 @@
 <?php
-/** PHP lifecycle, observation evaluation, and report formatting.
+/** Compatibility report collector and evaluator.
  *
  * @package THRG_PHP_Checker
  */
 
 defined( 'ABSPATH' ) || exit;
 
-trait THRG_PC_Report_Methods {
-    /**
-     * Days remaining until an YYYY-MM-DD end-of-life date.
-     *
-     * @param string $eol_date YYYY-MM-DD date string.
-     * @param int    $now      Reference timestamp (0 for current time).
-     * @return int
-     */
-    public static function eol_days_left( $eol_date, $now = 0 ) {
-        $eol_ts = strtotime( $eol_date . ' 23:59:59 UTC' );
-        $ref    = $now > 0 ? (int) $now : time();
-        return (int) floor( ( $eol_ts - $ref ) / 86400 );
-    }
+/** Collects scan/environment inputs and builds prioritized compatibility findings. */
+final class THRG_PC_Evaluator {
 
     /**
-     * Evaluate an EOL date into status and days remaining.
+     * Collect live site inputs for PHP compatibility evaluation.
      *
-     * @param string $eol_date YYYY-MM-DD date string.
-     * @param int    $now      Reference timestamp (0 for current time).
-     * @return array{status:string,days:int}
-     */
-    public static function eol_status( $eol_date, $now = 0 ) {
-        $days = self::eol_days_left( $eol_date, $now );
-        if ( $days < 0 ) {
-            return array(
-                'status' => 'Potential weakness',
-                'days'   => $days,
-            );
-        }
-        if ( $days <= 180 ) {
-            return array(
-                'status' => 'Review',
-                'days'   => $days,
-            );
-        }
-        return array(
-            'status' => 'No issue observed',
-            'days'   => $days,
-        );
-    }
-
-    /**
-     * Evaluate a PHP version string against PHP_SUPPORT.
-     *
-     * @param string $php_version Full PHP version string.
-     * @param int    $now         Reference timestamp (0 for current time).
-     * @return array{branch:string,eol:string,days:int|null,status:string,host_note:string}
-     */
-    public static function php_status( $php_version, $now = 0 ) {
-        $parts     = explode( '.', (string) $php_version );
-        $branch    = isset( $parts[0], $parts[1] ) ? $parts[0] . '.' . $parts[1] : (string) $php_version;
-        $host_note = isset( self::HOST_REMOVALS[ $branch ] ) ? self::HOST_REMOVALS[ $branch ] : '';
-
-        if ( isset( self::PHP_SUPPORT[ $branch ] ) ) {
-            $eol   = self::PHP_SUPPORT[ $branch ]['eol'];
-            $check = self::eol_status( $eol, $now );
-            return array(
-                'branch'    => $branch,
-                'eol'       => $eol,
-                'days'      => $check['days'],
-                'status'    => $check['status'],
-                'host_note' => $host_note,
-            );
-        }
-
-        if ( version_compare( $branch, '7.4', '<' ) ) {
-            return array(
-                'branch'    => $branch,
-                'eol'       => 'past end-of-life',
-                'days'      => -1,
-                'status'    => 'Potential weakness',
-                'host_note' => '',
-            );
-        }
-
-        return array(
-            'branch'    => $branch,
-            'eol'       => 'not in this plugin version table',
-            'days'      => null,
-            'status'    => 'Review',
-            'host_note' => '',
-        );
-    }
-
-    /**
-     * Check whether a full PHP version is behind the latest patch release known to this build.
-     *
-     * @param string $php_version Full PHP version string.
-     * @param int    $now         Reference timestamp (0 for current time).
-     * @return array{known:bool,current:string,latest:string,behind:bool,stale_list:bool,as_of:string,advisories:array}
-     */
-    public static function php_patch( $php_version, $now = 0 ) {
-        $clean   = preg_replace( '/^(\d+\.\d+\.\d+).*$/', '$1', (string) $php_version );
-        $parts   = explode( '.', $clean );
-        $branch  = isset( $parts[0], $parts[1] ) ? $parts[0] . '.' . $parts[1] : '';
-        $ref     = $now > 0 ? (int) $now : time();
-        $list_ts = strtotime( self::PATCH_LIST_AS_OF . ' 00:00:00 UTC' );
-        $stale   = $list_ts && ( ( $ref - $list_ts ) / 86400 ) > self::PATCH_LIST_STALE_DAYS;
-
-        if ( ! isset( self::PHP_SUPPORT[ $branch ]['patched'] ) || substr_count( $clean, '.' ) < 2 ) {
-            return array(
-                'known'      => false,
-                'current'    => $clean,
-                'latest'     => '',
-                'behind'     => false,
-                'stale_list' => $stale,
-                'as_of'      => self::PATCH_LIST_AS_OF,
-                'advisories' => array(),
-            );
-        }
-
-        $latest     = self::PHP_SUPPORT[ $branch ]['patched'];
-        $advisories = array();
-        if ( isset( self::PHP_ADVISORIES[ $branch ] ) ) {
-            foreach ( self::PHP_ADVISORIES[ $branch ] as $advisory ) {
-                if ( version_compare( $clean, $advisory['fixed'], '<' ) ) {
-                    $advisories[] = $advisory;
-                }
-            }
-        }
-
-        return array(
-            'known'      => true,
-            'current'    => $clean,
-            'latest'     => $latest,
-            'behind'     => version_compare( $clean, $latest, '<' ),
-            'stale_list' => $stale,
-            'as_of'      => self::PATCH_LIST_AS_OF,
-            'advisories' => $advisories,
-        );
-    }
-
-    /**
-     * Migration manual link key for a target PHP version.
-     *
-     * @param string $target Target PHP version ("8.4").
-     * @return string
-     */
-    public static function migration_link_key( $target ) {
-        $key = 'php-migration-' . str_replace( '.', '', (string) $target );
-        return isset( self::LINKS[ $key ] ) ? $key : 'php-supported-versions';
-    }
-
-    /**
-     * Collect current PHP server facts, installed components, and stored scan results for $target.
-     *
-     * @param string $target Target PHP version (empty for selected_target()).
+     * @param string $target Optional target PHP version.
      * @return array
      */
     public static function collect( $target = '' ) {
-        $target = in_array( (string) $target, self::scan_targets(), true ) ? (string) $target : self::selected_target();
+        $target = in_array( (string) $target, THRG_PHP_Checker::scan_targets(), true ) ? (string) $target : THRG_PHP_Checker::selected_target();
         $comps  = THRG_PC_Scanner::components();
         $rows   = THRG_PC_Results::for_target( $target, $comps );
         $offers = THRG_PC_Prescan::entries();
@@ -177,12 +37,12 @@ trait THRG_PC_Report_Methods {
 
         return array(
             'php_version'     => PHP_VERSION,
-            'running_php'     => self::running_php(),
+            'running_php'     => THRG_PHP_Checker::running_php(),
             'target'          => $target,
             'engine_reason'   => THRG_PC_Engine::unavailable_reason(),
             'components'      => $comps,
             'results'         => $rows,
-            'prescan_enabled' => ! empty( self::settings()['prescan_updates'] ),
+            'prescan_enabled' => ! empty( THRG_PHP_Checker::settings()['prescan_updates'] ),
             'update_items'    => $update_items,
             'now'             => time(),
         );
@@ -197,16 +57,16 @@ trait THRG_PC_Report_Methods {
     public static function evaluate( array $o ) {
         $now         = isset( $o['now'] ) ? (int) $o['now'] : time();
         $php_version = isset( $o['php_version'] ) ? (string) $o['php_version'] : PHP_VERSION;
-        $target      = isset( $o['target'] ) && in_array( (string) $o['target'], self::scan_targets(), true ) ? (string) $o['target'] : '8.4';
+        $target      = isset( $o['target'] ) && in_array( (string) $o['target'], THRG_PHP_Checker::scan_targets(), true ) ? (string) $o['target'] : '8.4';
         $comps       = isset( $o['components'] ) && is_array( $o['components'] ) ? $o['components'] : array();
         $results     = isset( $o['results'] ) && is_array( $o['results'] ) ? $o['results'] : array();
-        $mig_link    = self::migration_link_key( $target );
+        $mig_link    = THRG_PC_Server_Advisory::migration_link_key( $target );
 
         $findings = array();
 
         // 1. Server PHP version, EOL status, and security patch level.
-        $php            = self::php_status( $php_version, $now );
-        $php_patch      = self::php_patch( $php_version, $now );
+        $php            = THRG_PC_Server_Advisory::php_status( $php_version, $now );
+        $php_patch      = THRG_PC_Server_Advisory::php_patch( $php_version, $now );
         $php_status     = $php['status'];
         $php_advisories = isset( $php_patch['advisories'] ) ? $php_patch['advisories'] : array();
 
@@ -379,7 +239,7 @@ trait THRG_PC_Report_Methods {
             $u_warn    = 0;
             $u_checked = 0;
             $u_lines   = array();
-            $guard_ver = isset( $o['running_php'] ) ? (string) $o['running_php'] : self::running_php();
+            $guard_ver = isset( $o['running_php'] ) ? (string) $o['running_php'] : THRG_PHP_Checker::running_php();
 
             foreach ( $update_items as $u ) {
                 $guard_ver = isset( $u['guard'] ) ? (string) $u['guard'] : $guard_ver;
@@ -602,8 +462,16 @@ trait THRG_PC_Report_Methods {
             $counts[] = sprintf( '%d guarded/polyfill %s filtered', $notes, 1 === $notes ? 'note' : 'notes' );
         }
 
+        $fatal_errors = 0;
+        foreach ( $items as $f ) {
+            if ( isset( $f['type'] ) && 'error' === $f['type'] && THRG_PC_Results::is_fatal_rule( isset( $f['source'] ) ? $f['source'] : '' ) ) {
+                ++$fatal_errors;
+            }
+        }
+
         if ( 'breaks' === $verdict ) {
-            $badge_text = sprintf( 'Incompatible · %d %s', $errors, 1 === $errors ? 'error' : 'errors' );
+            $err_prefix = 0 === $fatal_errors ? 'Incompatible (non-fatal)' : 'Incompatible';
+            $badge_text = sprintf( '%s · %d %s', $err_prefix, $errors, 1 === $errors ? 'error' : 'errors' );
             if ( $warnings > 0 ) {
                 $badge_text .= sprintf( ', %d %s', $warnings, 1 === $warnings ? 'warning' : 'warnings' );
             }
@@ -622,13 +490,6 @@ trait THRG_PC_Report_Methods {
         $current = sprintf( '%s · %s · v%s', implode( ', ', $counts ), $state_label, $version );
         if ( '' !== $update_ver ) {
             $current .= sprintf( ' · Update %s available', $update_ver );
-        }
-
-        $fatal_errors = 0;
-        foreach ( $items as $f ) {
-            if ( isset( $f['type'] ) && 'error' === $f['type'] && THRG_PC_Results::is_fatal_rule( isset( $f['source'] ) ? $f['source'] : '' ) ) {
-                ++$fatal_errors;
-            }
         }
 
         if ( 'breaks' === $verdict ) {
@@ -909,122 +770,4 @@ trait THRG_PC_Report_Methods {
      * @param mixed $link Link key or URL.
      * @return array{label:string,url:string}|null
      */
-    public static function href( $link ) {
-        if ( is_string( $link ) && isset( self::LINKS[ $link ] ) ) {
-            return self::LINKS[ $link ];
-        }
-        if ( is_array( $link ) && isset( $link['label'], $link['url'] ) && 0 === strpos( (string) $link['url'], 'https://' ) ) {
-            return array(
-                'label' => (string) $link['label'],
-                'url'   => (string) $link['url'],
-            );
-        }
-        return null;
-    }
-
-    /**
-     * Escape text while converting [[key|label]] tokens to safe external links.
-     *
-     * @param string $text Raw text with optional link tokens.
-     * @return string Safe HTML.
-     */
-    public static function linkify( $text ) {
-        $parts = preg_split( '/(\[\[[a-z0-9-]+(?:\|[^\[\]]+)?\]\])/', (string) $text, -1, PREG_SPLIT_DELIM_CAPTURE );
-        $html  = '';
-        foreach ( $parts as $part ) {
-            if ( preg_match( '/^\[\[([a-z0-9-]+)(?:\|([^\[\]]+))?\]\]$/', $part, $m ) ) {
-                $link = self::href( $m[1] );
-                if ( $link ) {
-                    $label = isset( $m[2] ) && '' !== $m[2] ? $m[2] : $link['label'];
-                    $html .= '<a href="' . esc_url( $link['url'] ) . '" target="_blank" rel="noopener noreferrer">' . esc_html( $label ) . '</a>';
-                    continue;
-                }
-            }
-            $html .= esc_html( $part );
-        }
-        return $html;
-    }
-
-    /**
-     * Strip [[key|label]] tokens down to plain text.
-     *
-     * @param string $text Input text.
-     * @return string
-     */
-    public static function strip_links( $text ) {
-        return (string) preg_replace_callback(
-            '/\[\[([a-z0-9-]+)(?:\|([^\[\]]+))?\]\]/',
-            static function ( $m ) {
-                if ( isset( $m[2] ) && '' !== $m[2] ) {
-                    return $m[2];
-                }
-                $link = self::href( $m[1] );
-                return $link ? $link['label'] : $m[1];
-            },
-            (string) $text
-        );
-    }
-
-    /**
-     * Build a plain-text report suitable for clipboard copy, .txt download, or email attachment.
-     *
-     * @param array[] $rows      Evaluated findings.
-     * @param string  $site_host Site hostname.
-     * @param string  $timestamp Formatted timestamp.
-     * @param string  $version   Plugin version.
-     * @param string  $target    Target PHP version.
-     * @return string
-     */
-    public static function plain_text( array $rows, $site_host = '', $timestamp = '', $version = '', $target = '' ) {
-        $ver    = '' !== $version ? $version : self::version();
-        $target = '' !== $target ? $target : self::selected_target();
-        $lines  = array(
-            sprintf( "The Hack Repair Guy's PHP Checker v%s — PHP %s Compatibility Report", $ver, $target ),
-        );
-        if ( '' !== $site_host ) {
-            $lines[] = 'Site: ' . $site_host;
-        }
-        if ( '' !== $timestamp ) {
-            $lines[] = 'Generated: ' . $timestamp;
-        }
-        $lines[] = 'Running PHP: ' . PHP_VERSION . ' | Target PHP: ' . $target;
-        $lines[] = str_repeat( '=', 64 );
-        $lines[] = '';
-
-        foreach ( $rows as $r ) {
-            $lines[] = sprintf( '[%s] %s — %s', $r['status'], $r['area'], $r['label'] );
-            $lines[] = 'Current value: ' . self::strip_links( $r['current'] );
-            $lines[] = 'What this means: ' . self::strip_links( $r['meaning'] );
-            $lines[] = 'Suggested next steps: ' . self::strip_links( $r['next_steps'] );
-
-            if ( ! empty( $r['findings'] ) && is_array( $r['findings'] ) ) {
-                $row_target = isset( $r['target'] ) && '' !== $r['target'] ? (string) $r['target'] : $target;
-                $own_label  = isset( $r['comp_kind'] ) && 'theme' === $r['comp_kind'] ? 'theme code' : 'plugin code';
-                foreach ( $r['findings'] as $f ) {
-                    $ft = isset( $f['type'] ) ? strtoupper( (string) $f['type'] ) : 'ISSUE';
-                    if ( 'NOTE' === $ft && 'No issue observed' === $r['status'] ) {
-                        continue;
-                    }
-                    $f_file   = isset( $f['file'] ) ? (string) $f['file'] : '';
-                    $f_origin = isset( $f['origin'] ) && 'bundled' === $f['origin']
-                        ? 'bundled dependency'
-                        : ( 'bundled' === THRG_PC_Results::file_origin( $f_file ) ? 'bundled dependency' : $own_label );
-                    $f_source = isset( $f['source'] ) && '' !== (string) $f['source'] ? ' [Rule: ' . $f['source'] . ']' : '';
-                    $lines[]  = sprintf(
-                        '  - [%s | PHP %s | %s] %s:%d — %s%s',
-                        $ft,
-                        $row_target,
-                        $f_origin,
-                        $f_file,
-                        isset( $f['line'] ) ? (int) $f['line'] : 0,
-                        isset( $f['message'] ) ? $f['message'] : '',
-                        $f_source
-                    );
-                }
-            }
-            $lines[] = '';
-        }
-
-        return implode( "\n", $lines );
-    }
 }

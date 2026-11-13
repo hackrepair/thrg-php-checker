@@ -44,7 +44,7 @@ final class THRG_PC_Email {
     }
 
     /** Shown at the top of scheduled emails. */
-    const SCHEDULED_INTRO = 'This is your monthly PHP compatibility report from PHP Checker.';
+    const SCHEDULED_INTRO = 'This is your scheduled PHP compatibility report from PHP Checker.';
 
     /** Shown in the footer of scheduled emails. */
     const SCHEDULED_FOOTER = 'You receive this email because an administrator scheduled it in Tools > PHP Checker, where it can be changed or turned off.';

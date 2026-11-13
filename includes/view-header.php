@@ -63,7 +63,21 @@ defined( 'ABSPATH' ) || exit;
     <?php endif; ?>
 
     <?php if ( $sched_ok ) : ?>
-        <div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Monthly PHP readiness email schedule updated.', 'thrg-php-checker' ); ?></p></div>
+        <div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Scheduled PHP readiness email settings updated.', 'thrg-php-checker' ); ?></p></div>
+    <?php elseif ( 'schedule-none' === $done_flag ) : ?>
+        <div class="notice notice-warning is-dismissible"><p><?php esc_html_e( 'Scheduled email disabled because no valid administrator recipients were selected.', 'thrg-php-checker' ); ?></p></div>
+    <?php endif; ?>
+
+    <?php if ( 'enabled' === $rt_flag ) : ?>
+        <div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Live runtime PHP deprecation capture enabled.', 'thrg-php-checker' ); ?></p></div>
+    <?php elseif ( 'disabled' === $rt_flag ) : ?>
+        <div class="notice notice-info is-dismissible"><p><?php esc_html_e( 'Live runtime PHP deprecation capture disabled.', 'thrg-php-checker' ); ?></p></div>
+    <?php elseif ( 'imported' === $rt_flag ) : ?>
+        <div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Imported PHP deprecation notices from wp-content/debug.log.', 'thrg-php-checker' ); ?></p></div>
+    <?php elseif ( 'empty-import' === $rt_flag ) : ?>
+        <div class="notice notice-info is-dismissible"><p><?php esc_html_e( 'No new plugin or theme PHP deprecation notices were found in wp-content/debug.log.', 'thrg-php-checker' ); ?></p></div>
+    <?php elseif ( 'cleared' === $rt_flag ) : ?>
+        <div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Runtime PHP deprecation log cleared.', 'thrg-php-checker' ); ?></p></div>
     <?php endif; ?>
 
     <?php if ( $viewed_entry ) : ?>

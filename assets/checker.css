@@ -560,6 +560,25 @@
     color: #50575e;
 }
 
+.thrg-pc-section-bar__actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.thrg-pc-filter-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.thrg-pc-filter-btn.is-active {
+    background: #2271b1;
+    border-color: #2271b1;
+    color: #fff;
+}
+
 .thrg-card {
     background: #fff;
     border: 1px solid #dcdcde;

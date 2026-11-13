@@ -55,7 +55,8 @@ defined( 'ABSPATH' ) || exit;
             </div>
 
             <div class="thrg-pc-toolbar__actions">
-                <button type="submit" id="thrg-pc-btn-scan" class="button button-primary" <?php disabled( $scan_running && ! $scan_owned ); ?>>
+                <?php $all_scanned = $scanned_now > 0 && $scanned_now >= $total_comps; ?>
+                <button type="submit" id="thrg-pc-btn-scan" class="button button-primary" <?php disabled( $scan_running && ! $scan_owned ); ?> <?php echo $all_scanned ? 'hidden' : ''; ?>>
                     <?php
                     if ( 0 === $scanned_now ) {
                         printf(
@@ -63,15 +64,13 @@ defined( 'ABSPATH' ) || exit;
                             esc_html__( 'Scan for PHP %s', 'thrg-php-checker' ),
                             esc_html( $selected_target )
                         );
-                    } elseif ( $scanned_now < $total_comps ) {
-                        esc_html_e( 'Scan Unchecked', 'thrg-php-checker' );
                     } else {
-                        esc_html_e( 'Scan', 'thrg-php-checker' );
+                        esc_html_e( 'Scan Unchecked', 'thrg-php-checker' );
                     }
                     ?>
                 </button>
                 <?php if ( $scanned_now > 0 ) : ?>
-                    <button type="submit" id="thrg-pc-btn-rescan" name="rescan" value="1" class="button button-secondary" <?php disabled( $scan_running && ! $scan_owned ); ?>>
+                    <button type="submit" id="thrg-pc-btn-rescan" name="rescan" value="1" class="button <?php echo $all_scanned ? 'button-primary' : 'button-secondary'; ?>" <?php disabled( $scan_running && ! $scan_owned ); ?>>
                         <?php esc_html_e( 'Rescan All', 'thrg-php-checker' ); ?>
                     </button>
                 <?php endif; ?>

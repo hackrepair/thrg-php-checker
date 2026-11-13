@@ -637,6 +637,18 @@ assert_true( ! THRG_PC_Updater::release_has_asset( '1.2.0', $release ), 'Release
 THRG_PC_Email::mark_cooldown( 11 );
 assert_same( 1, get_transient( 'thrg_pc_mail_11' ), 'Email cooldown is created' );
 assert_same( array( 11 => 'thrg_pc_mail_11' ), get_option( 'thrg_pc_mail_cooldowns' ), 'Cooldown key is tracked' );
+
+$wporg_cache = new ReflectionMethod( 'THRG_PC_Prescan', 'wporg_cache' );
+$wporg_cache->setAccessible( true );
+$wporg_cache->invoke( null, 'thrg_pc_wporg_abcdef012345', array( 'status' => 'ok' ) );
+$wporg_cache->invoke( null, 'thrg_pc_wporg_abcdef012345', array( 'status' => 'ok' ) );
+assert_same( array( 'status' => 'ok' ), get_transient( 'thrg_pc_wporg_abcdef012345' ), 'WordPress.org lookup is cached' );
+assert_same( array( 'thrg_pc_wporg_abcdef012345' ), get_option( 'thrg_pc_wporg_keys' ), 'WordPress.org cache key is tracked once' );
+
+$wporg_scan = new ReflectionMethod( 'THRG_PC_Prescan', 'scan_wporg_package' );
+$wporg_scan->setAccessible( true );
+assert_same( null, $wporg_scan->invoke( null, 'demo', '1.0.0', 'https://example.com/demo.zip', '8.3', microtime( true ) + 5 ), 'WordPress.org fix check refuses package hosts other than downloads.wordpress.org' );
+assert_same( null, $wporg_scan->invoke( null, 'demo', '1.0.0', 'http://downloads.wordpress.org/plugin/demo.zip', '8.3', microtime( true ) + 5 ), 'WordPress.org fix check refuses plain http package URLs' );
 function is_multisite() { return false; }
 function wp_clear_scheduled_hook( $hook ) { unset( $hook ); }
 function delete_site_option( $name ) { unset( $name ); }
@@ -645,6 +657,8 @@ define( 'WP_UNINSTALL_PLUGIN', 'index.php' );
 require dirname( __DIR__ ) . '/uninstall.php';
 assert_same( false, get_transient( 'thrg_pc_mail_11' ), 'Uninstall removes tracked cooldown' );
 assert_same( false, get_option( 'thrg_pc_mail_cooldowns' ), 'Uninstall removes cooldown registry' );
+assert_same( false, get_transient( 'thrg_pc_wporg_abcdef012345' ), 'Uninstall removes tracked WordPress.org lookup cache' );
+assert_same( false, get_option( 'thrg_pc_wporg_keys' ), 'Uninstall removes WordPress.org cache registry' );
 
 // 13. Scanner signal-to-noise & triage improvements (1.2.4).
 $mixed_eol_src = "<?php\r\n\$x = 1;\n\$y = 2;\n";
