@@ -636,19 +636,13 @@
     margin-top: 0;
 }
 
-.thrg-card.thrg-card--comp.thrg-status-review,
-.thrg-card.thrg-card--comp.thrg-status-ok,
-#pc-clean.thrg-card.thrg-status-ok {
+.thrg-card.thrg-card--comp.thrg-status-review {
     opacity: 0.6;
     transition: opacity 0.15s ease-in-out;
 }
 
 .thrg-card.thrg-card--comp.thrg-status-review:hover,
-.thrg-card.thrg-card--comp.thrg-status-ok:hover,
-#pc-clean.thrg-card.thrg-status-ok:hover,
-.thrg-card.thrg-card--comp.thrg-status-review:focus-within,
-.thrg-card.thrg-card--comp.thrg-status-ok:focus-within,
-#pc-clean.thrg-card.thrg-status-ok:focus-within {
+.thrg-card.thrg-card--comp.thrg-status-review:focus-within {
     opacity: 1;
 }
 
