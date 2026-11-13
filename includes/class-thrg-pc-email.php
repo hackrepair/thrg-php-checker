@@ -410,7 +410,7 @@ final class THRG_PC_Email {
             $h .= self::e( self::SCHEDULED_FOOTER ) . ' ';
         }
         $h .= 'Static analysis reads code without executing it; it can miss dynamic issues or report false positives. ';
-        $h .= 'Need a hand with a tricky PHP upgrade? Contact <a href="https://hackrepair.com/" title="The Hack Repair Guy: WordPress security and hack repair" style="color:#8f3a00;">The Hack Repair Guy</a>.';
+        $h .= 'Need a hand with a tricky PHP upgrade? Contact <a href="https://hackguard.com/" title="The Hack Repair Guy: WordPress security and hack repair" style="color:#8f3a00;">The Hack Repair Guy</a>.';
         $h .= '</td></tr></table></td></tr></table></body></html>';
         return $h;
     }
