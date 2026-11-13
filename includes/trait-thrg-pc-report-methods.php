@@ -624,15 +624,33 @@ trait THRG_PC_Report_Methods {
             $current .= sprintf( ' · Update %s available', $update_ver );
         }
 
+        $fatal_errors = 0;
+        foreach ( $items as $f ) {
+            if ( isset( $f['type'] ) && 'error' === $f['type'] && THRG_PC_Results::is_fatal_rule( isset( $f['source'] ) ? $f['source'] : '' ) ) {
+                ++$fatal_errors;
+            }
+        }
+
         if ( 'breaks' === $verdict ) {
-            $meaning = sprintf(
-                '%1$s (%2$s, v%3$s) contains %4$d unguarded PHP %5$s error(s). If those code paths execute on PHP %5$s, PHP can throw a fatal error or halt the request.',
-                $name,
-                strtolower( $state_label ),
-                $version,
-                $errors,
-                $target
-            );
+            if ( $fatal_errors > 0 ) {
+                $meaning = sprintf(
+                    '%1$s (%2$s, v%3$s) contains %4$d unguarded PHP %5$s error(s). If those code paths execute on PHP %5$s, PHP can throw a fatal error or halt the request.',
+                    $name,
+                    strtolower( $state_label ),
+                    $version,
+                    $errors,
+                    $target
+                );
+            } else {
+                $meaning = sprintf(
+                    '%1$s (%2$s, v%3$s) contains %4$d unguarded PHP %5$s compatibility error(s) (removed INI directives or behavioral changes). These will not throw a fatal crash on PHP %5$s, though affected code paths may behave differently.',
+                    $name,
+                    strtolower( $state_label ),
+                    $version,
+                    $errors,
+                    $target
+                );
+            }
             if ( '' !== $update_ver ) {
                 $next = sprintf(
                     'Version %1$s is available for %2$s — update the %3$s first and click Rescan on this card to check whether the author already resolved the PHP %4$s incompatibility.',
@@ -769,6 +787,11 @@ trait THRG_PC_Report_Methods {
                 if ( $sa !== $sb ) {
                     return $sa - $sb;
                 }
+                $na = ( isset( $a['source'] ) && 'PHPCompatibility.FunctionUse.ArgumentFunctionsReportCurrentValue.NeedsInspection' === $a['source'] ) ? 1 : 0;
+                $nb = ( isset( $b['source'] ) && 'PHPCompatibility.FunctionUse.ArgumentFunctionsReportCurrentValue.NeedsInspection' === $b['source'] ) ? 1 : 0;
+                if ( $na !== $nb ) {
+                    return $na - $nb;
+                }
                 $oa = ( isset( $a['origin'] ) && 'bundled' === $a['origin'] ) ? 1 : 0;
                 $ob = ( isset( $b['origin'] ) && 'bundled' === $b['origin'] ) ? 1 : 0;
                 if ( $oa !== $ob ) {
@@ -807,9 +830,10 @@ trait THRG_PC_Report_Methods {
             }
             $loc_str      = ( $line > 0 ? $loc . ':' . $line : $loc ) . ' (' . $origin_tag . ')';
             $msg_str      = isset( $f['message'] ) ? (string) $f['message'] : '';
+            $rule_ver     = THRG_PC_Results::rule_php_version( $msg_str, $source, $target );
             $rule_str     = '' !== $source ? $msg_str . ' [' . $source . ']' : $msg_str;
             $table_rows[] = array(
-                strtoupper( $ft ) . ' (PHP ' . $target . ')',
+                strtoupper( $ft ) . ' (' . $rule_ver . ')',
                 $loc_str,
                 $rule_str,
             );
@@ -867,6 +891,7 @@ trait THRG_PC_Report_Methods {
             'wporg_fix_label'     => $wporg_fix_label,
             'verdict'             => $verdict,
             'errors'              => $errors,
+            'fatal_errors'        => $fatal_errors,
             'warnings'            => $warnings,
             'skipped'             => $skipped,
             'notes'               => $notes,

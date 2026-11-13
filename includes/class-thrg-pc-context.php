@@ -146,9 +146,10 @@ final class THRG_PC_Context {
             }
         }
         $ctx = array(
-            'target' => $target,
-            'exits'  => null,
-            'cache'  => array(),
+            'target'    => $target,
+            'exits'     => null,
+            'cache'     => array(),
+            'dead_vars' => null,
         );
         foreach ( $findings as $i => $finding ) {
             $key = $finding['line'] . ':' . $finding['column'];
@@ -160,6 +161,9 @@ final class THRG_PC_Context {
             $removed            = self::removed_finding( $finding );
             $ctx['missing']     = $removed ? array( self::full_name( (string) $tokens[ $ptr ]['content'] ) ) : array();
             $ctx['missing_ext'] = $removed && isset( $extensions[ $key ] ) ? $extensions[ $key ] : array();
+            if ( null === $ctx['dead_vars'] && '' !== $target ) {
+                $ctx['dead_vars'] = self::collect_dead_branch_vars( $tokens, $ctx );
+            }
             if ( self::guarded( $tokens, $ptr, $ctx ) ) {
                 $findings[ $i ] = self::as_note(
                     $findings[ $i ],
@@ -611,6 +615,14 @@ final class THRG_PC_Context {
      */
     private static function eval_exists( array $tokens, array $atom, array $ctx ) {
         $closer = isset( $atom[1], $tokens[ $atom[1] ]['parenthesis_closer'] ) ? $tokens[ $atom[1] ]['parenthesis_closer'] : null;
+        if ( 4 === count( $atom ) && 'T_ISSET' === $tokens[ $atom[0] ]['type'] && 'T_OPEN_PARENTHESIS' === $tokens[ $atom[1] ]['type'] && 'T_VARIABLE' === $tokens[ $atom[2] ]['type'] && $closer === $atom[3] ) {
+            $scope_id = self::var_scope_id( $tokens, $atom[2] );
+            $var_name = (string) $tokens[ $atom[2] ]['content'];
+            if ( ! empty( $ctx['dead_vars'][ $scope_id ][ $var_name ] ) ) {
+                return false;
+            }
+            return null;
+        }
         if ( 4 !== count( $atom ) || 'T_OPEN_PARENTHESIS' !== $tokens[ $atom[1] ]['type'] || 'T_CONSTANT_ENCAPSED_STRING' !== $tokens[ $atom[2] ]['type'] || $closer !== $atom[3] ) {
             return null;
         }
@@ -619,6 +631,12 @@ final class THRG_PC_Context {
         if ( '' === $name ) {
             return null;
         }
+        if ( 'function_exists' === $call ) {
+            $since = self::builtin_function_version( $name );
+            if ( null !== $since && '' !== $ctx['target'] && version_compare( (string) $ctx['target'], $since, '>=' ) ) {
+                return true;
+            }
+        }
         if ( 'extension_loaded' === $call ) {
             return in_array( $name, $ctx['missing_ext'], true ) ? false : null;
         }
@@ -626,6 +644,99 @@ final class THRG_PC_Context {
             return in_array( $name, $ctx['missing'], true ) ? false : null;
         }
         return null;
+    }
+
+    /**
+     * PHP version where common core functions checked via function_exists() became guaranteed built-ins.
+     *
+     * @param string $name Normalized lowercase function name.
+     * @return string|null PHP major.minor version or null if optional/extension-dependent.
+     */
+    private static function builtin_function_version( $name ) {
+        static $builtins = array(
+            'error_clear_last'            => '7.0',
+            'intdiv'                      => '7.0',
+            'preg_replace_callback_array' => '7.0',
+            'random_bytes'                => '7.0',
+            'random_int'                  => '7.0',
+            'is_iterable'                 => '7.1',
+            'array_key_first'             => '7.3',
+            'array_key_last'              => '7.3',
+            'is_countable'                => '7.3',
+            'str_contains'                => '8.0',
+            'str_ends_with'               => '8.0',
+            'str_starts_with'             => '8.0',
+            'fdiv'                        => '8.0',
+            'get_debug_type'              => '8.0',
+            'array_is_list'               => '8.1',
+            'enum_exists'                 => '8.1',
+        );
+        return isset( $builtins[ $name ] ) ? $builtins[ $name ] : null;
+    }
+
+    /**
+     * Enclosing function/closure/method scope key for variable tracking.
+     *
+     * @param array $tokens PHPCS tokens.
+     * @param int   $ptr    Token pointer.
+     * @return string
+     */
+    private static function var_scope_id( array $tokens, $ptr ) {
+        if ( empty( $tokens[ $ptr ]['conditions'] ) ) {
+            return 'global';
+        }
+        foreach ( array_reverse( $tokens[ $ptr ]['conditions'], true ) as $owner => $code ) {
+            if ( in_array( $tokens[ $owner ]['type'], array( 'T_FUNCTION', 'T_CLOSURE', 'T_FN' ), true ) ) {
+                return (string) $owner;
+            }
+        }
+        return 'global';
+    }
+
+    /**
+     * Collect variables that are only ever assigned inside guarded branches (unreachable on target PHP).
+     *
+     * @param array $tokens PHPCS tokens.
+     * @param array $ctx    Evaluation context.
+     * @return array<string, array<string, bool>>
+     */
+    private static function collect_dead_branch_vars( array $tokens, array $ctx ) {
+        $guarded_only = array();
+        $live         = array();
+        $count        = count( $tokens );
+        $local_ctx    = array(
+            'target'      => $ctx['target'],
+            'exits'       => $ctx['exits'],
+            'cache'       => array(),
+            'missing'     => array(),
+            'missing_ext' => array(),
+            'dead_vars'   => array(),
+        );
+        for ( $i = 0; $i < $count; $i++ ) {
+            if ( 'T_VARIABLE' !== $tokens[ $i ]['type'] ) {
+                continue;
+            }
+            $next = self::next( $tokens, $i + 1 );
+            if ( null === $next || 'T_EQUAL' !== $tokens[ $next ]['type'] ) {
+                continue;
+            }
+            $scope_id = self::var_scope_id( $tokens, $i );
+            $var_name = (string) $tokens[ $i ]['content'];
+            if ( self::guarded( $tokens, $i, $local_ctx ) ) {
+                $guarded_only[ $scope_id ][ $var_name ] = true;
+            } else {
+                $live[ $scope_id ][ $var_name ] = true;
+            }
+        }
+        $out = array();
+        foreach ( $guarded_only as $scope_id => $vars ) {
+            foreach ( $vars as $var_name => $flag ) {
+                if ( empty( $live[ $scope_id ][ $var_name ] ) ) {
+                    $out[ $scope_id ][ $var_name ] = true;
+                }
+            }
+        }
+        return $out;
     }
 
     /**

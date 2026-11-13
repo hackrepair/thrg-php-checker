@@ -2,7 +2,7 @@
 
 Developer notes for contributors. For what the plugin does, see [README.md](README.md "What the plugin does and how to install it").
 
-Current release: **1.2.3**, tag `v1.2.3`, November 12, 2026. See `releases/v1.2.3.md`.
+Current release: **1.2.4**, tag `v1.2.4`, November 12, 2026. See `releases/v1.2.4.md`.
 
 ## Scope
 
@@ -10,7 +10,7 @@ An in-process, read-only static PHP 8.1–8.5 compatibility analyzer for install
 
 ## Architecture
 
-- `index.php`: plugin header (`Version: 1.2.3`), constants (`THRG_PHP_CHECKER_VERSION`, `THRG_PHP_CHECKER_FILE`, `THRG_PHP_CHECKER_DIR`), GitHub release updater bootstrap, class includes, and deactivation cleanup for scheduled hooks and transient scan state.
+- `index.php`: plugin header (`Version: 1.2.4`), constants (`THRG_PHP_CHECKER_VERSION`, `THRG_PHP_CHECKER_FILE`, `THRG_PHP_CHECKER_DIR`), GitHub release updater bootstrap, class includes, and deactivation cleanup for scheduled hooks and transient scan state.
 - `includes/class-thrg-php-checker.php`: main controller (`Tools > PHP Checker`), admin request handlers and page bootstrap; `includes/trait-thrg-pc-report-methods.php` contains the `collect()` and `evaluate()` pipeline, server PHP EOL & security advisory checks (`PHP_SUPPORT`, `PHP_ADVISORIES`, `PATCH_LIST_AS_OF`), client-first priority ordering (incompatible components first, warning components second, server/update checks third, clean components last), allowlisted link-token system (`LINKS`, `href()`, `linkify()`, `strip_links()`), plain-text report builder (`plain_text()`), and admin-post/AJAX handlers.
 - `includes/class-thrg-pc-context.php`: token-stream context analyzer (`THRG_PC_Context`).
   - `guarded_lines()`: inspects PHP token streams for `version_compare()`, `PHP_VERSION_ID`, `PHP_MAJOR_VERSION`, `function_exists()`, `class_exists()`, `interface_exists()`, `trait_exists()`, `defined()`, and `extension_loaded()` guards (both enclosing `if`/`elseif`/`else` blocks and early-return negation guards) plus conditional polyfill declarations.

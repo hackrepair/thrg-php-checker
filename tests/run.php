@@ -646,4 +646,24 @@ require dirname( __DIR__ ) . '/uninstall.php';
 assert_same( false, get_transient( 'thrg_pc_mail_11' ), 'Uninstall removes tracked cooldown' );
 assert_same( false, get_option( 'thrg_pc_mail_cooldowns' ), 'Uninstall removes cooldown registry' );
 
+// 13. Scanner signal-to-noise & triage improvements (1.2.4).
+$mixed_eol_src = "<?php\r\n\$x = 1;\n\$y = 2;\n";
+list( $ruleset, $config ) = THRG_PC_Engine::ruleset( '8.3' );
+$mixed_eol_res = THRG_PC_Engine::scan_content( $mixed_eol_src, 'mixed-eol.php', $ruleset, $config, '8.3' );
+assert_same( array(), $mixed_eol_res, 'Mixed line endings (Internal.LineEndings.Mixed) are excluded' );
+
+$legacy_else_src = "<?php\nfunction demo_socket() {\n    if (function_exists('error_clear_last')) {\n        error_clear_last();\n    } else {\n        \$old_track_errors = @ini_set('track_errors', 1);\n    }\n    if (isset(\$old_track_errors)) {\n        @ini_set('track_errors', \$old_track_errors);\n    }\n}\n";
+$legacy_else_res = THRG_PC_Engine::scan_content( $legacy_else_src, 'Socket.php', $ruleset, $config, '8.3' );
+$legacy_counts   = THRG_PC_Results::count( $legacy_else_res );
+assert_same( 0, $legacy_counts['errors'], 'Dead else branch of function_exists(error_clear_last) and guarded-only variable isset() produce 0 errors' );
+assert_true( $legacy_counts['notes'] >= 2, 'Guarded legacy else branch and isset() fallback are downgraded to notes' );
+
+assert_same( 'bundled', THRG_PC_Results::file_origin( 'back/Libraries/Imap2/Connection.php' ), 'Libraries/Imap2 classifies as bundled dependency' );
+assert_same( 'bundled', THRG_PC_Results::file_origin( 'back/Libraries/Mailer/Mailer.php' ), 'Libraries/Mailer classifies as bundled dependency' );
+assert_same( false, THRG_PC_Results::is_fatal_rule( 'PHPCompatibility.IniDirectives.RemovedIniDirectives.track_errorsDeprecatedRemoved' ), 'RemovedIniDirectives is non-fatal tier' );
+assert_same( false, THRG_PC_Results::is_fatal_rule( 'PHPCompatibility.FunctionUse.ArgumentFunctionsReportCurrentValue.Changed' ), 'ArgumentFunctionsReportCurrentValue is non-fatal tier' );
+assert_same( true, THRG_PC_Results::is_fatal_rule( 'PHPCompatibility.FunctionUse.RemovedFunctions.eachDeprecatedRemoved' ), 'RemovedFunctions is fatal tier' );
+assert_same( 'since PHP 7.0', THRG_PC_Results::rule_php_version( 'Since PHP 7.0, functions inspecting arguments...', 'PHPCompatibility.FunctionUse.ArgumentFunctionsReportCurrentValue.NeedsInspection', '8.3' ), 'Extracts originating PHP version from message' );
+assert_same( 'since PHP 8.2', THRG_PC_Results::rule_php_version( 'Creation of dynamic property...', 'PHPCompatibility.Classes.ForbiddenDynamicProperties.Found', '8.3' ), 'Extracts PHP 8.2 for dynamic properties' );
+
 echo "OK ({$assertions} assertions passed)\n";

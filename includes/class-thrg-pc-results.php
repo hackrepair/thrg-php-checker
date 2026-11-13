@@ -124,6 +124,14 @@ final class THRG_PC_Results {
             'tgmpa',
             'pear',
             'phpmailer',
+            'mailer',
+            'imap2',
+            'libraries',
+            'library',
+            'lib',
+            'libs',
+            'sdk',
+            'sdks',
             'tcpdf',
             'dompdf',
             'mpdf',
@@ -134,6 +142,51 @@ final class THRG_PC_Results {
             }
         }
         return 'own';
+    }
+
+    /**
+     * Whether a PHPCS error rule can cause a hard/fatal crash at runtime on the target PHP version.
+     *
+     * Behavioral/INI removal rules (such as RemovedIniDirectives or ArgumentFunctionsReportCurrentValue)
+     * do not halt PHP with a fatal error.
+     *
+     * @param string $source PHPCS rule code.
+     * @return bool
+     */
+    public static function is_fatal_rule( $source ) {
+        $source = (string) $source;
+        foreach ( array(
+            'PHPCompatibility.IniDirectives.RemovedIniDirectives.',
+            'PHPCompatibility.FunctionUse.ArgumentFunctionsReportCurrentValue.',
+            'PHPCompatibility.Variables.RemovedPredefinedGlobalVariables.',
+        ) as $non_fatal_prefix ) {
+            if ( 0 === strpos( $source, $non_fatal_prefix ) ) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Extract the originating PHP version from a PHPCompatibility finding message or rule code.
+     *
+     * @param string $message Finding message.
+     * @param string $source  PHPCS rule code.
+     * @param string $target  Fallback scan target PHP version.
+     * @return string Display label such as "since PHP 7.0" or "PHP 8.3".
+     */
+    public static function rule_php_version( $message, $source, $target ) {
+        $msg = (string) $message;
+        if ( preg_match( '/(?:since|removed in|deprecated in|introduced in)\s+PHP\s+(\d+\.\d+)/i', $msg, $m ) ) {
+            return 'since PHP ' . $m[1];
+        }
+        if ( preg_match( '/PHP\s+(\d+\.\d+)/i', $msg, $m ) ) {
+            return 'PHP ' . $m[1];
+        }
+        if ( false !== strpos( (string) $source, 'ForbiddenDynamicProperties' ) ) {
+            return 'since PHP 8.2';
+        }
+        return 'PHP ' . (string) $target;
     }
 
     /**

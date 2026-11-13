@@ -36,6 +36,7 @@ $clean_comps   = array();
 $nav_attention = array();
 $nav_review    = array();
 $broken_names  = array();
+$has_fatal_err = false;
 $warn_comps    = 0;
 $has_tech_rows = 0;
 
@@ -56,6 +57,9 @@ foreach ( $rows as $row ) {
             $nav_attention[] = $row;
             if ( ! empty( $row['comp_name'] ) ) {
                 $broken_names[] = (string) $row['comp_name'];
+            }
+            if ( ! isset( $row['fatal_errors'] ) || (int) $row['fatal_errors'] > 0 ) {
+                $has_fatal_err = true;
             }
         } else {
             $nav_review[] = $row;
@@ -142,25 +146,45 @@ if ( ! empty( $observations['engine_reason'] ) ) {
         $total_comps
     );
 } elseif ( ! empty( $broken_names ) ) {
-    $verdict_tone  = 'weakness';
-    $shown_names   = implode( ', ', array_slice( $broken_names, 0, 3 ) );
-    $verdict_title = sprintf(
-        /* translators: 1: target PHP version, 2: count of incompatible components, 3: component names */
-        _n(
-            'Hold off on upgrading to PHP %1$s — %2$d component has fatal compatibility errors (%3$s)',
-            'Hold off on upgrading to PHP %1$s — %2$d components have fatal compatibility errors (%3$s)',
+    $verdict_tone = 'weakness';
+    $shown_names  = implode( ', ', array_slice( $broken_names, 0, 3 ) );
+    if ( $has_fatal_err ) {
+        $verdict_title = sprintf(
+            /* translators: 1: target PHP version, 2: count of incompatible components, 3: component names */
+            _n(
+                'Hold off on upgrading to PHP %1$s — %2$d component has fatal compatibility errors (%3$s)',
+                'Hold off on upgrading to PHP %1$s — %2$d components have fatal compatibility errors (%3$s)',
+                count( $broken_names ),
+                'thrg-php-checker'
+            ),
+            $selected_target,
             count( $broken_names ),
-            'thrg-php-checker'
-        ),
-        $selected_target,
-        count( $broken_names ),
-        $shown_names
-    );
-    $verdict_desc = sprintf(
-        /* translators: %s: target PHP version */
-        __( 'The red item(s) at the top of the report below contain code that can cause a fatal error on PHP %s. Update, replace, or deactivate them before switching PHP versions in your hosting panel.', 'thrg-php-checker' ),
-        $selected_target
-    );
+            $shown_names
+        );
+        $verdict_desc = sprintf(
+            /* translators: %s: target PHP version */
+            __( 'The red item(s) at the top of the report below contain code that can cause a fatal error on PHP %s. Update, replace, or deactivate them before switching PHP versions in your hosting panel.', 'thrg-php-checker' ),
+            $selected_target
+        );
+    } else {
+        $verdict_title = sprintf(
+            /* translators: 1: target PHP version, 2: count of components with compatibility errors, 3: component names */
+            _n(
+                'Review before upgrading to PHP %1$s — %2$d component has non-fatal compatibility errors (%3$s)',
+                'Review before upgrading to PHP %1$s — %2$d components have non-fatal compatibility errors (%3$s)',
+                count( $broken_names ),
+                'thrg-php-checker'
+            ),
+            $selected_target,
+            count( $broken_names ),
+            $shown_names
+        );
+        $verdict_desc = sprintf(
+            /* translators: %s: target PHP version */
+            __( 'The red item(s) below contain unguarded PHP %s compatibility errors (such as removed INI directives or behavioral changes) rather than hard fatal crashes. Review, update, or test them before switching PHP versions.', 'thrg-php-checker' ),
+            $selected_target
+        );
+    }
 } elseif ( $warn_comps > 0 ) {
     $verdict_tone  = 'ok';
     $verdict_title = sprintf(

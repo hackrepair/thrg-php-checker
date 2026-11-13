@@ -3,7 +3,7 @@
  * Plugin Name:       The Hack Repair Guy's PHP Checker
  * Plugin URI:        https://github.com/hackrepair/thrg-php-checker
  * Description:       In-process PHP 8.1–8.5 static compatibility analyzer for plugins, must-use plugins, themes, and pending updates — powered by PHP_CodeSniffer & PHPCompatibilityWP with version-guard awareness, report history, and scheduled readiness emails.
- * Version:           1.2.3
+ * Version:           1.2.4
  * Author:            The Hack Repair Guy
  * Author URI:        https://hackrepair.com/
  * Update URI:        https://github.com/hackrepair/thrg-php-checker
@@ -18,7 +18,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const THRG_PHP_CHECKER_VERSION = '1.2.3';
+const THRG_PHP_CHECKER_VERSION = '1.2.4';
 const THRG_PHP_CHECKER_FILE    = __FILE__;
 const THRG_PHP_CHECKER_DIR     = __DIR__ . '/';
 

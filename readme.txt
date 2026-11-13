@@ -4,7 +4,7 @@ Tags: php, compatibility, php 8.3, php 8.4, php 8.5, upgrade, scanner, audit
 Requires at least: 6.4
 Requires PHP: 7.4
 Tested up to: 7.1.3
-Stable tag: 1.2.3
+Stable tag: 1.2.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Support link: https://github.com/hackrepair/thrg-php-checker/discussions
@@ -98,6 +98,13 @@ No. Scanning runs only when an administrator starts it (or opts into the monthly
 Unlike scanners that leave orphaned rows from deleted plugins in custom database tables forever, PHP Checker automatically prunes uninstalled plugins/themes and outdated component versions whenever results are loaded. Uninstalling PHP Checker itself removes all of its options and scheduled hooks cleanly.
 
 == Changelog ==
+
+= 1.2.4 =
+* Excluded PHPCS `Internal.*` formatting/line-ending sniffs (such as `Internal.LineEndings.Mixed`) from compatibility scan results.
+* Expanded `THRG_PC_Context` guard analysis to recognize `if (function_exists(...))` when checking core built-in functions guaranteed on the target PHP version (such as `error_clear_last` on PHP 7.0+), downgrading their dead `else` branches and variables only assigned inside guarded branches (`isset($var)`).
+* Calibrated error severity wording so non-fatal behavioral/INI removal rules (`RemovedIniDirectives`, `ArgumentFunctionsReportCurrentValue`) are distinguished from hard fatal-error rules in card summaries and the Readiness Verdict banner.
+* Displayed each finding's originating PHP version (e.g. `since PHP 7.0`, `since PHP 8.2`) in finding tables and deprioritized `ArgumentFunctionsReportCurrentValue.NeedsInspection` warnings below actionable findings.
+* Broadened `THRG_PC_Results::file_origin()` bundled dependency detection to include `libraries`, `library`, `lib`, `libs`, `sdk`, `sdks`, `mailer`, and `imap2` directories.
 
 = 1.2.3 =
 * Lowered non-blocking, compatible, panel, and inactive card opacity to 60% (restoring to 100% on hover/focus) and applied 60% opacity to the left-column Warnings & Review list so active fatal incompatibilities stand in front.

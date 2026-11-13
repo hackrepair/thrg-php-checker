@@ -288,11 +288,16 @@ final class THRG_PC_Engine {
                 foreach ( $by_line as $line => $columns ) {
                     foreach ( $columns as $column => $messages ) {
                         foreach ( $messages as $m ) {
+                            $source = (string) $m['source'];
+                            // Skip PHPCS internal formatting/line-ending sniffs (not PHP compatibility issues).
+                            if ( 0 === strpos( $source, 'Internal.' ) && false === strpos( $source, 'ParseError' ) ) {
+                                continue;
+                            }
                             $findings[] = array(
                                 'line'    => (int) $line,
                                 'type'    => $type,
                                 'message' => (string) $m['message'],
-                                'source'  => (string) $m['source'],
+                                'source'  => $source,
                                 'column'  => (int) $column,
                             );
                         }

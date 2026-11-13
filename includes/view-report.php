@@ -303,14 +303,16 @@ defined( 'ABSPATH' ) || exit;
                                                 $ifile   = isset( $issue['file'] ) ? (string) $issue['file'] : '';
                                                 $iline   = isset( $issue['line'] ) ? (int) $issue['line'] : 0;
                                                 $isource = isset( $issue['source'] ) ? (string) $issue['source'] : '';
+                                                $imsg    = isset( $issue['message'] ) ? (string) $issue['message'] : '';
                                                 $iorigin = isset( $issue['origin'] ) ? (string) $issue['origin'] : THRG_PC_Results::file_origin( $ifile );
+                                                $irulev  = THRG_PC_Results::rule_php_version( $imsg, $isource, $row_target_label );
                                                 ?>
                                                 <tr>
                                                     <td>
                                                         <span class="thrg-pc-sev thrg-pc-sev--<?php echo esc_attr( $itype ); ?>">
                                                             <?php echo esc_html( strtoupper( $itype ) ); ?>
                                                         </span>
-                                                        <span class="thrg-pc-target-tag">PHP <?php echo esc_html( $row_target_label ); ?></span>
+                                                        <span class="thrg-pc-target-tag"><?php echo esc_html( $irulev ); ?></span>
                                                     </td>
                                                     <td>
                                                         <code><?php echo esc_html( $iline > 0 ? $ifile . ':' . $iline : $ifile ); ?></code>
@@ -351,14 +353,16 @@ defined( 'ABSPATH' ) || exit;
                                                         $ifile   = isset( $issue['file'] ) ? (string) $issue['file'] : '';
                                                         $iline   = isset( $issue['line'] ) ? (int) $issue['line'] : 0;
                                                         $isource = isset( $issue['source'] ) ? (string) $issue['source'] : '';
+                                                        $imsg    = isset( $issue['message'] ) ? (string) $issue['message'] : '';
                                                         $iorigin = isset( $issue['origin'] ) ? (string) $issue['origin'] : THRG_PC_Results::file_origin( $ifile );
+                                                        $irulev  = THRG_PC_Results::rule_php_version( $imsg, $isource, $row_target_label );
                                                         ?>
                                                         <tr>
                                                             <td class="thrg-pc-col-sev">
                                                                 <span class="thrg-pc-sev thrg-pc-sev--<?php echo esc_attr( $itype ); ?>">
                                                                     <?php echo esc_html( strtoupper( $itype ) ); ?>
                                                                 </span>
-                                                                <span class="thrg-pc-target-tag">PHP <?php echo esc_html( $row_target_label ); ?></span>
+                                                                <span class="thrg-pc-target-tag"><?php echo esc_html( $irulev ); ?></span>
                                                             </td>
                                                             <td class="thrg-pc-col-loc">
                                                                 <code><?php echo esc_html( $iline > 0 ? $ifile . ':' . $iline : $ifile ); ?></code>
