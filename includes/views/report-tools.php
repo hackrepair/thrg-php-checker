@@ -353,7 +353,6 @@ defined( 'ABSPATH' ) || exit;
                     </div>
                     <h2 id="pc-support-title" class="thrg-card-title"><?php esc_html_e( 'Support & Say Hello', 'thrg-php-checker' ); ?></h2>
                 </header>
-                <p>&#9749; <?php echo wp_kses_post( __( 'Hi, I&rsquo;m Jim. If PHP Checker saved you some worry, I&rsquo;d be so grateful if you&rsquo;d <a href="https://hackrepair.com/donations/buy-jim-a-coffee" target="_blank" rel="noopener noreferrer">buy me a cup of coffee</a>. Thank you!', 'thrg-php-checker' ) ); ?></p>
                 <p><span class="dashicons dashicons-editor-help" aria-hidden="true"></span> <?php echo wp_kses_post( __( 'Questions, ideas, or stuck on something? I&rsquo;d love to hear from you and I&rsquo;m happy to help &mdash; <a href="https://github.com/hackrepair/thrg-php-checker/discussions" target="_blank" rel="noopener noreferrer">visit GitHub Discussions</a>.', 'thrg-php-checker' ) ); ?></p>
             </section>
 

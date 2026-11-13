@@ -9,6 +9,9 @@ defined( 'ABSPATH' ) || exit;
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Template scope.
 ?>
     <footer class="thrg-footer thrg-pc-coverage">
+        <div class="thrg-pc-coverage__col">
+            <p>&#9749; <?php echo wp_kses_post( __( 'Hi, I&rsquo;m Jim. If PHP Checker saved you some worry, I&rsquo;d be so grateful if you&rsquo;d <a href="https://hackrepair.com/donations/buy-jim-a-coffee" target="_blank" rel="noopener noreferrer">buy me a cup of coffee</a>. Thank you!', 'thrg-php-checker' ) ); ?></p>
+        </div>
         <div class="thrg-pc-coverage__col thrg-pc-coverage__help">
             <img class="thrg-pc-mascot" src="<?php echo esc_url( plugins_url( 'assets/brand/thrg-heart-128.png', THRG_PHP_CHECKER_FILE ) ); ?>" alt="" width="44" height="44" />
             <p>
