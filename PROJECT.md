@@ -33,7 +33,7 @@ An in-process, read-only static PHP 8.1–8.5 compatibility analyzer for install
 
 ## WordPress.org edition
 
-Not yet submitted. Every WordPress.org address below is **notional** until the plugin review team approves the plugin and confirms the slug; replace them once the listing exists.
+Submitted November 12, 2026 and awaiting review; slug `thrg-php-checker` assigned. Every WordPress.org address below is **notional** until the plugin review team approves the plugin and confirms the slug; replace them once the listing exists.
 
 | Item | Notional value |
 |---|---|
@@ -72,8 +72,8 @@ The `--wporg` build follows the Stickies WordPress.org edition (`thrg-stickies`,
 - [x] Screenshots 1 and 2 retaken after the wording changes (no Plugin Detective box, no $79 line, no Plugin Check in the menu). Nov 12, 2026.
 - [x] PHP 7.4.33: every plugin file lints; `tests/run.php` passes 113 assertions (the 10 update-ZIP assertions skip because the stock `php:7.4-cli` image has no ZipArchive). Tests now call `setAccessible( true )` on reflected private methods, which PHP before 8.1 requires.
 - [x] WordPress.org ZIP audited: only `thrg-php-checker.php`, `readme.txt`, `uninstall.php`, `LICENSE`, `includes/`, `assets/`, `vendor/thrg-scan-engine/`; no updater, GitHub, project docs, tests or scripts.
-- [ ] Confirm the `hackrepair` and `tvcnet` WordPress.org accounts and the slug.
-- [ ] Submit `dist/thrg-php-checker.1.2.5.wporg.zip` at https://wordpress.org/plugins/developers/add/.
+- [x] Submitted November 12, 2026 (US Pacific; WordPress.org dated it November 13) from the The Hack Repair Guy account (jim@tvcnet.com): `thrg-php-checker.1.2.5.wporg.zip`, version 1.2.5. Automated scan: Pass. Initial slug `the-hack-repair-guys-php-checker` changed once to **`thrg-php-checker`** (assigned). Status: Awaiting Review; the review email goes to jim@tvcnet.com with the subject "[WordPress Plugin Directory] Review in Progress: The Hack Repair Guy's PHP Checker".
+- [ ] Reply to the review email; do not resubmit. Upload fixes with "Upload updated plugin" on https://wordpress.org/plugins/developers/add/.
 - [x] Footer: the $79 upgrade-service line is gone; the footer is now one help request linking to hackguard.com (the scheduled email footer links there too). The Plugin Detective recommendation and its companion card are removed from every build for now; add a new link later if wanted.
 
 ## Verification & Quality Gates
