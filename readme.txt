@@ -102,6 +102,7 @@ PHP Checker automatically prunes uninstalled plugins/themes and outdated compone
 = 1.2.6 =
 * Notices from WordPress and other plugins now appear below the PHP Checker header instead of inside it.
 * Notices from other plugins and WordPress are tucked away on the PHP Checker screen, with a link to show them. PHP Checker's own messages always stay visible.
+* Old-style (PHP 4) constructors are now flagged as errors when you scan for PHP 8.0 or higher, where PHP no longer treats them as constructors. Previously they showed up only on PHP 7.x scans.
 
 = 1.2.5 =
 * WordPress.org package checks now accept only HTTPS downloads from downloads.wordpress.org.

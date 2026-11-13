@@ -42,6 +42,7 @@ if ( ! defined( 'THRG_PC_SKIP_UPDATER' ) ) {
 
 require_once __DIR__ . '/includes/class-thrg-pc-context.php';
 require_once __DIR__ . '/includes/class-thrg-pc-dynamic-properties.php';
+require_once __DIR__ . '/includes/class-thrg-pc-legacy-constructors.php';
 require_once __DIR__ . '/includes/class-thrg-pc-engine.php';
 require_once __DIR__ . '/includes/class-thrg-pc-results.php';
 require_once __DIR__ . '/includes/class-thrg-pc-scanner.php';

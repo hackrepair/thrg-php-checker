@@ -308,6 +308,42 @@ foreach ( $dyn_files as $f_cleanup ) {
 }
 @rmdir( $tmp_dir );
 
+// 1b2. PHP 4 style constructors: the bundled rule is silent on PHP 8.0+, so the plugin reports them itself.
+$legacy_dir = sys_get_temp_dir() . '/thrg-pc-legacy-' . uniqid();
+mkdir( $legacy_dir );
+$legacy_old   = $legacy_dir . '/old.php';
+$legacy_both  = $legacy_dir . '/both.php';
+$legacy_ns    = $legacy_dir . '/namespaced.php';
+$legacy_plain = $legacy_dir . '/plain.php';
+file_put_contents( $legacy_old, "<?php\nclass AboutMeWidget extends WP_Widget {\n    function AboutMeWidget() {\n        parent::WP_Widget( false, 'x' );\n    }\n}\n" );
+file_put_contents( $legacy_both, "<?php\nclass Both {\n    function __construct() {}\n    function Both() { self::__construct(); }\n}\n" );
+file_put_contents( $legacy_ns, "<?php\nnamespace Acme\\Tools;\nclass Thing {\n    function Thing() {}\n}\n" );
+file_put_contents( $legacy_plain, "<?php\nclass Plain {\n    function run() {\n        \$f = function () { return 1; };\n    }\n    function other() {}\n}\n" );
+
+$legacy_files = array( $legacy_old, $legacy_both, $legacy_ns, $legacy_plain );
+$legacy_74    = THRG_PC_Engine::scan( $legacy_files, '7.4', microtime( true ) + 30.0 );
+$legacy_80    = THRG_PC_Engine::scan( $legacy_files, '8.0', microtime( true ) + 30.0 );
+$legacy_84    = THRG_PC_Engine::scan( $legacy_files, '8.4', microtime( true ) + 30.0 );
+
+$legacy_74_old = THRG_PC_Results::count( $legacy_74['scanned'][ $legacy_old ] );
+assert_same( 1, $legacy_74_old['warnings'], 'PHP 4 style constructor warns once on PHP 7.4 (bundled rule only, no duplicate)' );
+foreach ( array( '8.0' => $legacy_80, '8.4' => $legacy_84 ) as $legacy_target => $legacy_scan ) {
+    $legacy_rows = $legacy_scan['scanned'][ $legacy_old ];
+    $legacy_cnt  = THRG_PC_Results::count( $legacy_rows );
+    assert_same( 1, $legacy_cnt['errors'], 'PHP 4 style constructor is an error on PHP ' . $legacy_target );
+    assert_same( 'PHPCompatibility.FunctionNameRestrictions.RemovedPHP4StyleConstructors.Removed', $legacy_rows[0]['source'], 'Old constructor reports the removed-in-8.0 rule code on PHP ' . $legacy_target );
+    assert_same( 3, $legacy_rows[0]['line'], 'Old constructor is reported on the method line on PHP ' . $legacy_target );
+    assert_same( 'since PHP 7.0', THRG_PC_Results::rule_php_version( $legacy_rows[0]['message'], $legacy_rows[0]['source'], $legacy_target ), 'Old constructor message names the version it was deprecated in' );
+    assert_same( true, THRG_PC_Results::is_fatal_rule( $legacy_rows[0]['source'] ), 'Old constructor is in the fatal tier' );
+    assert_same( 0, THRG_PC_Results::count( $legacy_scan['scanned'][ $legacy_both ] )['errors'], 'Class that also has __construct() is not reported on PHP ' . $legacy_target );
+    assert_same( 0, THRG_PC_Results::count( $legacy_scan['scanned'][ $legacy_ns ] )['errors'], 'Namespaced class is not reported on PHP ' . $legacy_target );
+    assert_same( 0, THRG_PC_Results::count( $legacy_scan['scanned'][ $legacy_plain ] )['errors'], 'Ordinary class is not reported on PHP ' . $legacy_target );
+}
+foreach ( $legacy_files as $legacy_cleanup ) {
+    @unlink( $legacy_cleanup );
+}
+@rmdir( $legacy_dir );
+
 // 1c. File origin classification (plugin's own code vs bundled dependency).
 assert_same( 'own', THRG_PC_Results::file_origin( 'includes/class-main.php' ), 'Plugin includes/ path should be classified as own code' );
 assert_same( 'bundled', THRG_PC_Results::file_origin( 'vendor/acme/sdk/Client.php' ), 'vendor/ path should be classified as bundled dependency' );

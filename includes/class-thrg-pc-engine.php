@@ -307,6 +307,18 @@ final class THRG_PC_Engine {
             $tokens = '' === $target ? array() : $file->getTokens();
             if ( $tokens ) {
                 $findings = array_merge( $findings, THRG_PC_Context::dynamic_property_findings( $tokens, $target ) );
+                // The bundled rule goes silent for PHP 8.0+, so add its removed-in-8.0 finding here unless it already reported one.
+                $reported = array();
+                foreach ( $findings as $existing ) {
+                    if ( 0 === strpos( (string) $existing['source'], 'PHPCompatibility.FunctionNameRestrictions.RemovedPHP4StyleConstructors.' ) ) {
+                        $reported[ (int) $existing['line'] ] = true;
+                    }
+                }
+                foreach ( THRG_PC_Context::legacy_constructor_findings( $tokens, $target ) as $legacy ) {
+                    if ( ! isset( $reported[ (int) $legacy['line'] ] ) ) {
+                        $findings[] = $legacy;
+                    }
+                }
             }
             $findings = THRG_PC_Context::mark_guarded( $findings, $tokens, $target );
             $file->cleanUp();

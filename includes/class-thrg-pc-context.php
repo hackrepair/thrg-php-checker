@@ -1056,4 +1056,15 @@ final class THRG_PC_Context {
     public static function dynamic_property_findings( array $tokens, $target ) {
         return THRG_PC_Dynamic_Properties::findings( $tokens, $target );
     }
+
+    /**
+     * Detect old-style (PHP 4) constructors that PHP 8.0+ no longer calls.
+     *
+     * @param array  $tokens PHPCS token stack.
+     * @param string $target Target PHP version ("8.0" style).
+     * @return array[] Raw finding records with line, column, type, message, source.
+     */
+    public static function legacy_constructor_findings( array $tokens, $target ) {
+        return THRG_PC_Legacy_Constructors::findings( $tokens, $target );
+    }
 }
