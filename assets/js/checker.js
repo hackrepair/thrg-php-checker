@@ -306,18 +306,32 @@
         } );
     }
 
-    // Expand / Collapse all code finding tables.
+    // Expand / Collapse all code finding tables (including overflow & guarded-note tables).
     var toggleAllBtn = document.getElementById( 'thrg-pc-toggle-all-details' );
     if ( toggleAllBtn ) {
+        var cardDetails = document.querySelectorAll( 'article.thrg-card details' );
+        var syncToggleAllBtn = function () {
+            var allOpen = cardDetails.length > 0;
+            cardDetails.forEach( function ( el ) {
+                if ( ! el.open ) {
+                    allOpen = false;
+                }
+            } );
+            toggleAllBtn.setAttribute( 'data-expanded', allOpen ? '1' : '0' );
+            toggleAllBtn.textContent = allOpen ? 'Collapse all code tables' : 'Expand all code tables';
+        };
+        cardDetails.forEach( function ( el ) {
+            el.addEventListener( 'toggle', syncToggleAllBtn );
+        } );
         toggleAllBtn.addEventListener( 'click', function () {
             var expanded = '1' === toggleAllBtn.getAttribute( 'data-expanded' );
             var nextState = ! expanded;
-            document.querySelectorAll( 'article.thrg-card .thrg-pc-tech-details' ).forEach( function ( el ) {
+            cardDetails.forEach( function ( el ) {
                 el.open = nextState;
             } );
-            toggleAllBtn.setAttribute( 'data-expanded', nextState ? '1' : '0' );
-            toggleAllBtn.textContent = nextState ? 'Collapse code tables' : 'Expand all code tables';
+            syncToggleAllBtn();
         } );
+        syncToggleAllBtn();
     }
 
     // Auto-open collapsible panels when clicked from the left navigation.
