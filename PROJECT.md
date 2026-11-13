@@ -68,7 +68,12 @@ The `--wporg` build follows the Stickies WordPress.org edition (`thrg-stickies`,
 - [x] Working tree committed and bumped to 1.2.5 (`index.php`, both readmes, `releases/v1.2.5.md`), November 12, 2026. Not pushed or released.
 - [x] Screenshots taken on a clean sandbox and added to `.wordpress-org/` with a `== Screenshots ==` section.
 - [x] Plugin Check 2.2.0 on WordPress 7.0.1 against the `--wporg` ZIP: 0 errors, 7 warnings (direct database calls in `class-thrg-pc-scanner.php` and one `$_POST['users']` sanitization notice in `class-thrg-pc-schedule.php`, all reviewed). Nov 12, 2026.
+- [x] Plugin Check rerun after the contact-wording changes: 0 errors, 7 warnings. The review link drops `?filter=5` (Plugin Check error `five_star_reviews_detected`) and uses `/reviews/#new-post`.
+- [x] Screenshots 1 and 2 retaken after the wording changes (no Plugin Detective box, no $79 line, no Plugin Check in the menu). Nov 12, 2026.
+- [x] PHP 7.4.33: every plugin file lints; `tests/run.php` passes 113 assertions (the 10 update-ZIP assertions skip because the stock `php:7.4-cli` image has no ZipArchive). Tests now call `setAccessible( true )` on reflected private methods, which PHP before 8.1 requires.
+- [x] WordPress.org ZIP audited: only `thrg-php-checker.php`, `readme.txt`, `uninstall.php`, `LICENSE`, `includes/`, `assets/`, `vendor/thrg-scan-engine/`; no updater, GitHub, project docs, tests or scripts.
 - [ ] Confirm the `hackrepair` and `tvcnet` WordPress.org accounts and the slug.
+- [ ] Submit `dist/thrg-php-checker.1.2.5.wporg.zip` at https://wordpress.org/plugins/developers/add/.
 - [x] Footer: the $79 upgrade-service line is gone; the footer is now one help request linking to hackguard.com (the scheduled email footer links there too). The Plugin Detective recommendation and its companion card are removed from every build for now; add a new link later if wanted.
 
 ## Verification & Quality Gates

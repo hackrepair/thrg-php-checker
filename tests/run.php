@@ -547,6 +547,7 @@ THRG_PC_Scanner::set_state( $seed_job );
 assert_same( array(), THRG_PC_Scanner::get_state(), 'Abandoned scan expires so another administrator can start later' );
 
 $claim = new ReflectionMethod( THRG_PC_Scanner::class, 'claim_state' );
+$claim->setAccessible( true ); // Needed before PHP 8.1.
 $first_job = $seed_job;
 $first_job['updated_at'] = time();
 $first_job['job_id'] = str_repeat( 'c', 32 );
@@ -560,6 +561,7 @@ assert_same( $first_job, THRG_PC_Scanner::get_state(), 'Conditional delete prese
 assert_true( THRG_PC_Scanner::clear_state( $first_job ), 'Matching conditional cleanup removes the job' );
 
 $lock_method = new ReflectionMethod( THRG_PC_Scanner::class, 'claim_step_lock' );
+$lock_method->setAccessible( true ); // Needed before PHP 8.1.
 $lock = $lock_method->invoke( null, $first_job['job_id'] );
 $parallel_step_rejected = false;
 try {
@@ -571,6 +573,7 @@ assert_true( $parallel_step_rejected, 'Overlapping step cannot claim a held lock
 delete_option( THRG_PC_Scanner::STEP_LOCK_OPTION );
 
 $replace = new ReflectionMethod( THRG_PC_Scanner::class, 'replace_state' );
+$replace->setAccessible( true ); // Needed before PHP 8.1.
 THRG_PC_Scanner::set_state( $first_job );
 assert_true( ! $replace->invoke( null, $second_job, $first_job ), 'Progress update rejects a different current state' );
 assert_same( $first_job, THRG_PC_Scanner::get_state(), 'Rejected progress update leaves current job intact' );
@@ -639,6 +642,7 @@ assert_same( 1, get_transient( 'thrg_pc_mail_11' ), 'Email cooldown is created' 
 assert_same( array( 11 => 'thrg_pc_mail_11' ), get_option( 'thrg_pc_mail_cooldowns' ), 'Cooldown key is tracked' );
 
 $wporg_cache = new ReflectionMethod( 'THRG_PC_Prescan', 'wporg_cache' );
+$wporg_cache->setAccessible( true ); // Needed before PHP 8.1.
 $wporg_cache->setAccessible( true );
 $wporg_cache->invoke( null, 'thrg_pc_wporg_abcdef012345', array( 'status' => 'ok' ) );
 $wporg_cache->invoke( null, 'thrg_pc_wporg_abcdef012345', array( 'status' => 'ok' ) );
@@ -646,6 +650,7 @@ assert_same( array( 'status' => 'ok' ), get_transient( 'thrg_pc_wporg_abcdef0123
 assert_same( array( 'thrg_pc_wporg_abcdef012345' ), get_option( 'thrg_pc_wporg_keys' ), 'WordPress.org cache key is tracked once' );
 
 $wporg_scan = new ReflectionMethod( 'THRG_PC_Prescan', 'scan_wporg_package' );
+$wporg_scan->setAccessible( true ); // Needed before PHP 8.1.
 $wporg_scan->setAccessible( true );
 assert_same( null, $wporg_scan->invoke( null, 'demo', '1.0.0', 'https://example.com/demo.zip', '8.3', microtime( true ) + 5 ), 'WordPress.org fix check refuses package hosts other than downloads.wordpress.org' );
 assert_same( null, $wporg_scan->invoke( null, 'demo', '1.0.0', 'http://downloads.wordpress.org/plugin/demo.zip', '8.3', microtime( true ) + 5 ), 'WordPress.org fix check refuses plain http package URLs' );
