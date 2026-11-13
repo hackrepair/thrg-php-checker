@@ -91,15 +91,6 @@ def transform_wporg( rel_str: str, raw: bytes ) -> bytes:
             'updater cleanup in uninstall.php',
         )
         return text.encode( 'utf-8' )
-    if rel_str == 'includes/views/report-tools.php':
-        text = raw.decode( 'utf-8' )
-        text = replace_once(
-            text,
-            '<a href="https://github.com/hackrepair/thrg-php-checker/discussions" target="_blank" rel="noopener noreferrer">visit GitHub Discussions</a>',
-            '<a href="https://wordpress.org/support/plugin/thrg-php-checker/" target="_blank" rel="noopener noreferrer">visit the support forum on WordPress.org</a>',
-            'support link in report-tools.php',
-        )
-        return text.encode( 'utf-8' )
     return raw
 
 files = []

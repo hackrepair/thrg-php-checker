@@ -37,7 +37,7 @@ Each finding is ordered by urgency: **fatal incompatibilities appear first** rig
 
 **Weekly or monthly PHP readiness & update-alert email.** Off until you turn it on. Choose a **Weekly** day of the week (default) or **Monthly** day of the month (1–28): PHP Checker rescans against your chosen PHP target (and pre-scans pending updates) and emails administrators on schedule or only when an update or the next PHP version has errors or warnings.
 
-**Support.** A friendly Support container at the bottom of the screen invites questions and feedback through GitHub Discussions and has a buy-Jim-a-coffee link.
+**Support.** A friendly Support container at the bottom of the screen invites questions and feedback (link to the WordPress.org support forum, notional until the plugin is approved) and has a buy-Jim-a-coffee link.
 
 ## Email a report to administrators
 
