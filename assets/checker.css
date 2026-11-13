@@ -476,6 +476,69 @@
     background: #dba617;
 }
 
+.thrg-nav-group--review .thrg-nav-list {
+    opacity: 0.6;
+    transition: opacity 0.15s ease-in-out;
+}
+
+.thrg-nav-group--review .thrg-nav-list:hover,
+.thrg-nav-group--review .thrg-nav-list:focus-within {
+    opacity: 1;
+}
+
+.thrg-nav-item-with-tip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.thrg-nav-item-with-tip .thrg-nav-link {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.thrg-nav-tip {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid #c3c4c7;
+    background: #f6f7f7;
+    color: #50575e;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.thrg-nav-tip:hover,
+.thrg-nav-tip:focus-visible,
+.thrg-nav-tip.is-active {
+    background: #b34700;
+    border-color: #b34700;
+    color: #fff;
+    outline: none;
+}
+
+.thrg-pc-nav-popover {
+    position: fixed;
+    z-index: 100100;
+    max-width: 260px;
+    background: #1d2327;
+    color: #fff;
+    padding: 9px 12px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    line-height: 1.45;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.24);
+    pointer-events: none;
+}
+
 .thrg-nav-dot.thrg-status-ok {
     background: #00a32a;
 }
@@ -577,7 +640,7 @@
 .thrg-card.thrg-status-ok,
 .thrg-card.thrg-panel,
 .thrg-card.thrg-card--inactive {
-    opacity: 0.82;
+    opacity: 0.6;
     transition: opacity 0.15s ease-in-out;
 }
 

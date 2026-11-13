@@ -4,7 +4,7 @@ Tags: php, compatibility, php 8.3, php 8.4, php 8.5, upgrade, scanner, audit
 Requires at least: 6.4
 Requires PHP: 7.4
 Tested up to: 7.1.3
-Stable tag: 1.2.2
+Stable tag: 1.2.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Support link: https://github.com/hackrepair/thrg-php-checker/discussions
@@ -98,6 +98,11 @@ No. Scanning runs only when an administrator starts it (or opts into the monthly
 Unlike scanners that leave orphaned rows from deleted plugins in custom database tables forever, PHP Checker automatically prunes uninstalled plugins/themes and outdated component versions whenever results are loaded. Uninstalling PHP Checker itself removes all of its options and scheduled hooks cleanly.
 
 == Changelog ==
+
+= 1.2.3 =
+* Lowered non-blocking, compatible, panel, and inactive card opacity to 60% (restoring to 100% on hover/focus) and applied 60% opacity to the left-column Warnings & Review list so active fatal incompatibilities stand in front.
+* Added `(?)` pop-out tooltips next to each item in the left-column Tools & Settings navigation explaining what each section is for.
+* Fixed Expand all code tables / Collapse all code tables to toggle and sync all finding card detail drawers (including overflow and guarded-note tables).
 
 = 1.2.2 =
 * Softened visual weight of non-blocking and inactive items so fatal incompatibilities stand in front.

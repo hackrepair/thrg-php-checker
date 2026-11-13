@@ -454,4 +454,85 @@
                 } );
         } );
     } );
+
+    // Left-column Tools & Settings (?) pop-out tooltips.
+    var navTips = document.querySelectorAll( '.thrg-nav-tip' );
+    if ( navTips.length ) {
+        var popover = document.createElement( 'div' );
+        popover.className = 'thrg-pc-nav-popover';
+        popover.setAttribute( 'role', 'tooltip' );
+        popover.hidden = true;
+        document.body.appendChild( popover );
+
+        var activeTipBtn = null;
+
+        var hideNavTip = function () {
+            popover.hidden = true;
+            if ( activeTipBtn ) {
+                activeTipBtn.classList.remove( 'is-active' );
+                activeTipBtn = null;
+            }
+        };
+
+        var showNavTip = function ( btn ) {
+            var text = btn.getAttribute( 'data-tip' );
+            if ( ! text ) {
+                return;
+            }
+            if ( activeTipBtn && activeTipBtn !== btn ) {
+                activeTipBtn.classList.remove( 'is-active' );
+            }
+            activeTipBtn = btn;
+            btn.classList.add( 'is-active' );
+            popover.textContent = text;
+            popover.hidden = false;
+
+            var rect = btn.getBoundingClientRect();
+            var popRect = popover.getBoundingClientRect();
+            var left = rect.right + 10;
+            if ( left + popRect.width > window.innerWidth - 12 ) {
+                left = Math.max( 12, rect.left - popRect.width - 10 );
+            }
+            var top = rect.top + ( rect.height / 2 ) - ( popRect.height / 2 );
+            top = Math.max( 12, Math.min( top, window.innerHeight - popRect.height - 12 ) );
+            popover.style.left = left + 'px';
+            popover.style.top = top + 'px';
+        };
+
+        navTips.forEach( function ( btn ) {
+            btn.addEventListener( 'mouseenter', function () {
+                showNavTip( btn );
+            } );
+            btn.addEventListener( 'mouseleave', function () {
+                if ( document.activeElement !== btn ) {
+                    hideNavTip();
+                }
+            } );
+            btn.addEventListener( 'focus', function () {
+                showNavTip( btn );
+            } );
+            btn.addEventListener( 'blur', hideNavTip );
+            btn.addEventListener( 'click', function ( e ) {
+                e.preventDefault();
+                e.stopPropagation();
+                if ( ! popover.hidden && activeTipBtn === btn ) {
+                    hideNavTip();
+                } else {
+                    showNavTip( btn );
+                }
+            } );
+        } );
+
+        document.addEventListener( 'click', function ( e ) {
+            if ( activeTipBtn && ! activeTipBtn.contains( e.target ) ) {
+                hideNavTip();
+            }
+        } );
+        document.addEventListener( 'keydown', function ( e ) {
+            if ( 'Escape' === e.key ) {
+                hideNavTip();
+            }
+        } );
+        window.addEventListener( 'scroll', hideNavTip, true );
+    }
 }() );

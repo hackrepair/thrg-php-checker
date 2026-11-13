@@ -39,7 +39,7 @@ defined( 'ABSPATH' ) || exit;
             <?php endif; ?>
 
             <?php if ( ! empty( $nav_review ) ) : ?>
-                <div class="thrg-nav-group">
+                <div class="thrg-nav-group thrg-nav-group--review">
                     <h2 class="thrg-nav-heading">
                         <?php
                         printf(
@@ -90,19 +90,35 @@ defined( 'ABSPATH' ) || exit;
             <div class="thrg-nav-group">
                 <h2 class="thrg-nav-heading"><?php esc_html_e( 'Tools & Settings', 'thrg-php-checker' ); ?></h2>
                 <ul class="thrg-nav-list">
-                    <li><a href="#pc-share" class="thrg-nav-link"><?php esc_html_e( 'Export & Email Report', 'thrg-php-checker' ); ?></a></li>
-                    <li><a href="#pc-schedule" class="thrg-nav-link" data-open-details="pc-schedule-details"><?php esc_html_e( 'Scheduled Readiness Email', 'thrg-php-checker' ); ?></a></li>
-                    <li>
+                    <li class="thrg-nav-item-with-tip">
+                        <a href="#pc-share" class="thrg-nav-link"><span class="thrg-nav-text"><?php esc_html_e( 'Export & Email Report', 'thrg-php-checker' ); ?></span></a>
+                        <button type="button" class="thrg-nav-tip" aria-label="<?php esc_attr_e( 'About Export & Email Report', 'thrg-php-checker' ); ?>" data-tip="<?php esc_attr_e( 'Copy plain-text results, download a .txt file, print a clean summary, or email a formatted readiness report to site administrators.', 'thrg-php-checker' ); ?>">?</button>
+                    </li>
+                    <li class="thrg-nav-item-with-tip">
+                        <a href="#pc-schedule" class="thrg-nav-link" data-open-details="pc-schedule-details"><span class="thrg-nav-text"><?php esc_html_e( 'Scheduled Readiness Email', 'thrg-php-checker' ); ?></span></a>
+                        <button type="button" class="thrg-nav-tip" aria-label="<?php esc_attr_e( 'About Scheduled Readiness Email', 'thrg-php-checker' ); ?>" data-tip="<?php esc_attr_e( 'Set up an optional weekly or monthly background scan that emails administrators when an update or the next PHP version has compatibility problems.', 'thrg-php-checker' ); ?>">?</button>
+                    </li>
+                    <li class="thrg-nav-item-with-tip">
                         <a href="#pc-runtime-log" class="thrg-nav-link" data-open-details="pc-runtime-details">
                             <span class="thrg-nav-text"><?php esc_html_e( 'Runtime Deprecation Log', 'thrg-php-checker' ); ?></span>
                             <?php if ( ! empty( $runtime_groups ) ) : ?>
                                 <span class="thrg-nav-badge thrg-nav-badge--warn"><?php echo count( $runtime_groups ); ?></span>
                             <?php endif; ?>
                         </a>
+                        <button type="button" class="thrg-nav-tip" aria-label="<?php esc_attr_e( 'About Runtime Deprecation Log', 'thrg-php-checker' ); ?>" data-tip="<?php esc_attr_e( 'Record live PHP deprecation notices (E_DEPRECATED) or import wp-content/debug.log entries, grouped by plugin and theme.', 'thrg-php-checker' ); ?>">?</button>
                     </li>
-                    <li><a href="#pc-history" class="thrg-nav-link" data-open-details="pc-history-details"><?php esc_html_e( 'Saved Report History', 'thrg-php-checker' ); ?></a></li>
-                    <li><a href="#pc-settings" class="thrg-nav-link" data-open-details="pc-settings-details"><?php esc_html_e( 'Scanner Settings', 'thrg-php-checker' ); ?></a></li>
-                    <li><a href="#support" class="thrg-nav-link"><?php esc_html_e( 'Support & Help', 'thrg-php-checker' ); ?></a></li>
+                    <li class="thrg-nav-item-with-tip">
+                        <a href="#pc-history" class="thrg-nav-link" data-open-details="pc-history-details"><span class="thrg-nav-text"><?php esc_html_e( 'Saved Report History', 'thrg-php-checker' ); ?></span></a>
+                        <button type="button" class="thrg-nav-tip" aria-label="<?php esc_attr_e( 'About Saved Report History', 'thrg-php-checker' ); ?>" data-tip="<?php esc_attr_e( 'Browse, reopen, compare, or delete up to 25 locally saved compatibility reports for each PHP target.', 'thrg-php-checker' ); ?>">?</button>
+                    </li>
+                    <li class="thrg-nav-item-with-tip">
+                        <a href="#pc-settings" class="thrg-nav-link" data-open-details="pc-settings-details"><span class="thrg-nav-text"><?php esc_html_e( 'Scanner Settings', 'thrg-php-checker' ); ?></span></a>
+                        <button type="button" class="thrg-nav-tip" aria-label="<?php esc_attr_e( 'About Scanner Settings', 'thrg-php-checker' ); ?>" data-tip="<?php esc_attr_e( 'Configure your default target PHP version, toggle the Pending Update Pre-Scan, or clear cached scan results.', 'thrg-php-checker' ); ?>">?</button>
+                    </li>
+                    <li class="thrg-nav-item-with-tip">
+                        <a href="#support" class="thrg-nav-link"><span class="thrg-nav-text"><?php esc_html_e( 'Support & Help', 'thrg-php-checker' ); ?></span></a>
+                        <button type="button" class="thrg-nav-tip" aria-label="<?php esc_attr_e( 'About Support & Help', 'thrg-php-checker' ); ?>" data-tip="<?php esc_attr_e( 'Recommended companion tools like Plugin Detective, developer support links, and ways to share feedback.', 'thrg-php-checker' ); ?>">?</button>
+                    </li>
                 </ul>
             </div>
         </nav>
