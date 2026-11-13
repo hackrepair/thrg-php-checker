@@ -100,6 +100,12 @@ No. Scanning runs only when an administrator starts it (or turns on the schedule
 
 Unlike scanners that leave orphaned rows from deleted plugins in custom database tables forever, PHP Checker automatically prunes uninstalled plugins/themes and outdated component versions whenever results are loaded. Uninstalling PHP Checker itself removes all of its options and scheduled hooks cleanly.
 
+== Screenshots ==
+
+1. Scan results: pass/warn/fail summary for the chosen PHP version, with per-component findings.
+2. Export, scheduled monitoring, runtime deprecation log, saved reports and scanner settings.
+3. Start screen: choose a PHP target version and scan scope.
+
 == Changelog ==
 
 = 1.2.5 =

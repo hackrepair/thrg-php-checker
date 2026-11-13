@@ -38,7 +38,7 @@ default_name = f'{slug}.{version}.wporg.zip' if a.wporg else f'{slug}.{version}.
 output       = a.output or ( root / 'dist' / default_name )
 output.parent.mkdir( parents=True, exist_ok=True )
 
-excluded = { '.git', '.github', '.review', 'tests', 'scripts', 'dist', 'releases', 'node_modules', 'docs', '.wordpress-org' }
+excluded = { '.git', '.github', '.review', 'tests', 'scripts', 'dist', 'releases', 'node_modules', 'docs', '.wordpress-org', 'review-work' }
 excluded_files = { '.DS_Store', '.gitignore', '.editorconfig', '.distignore', 'phpcs.xml.dist', 'README.md', 'PROJECT.md', 'PROJECT_UPDATES.md', 'SECURITY.md', 'REFACTOR.md', 'readme-wporg.txt' }
 excluded_paths = []
 if a.wporg:

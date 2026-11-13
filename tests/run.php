@@ -680,4 +680,12 @@ assert_same( true, THRG_PC_Results::is_fatal_rule( 'PHPCompatibility.FunctionUse
 assert_same( 'since PHP 7.0', THRG_PC_Results::rule_php_version( 'Since PHP 7.0, functions inspecting arguments...', 'PHPCompatibility.FunctionUse.ArgumentFunctionsReportCurrentValue.NeedsInspection', '8.3' ), 'Extracts originating PHP version from message' );
 assert_same( 'since PHP 8.2', THRG_PC_Results::rule_php_version( 'Creation of dynamic property...', 'PHPCompatibility.Classes.ForbiddenDynamicProperties.Found', '8.3' ), 'Extracts PHP 8.2 for dynamic properties' );
 
+// Regression: capability helpers must not recurse into themselves.
+$main_src = file_get_contents( dirname( __DIR__ ) . '/includes/class-thrg-php-checker.php' );
+foreach ( array( 'require_admin_ajax', 'require_admin_post' ) as $helper ) {
+    preg_match( '/function ' . $helper . '\(\) \{(.*?)\n    \}/s', $main_src, $helper_body );
+    assert_true( ! empty( $helper_body[1] ) && false === strpos( $helper_body[1], 'self::' . $helper ), $helper . '() must not call itself' );
+    assert_true( ! empty( $helper_body[1] ) && false !== strpos( $helper_body[1], "current_user_can( 'manage_options' )" ), $helper . '() must check manage_options' );
+}
+
 echo "OK ({$assertions} assertions passed)\n";

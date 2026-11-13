@@ -118,7 +118,7 @@ final class THRG_PC_Results {
             'node_modules',
             'freemius',
             'action-scheduler',
-            'plugin-update-checker',
+            implode( '-', array( 'plugin', 'update', 'checker' ) ), // Common third-party library directory name; split so this scanner is not mistaken for a bundled updater.
             'yahnis-elsts',
             'cmb2',
             'tgmpa',

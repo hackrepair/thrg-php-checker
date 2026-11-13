@@ -10,3 +10,6 @@
 
 # Python bytecode from running scripts/tests locally.
 __pycache__/
+
+# Local review scratch space.
+/review-work/

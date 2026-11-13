@@ -484,17 +484,14 @@ final class THRG_PHP_Checker {
     }
 
     /**
-     * AJAX: start a scan (all, active-only, or single component).
-     *
-     * @return void
-     */
-    /**
      * Require administrator capability for AJAX handlers.
      *
      * @return void
      */
     private static function require_admin_ajax() {
-        self::require_admin_ajax();
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Forbidden', 'thrg-php-checker' ) ), 403 );
+        }
     }
 
     /**
@@ -503,7 +500,9 @@ final class THRG_PHP_Checker {
      * @return void
      */
     private static function require_admin_post() {
-        self::require_admin_post();
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'Forbidden', 'thrg-php-checker' ), 403 );
+        }
     }
 
     /**
