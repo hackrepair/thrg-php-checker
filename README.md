@@ -75,7 +75,7 @@ The plugin lives in the `thrg-php-checker` folder and starts from `index.php`. U
 
 ### WordPress.org
 
-A WordPress.org directory listing is planned and not yet live. The address is expected to be `https://wordpress.org/plugins/thrg-php-checker/` (notional until the plugin is approved). Copies installed from WordPress.org update through WordPress.org; copies installed from this repository keep updating from GitHub releases. The two editions share one source tree; see [PROJECT.md](PROJECT.md#wordpressorg-edition) for how the WordPress.org build differs.
+Submitted to the WordPress.org plugin directory on November 12, 2026 and awaiting review, with the slug `thrg-php-checker`. Once approved, the listing will be at `https://wordpress.org/plugins/thrg-php-checker/`. Copies installed from WordPress.org update through WordPress.org; copies installed from this repository keep updating from GitHub releases. The two editions share one source tree; see [PROJECT.md](PROJECT.md#wordpressorg-edition) for how the WordPress.org build differs.
 
 ## Author and support
 
