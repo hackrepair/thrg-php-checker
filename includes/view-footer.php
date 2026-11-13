@@ -26,7 +26,7 @@ defined( 'ABSPATH' ) || exit;
             <p>
                 <?php esc_html_e( 'Need a deeper look or someone to assist with PHP upgrades and security?', 'thrg-php-checker' ); ?><br />
                 <?php esc_html_e( 'Contact', 'thrg-php-checker' ); ?>
-                <a href="https://hackrepair.com/" title="<?php esc_attr_e( 'The Hack Repair Guy: WordPress security and hack repair', 'thrg-php-checker' ); ?>" target="_blank" rel="noopener noreferrer">
+                <a href="https://hackguard.com/" title="<?php esc_attr_e( 'The Hack Repair Guy: WordPress security and hack repair', 'thrg-php-checker' ); ?>" target="_blank" rel="noopener noreferrer">
                     <?php esc_html_e( 'The Hack Repair Guy', 'thrg-php-checker' ); ?>
                     <?php echo wp_kses_post( THRG_PHP_Checker::NEW_TAB_HINT ); ?>
                 </a>

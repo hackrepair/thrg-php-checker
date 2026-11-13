@@ -134,8 +134,10 @@ defined( 'ABSPATH' ) || exit;
                     : __( 'Plugin code', 'thrg-php-checker' );
                 $own_count       = isset( $row['own_issues'] ) ? (int) $row['own_issues'] : 0;
                 $bundled_count   = isset( $row['bundled_issues'] ) ? (int) $row['bundled_issues'] : 0;
+                $is_inactive     = $is_comp_card && empty( $row['comp_active'] ) && empty( $row['comp_network_active'] );
+                $card_extra_cls  = $is_inactive ? ' thrg-card--inactive' : '';
                 ?>
-                <article id="<?php echo esc_attr( $row['id'] ); ?>" class="thrg-card <?php echo esc_attr( $status_class( $row['status'] ) ); ?>">
+                <article id="<?php echo esc_attr( $row['id'] ); ?>" class="thrg-card <?php echo esc_attr( $status_class( $row['status'] ) . $card_extra_cls ); ?>">
                     <header class="thrg-card-header">
                         <div class="thrg-card-meta">
                             <span class="thrg-area-badge"><?php echo esc_html( $row['area'] ); ?></span>
