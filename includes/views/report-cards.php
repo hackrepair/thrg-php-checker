@@ -24,7 +24,7 @@ defined( 'ABSPATH' ) || exit;
                     <div class="thrg-pc-section-bar__actions">
                         <div class="thrg-pc-filter-group" role="group" aria-label="<?php esc_attr_e( 'Filter findings', 'thrg-php-checker' ); ?>">
                             <button type="button" class="button button-small thrg-pc-filter-btn is-active" data-filter="all" aria-pressed="true"><?php esc_html_e( 'All', 'thrg-php-checker' ); ?></button>
-                            <button type="button" class="button button-small thrg-pc-filter-btn" data-filter="breaks" aria-pressed="false"><?php esc_html_e( 'Will likely break', 'thrg-php-checker' ); ?></button>
+                            <button type="button" class="button button-small thrg-pc-filter-btn" data-filter="breaks" aria-pressed="false"><?php esc_html_e( 'Compatibility errors', 'thrg-php-checker' ); ?></button>
                             <button type="button" class="button button-small thrg-pc-filter-btn" data-filter="review" aria-pressed="false"><?php esc_html_e( 'Needs a look', 'thrg-php-checker' ); ?></button>
                             <button type="button" class="button button-small thrg-pc-filter-btn" data-filter="own" aria-pressed="false"><?php esc_html_e( 'Plugin / theme code only', 'thrg-php-checker' ); ?></button>
                         </div>
@@ -245,7 +245,7 @@ defined( 'ABSPATH' ) || exit;
                                     <?php
                                     printf(
                                         /* translators: %d: number of guarded or polyfill notes */
-                                        esc_html__( 'Show %d version-guarded / polyfill note(s) (verified safe at runtime)', 'thrg-php-checker' ),
+                                        esc_html__( 'Show %d version-guarded / polyfill note(s) (excluded by static guard analysis)', 'thrg-php-checker' ),
                                         count( $guarded_notes )
                                     );
                                     ?>

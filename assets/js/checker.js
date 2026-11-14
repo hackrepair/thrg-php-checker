@@ -50,6 +50,13 @@
         if ( hash ) {
             url += hash;
         }
+        // A hash-only navigation does not reload the completed scan results.
+        var destination = new URL( url, window.location.href );
+        if ( destination.origin === window.location.origin && destination.pathname === window.location.pathname && destination.search === window.location.search ) {
+            window.history.replaceState( null, '', destination.href );
+            window.location.reload();
+            return;
+        }
         window.location.href = url;
     }
 
@@ -435,7 +442,7 @@
                             statusEl.hidden = false;
                             statusEl.textContent = d.message || '';
                         }
-                        if ( 'fixed' === d.status || 'warnings_only' === d.status || 'still_fails' === d.status ) {
+                        if ( 'fixed' === d.status || 'warnings_only' === d.status || 'still_fails' === d.status || 'needs_review' === d.status ) {
                             var hash = card && card.id ? '#' + card.id : '';
                             redirectToTarget( target, hash );
                         }

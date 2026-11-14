@@ -14,7 +14,7 @@ defined( 'ABSPATH' ) || exit;
                     <header class="thrg-card-header">
                         <div class="thrg-card-meta">
                             <span class="thrg-area-badge"><?php esc_html_e( 'Passed Checks', 'thrg-php-checker' ); ?></span>
-                            <span class="thrg-status-pill thrg-status-ok"><?php esc_html_e( 'Compatible', 'thrg-php-checker' ); ?></span>
+                            <span class="thrg-status-pill thrg-status-ok"><?php esc_html_e( 'No issues detected', 'thrg-php-checker' ); ?></span>
                         </div>
                         <h2 class="thrg-card-title">
                             <?php

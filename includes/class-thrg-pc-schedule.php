@@ -166,7 +166,16 @@ final class THRG_PC_Schedule {
         if ( ! $only_issues ) {
             return true;
         }
+        $health = THRG_PC_Grade::report_health( $rows );
+        if ( $health['incomplete'] || $health['legacy'] || $health['unknown'] ) {
+            return true;
+        }
         $g = THRG_PC_Email::groups( $rows );
+        foreach ( $g['server'] as $server_row ) {
+            if ( 'No issue observed' !== $server_row['status'] ) {
+                return true;
+            }
+        }
         return (bool) ( $g['fix'] || $g['look'] );
     }
 

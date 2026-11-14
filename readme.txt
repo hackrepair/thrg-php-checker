@@ -4,7 +4,7 @@ Tags: php, compatibility, php 8.3, php 8.4, upgrade
 Requires at least: 6.4
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 1.2.7
+Stable tag: 1.2.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Support link: https://github.com/hackrepair/thrg-php-checker/discussions
@@ -15,7 +15,7 @@ Your friendly WordPress PHP compatibility checker. Tests plugins and themes for 
 
 Upgrading PHP is one of the best ways to keep WordPress fast and secure, right up until an older plugin throws a fatal error on upgrade day. PHP Checker helps you find that plugin before you switch.
 
-The Hack Repair Guy's PHP Checker runs entirely inside WordPress (no `exec()` or shell access needed), automatically filters out runtime version guards and polyfills, and puts any plugin or theme that will actually break your site right at the top of the report.
+The Hack Repair Guy's PHP Checker runs entirely inside WordPress (no `exec()` or shell access needed), automatically filters out runtime version guards and polyfills, and prioritizes potential fatal errors and unknown-impact findings for review.
 
 Open **Tools > PHP Checker**, pick your target PHP version (**8.1, 8.2, 8.3, 8.4, or 8.5**), and click **Scan**. It checks:
 
@@ -26,7 +26,7 @@ Open **Tools > PHP Checker**, pick your target PHP version (**8.1, 8.2, 8.3, 8.4
 * **Server PHP support lifecycle and security patch status**, including end-of-life countdowns and known PHP security advisories (such as PHP2Shell, CVE-2026-109618 and CVE-2026-109619)
 * **Optional in-memory Pending Update Pre-Scan** (off by default) to inspect offered plugin and theme update zip packages against your running PHP version before you install them
 
-**Designed for first-time users and seasoned developers alike.** A plain-English readiness banner at the top of the report immediately tells you whether it is safe to upgrade or which plugin needs attention first. Fatal incompatibilities sit at the very top with their `file:line` error tables open; minor deprecation warnings are grouped below with collapsible technical drawers so you are never overwhelmed by a wall of stack traces.
+**Designed for first-time users and seasoned developers alike.** A plain-English readiness banner at the top of the report helps you identify findings that need review before upgrading. Fatal incompatibilities sit at the very top with their `file:line` error tables open; minor deprecation warnings are grouped below with collapsible technical drawers so you are never overwhelmed by a wall of stack traces.
 
 **Your scans build a local history.** Completed scans are saved on your own site (up to 25 reports within a 600,000-byte limit), showing what is new and what you have fixed since your previous check for that PHP version. Pause, reopen, delete, or clear history anytime.
 
@@ -57,7 +57,7 @@ Update checks use [Plugin Update Checker](https://github.com/YahnisElsts/plugin-
 1. In WordPress, open Plugins > Add New > Upload Plugin and select the plugin ZIP. You can also upload the `thrg-php-checker` folder to `wp-content/plugins/`.
 2. Activate The Hack Repair Guy's PHP Checker.
 3. Open Tools > PHP Checker, select your target PHP version (PHP 8.3 is selected by default), and click Scan.
-4. Review the plain-English Readiness Verdict banner at the top and any red "Likely to break" plugin cards first.
+4. Review the plain-English Readiness Verdict banner at the top and the "Compatibility errors" findings first.
 5. Optional: open Share, Download, Print, or Email This Report to send a copy to your developer or other administrators, or set up the Scheduled Readiness Email.
 
 == Support ==
@@ -99,7 +99,19 @@ PHP Checker automatically prunes uninstalled plugins/themes and outdated compone
 
 == Changelog ==
 
+= 1.2.8 =
+* Separate compatibility impact, execution evidence, origin and scan coverage. Logging settings, filenames, fallback hints and bundled origin cannot lower fatal impact.
+* Keep unmapped errors prominent without labeling their impact as proven fatal. Startup-file discovery remains a hint.
+* Preserve complete aggregate counts before bounding displayed findings, retain coverage-gap reasons, and request refreshed evidence when older results lack required checks.
+* Mark syntax the host cannot validate as incomplete coverage; do not execute scanned code or infer a target-PHP fatal error from the host parser alone.
+* Ignore source PHPCS suppression comments during compatibility scans and handle empty files normally.
+* Align report downloads, email alternatives, history comparisons and update assessments with the same evidence limits. Older snapshots keep their recorded grading rules.
+* Bind the GitHub update download to the exact versioned asset even when another ZIP appears first. Keep the required release asset and latest stable release strategy.
+* Refresh completed single-component rescans on the same page, preserve plugin-owned notices, and align component summary counts.
+* Synchronize version metadata and validate it during package builds.
+
 = 1.2.7 =
+* Historical local prerelease behavior below is superseded by the 1.2.8 confidence rules.
 * Every plugin and theme now gets a plain-language grade instead of a flat "Incompatible": Breaks on load, Likely to break, Review: fallback code, Review: bundled library, Minor changes, Deprecation warnings, or Compatible.
 * Errors that only sit on fallback paths, such as code that runs only when a PHP feature is missing, are labelled "Review: fallback code" instead of "Likely to break".
 * The red "Hold off" banner now appears only when an active plugin or theme is likely to break. Inactive components and review items get a calmer "Review before upgrading" banner.

@@ -52,7 +52,7 @@ final class THRG_PC_Updater {
         require_once __DIR__ . '/class-thrg-pc-update-notices.php';
         new THRG_PC_Update_Notices( $this->checker );
 
-        $api->enableReleaseAssets( self::ASSET_PATTERN, Api::REQUIRE_RELEASE_ASSETS );
+        self::configure_release_assets( $api );
 
         $this->checker->addFilter(
             'vcs_update_detection_strategies',
@@ -63,13 +63,29 @@ final class THRG_PC_Updater {
             }
         );
 
+        $this->checker->addFilter( 'request_info_result', array( __CLASS__, 'clean_info' ), 20, 2 );
+    }
+
+    /**
+     * Bind the download selector to the release accepted by the filter.
+     *
+     * @param object $api Update API with asset and release-filter support.
+     * @return void
+     */
+    public static function configure_release_assets( $api ) {
+        $api->enableReleaseAssets( self::ASSET_PATTERN, Api::REQUIRE_RELEASE_ASSETS );
         $api->setReleaseFilter(
-            array( __CLASS__, 'release_has_asset' ),
+            static function ( $version, $release ) use ( $api ) {
+                if ( ! self::release_has_asset( $version, $release ) ) {
+                    return false;
+                }
+                $expected = 'thrg-php-checker.' . $version . '.zip';
+                $api->enableReleaseAssets( '/^' . preg_quote( $expected, '/' ) . '$/', Api::REQUIRE_RELEASE_ASSETS );
+                return true;
+            },
             Api::RELEASE_FILTER_SKIP_PRERELEASE,
             1
         );
-
-        $this->checker->addFilter( 'request_info_result', array( __CLASS__, 'clean_info' ), 20, 2 );
     }
 
     /**

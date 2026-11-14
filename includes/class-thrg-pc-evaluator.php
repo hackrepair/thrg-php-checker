@@ -201,6 +201,7 @@ final class THRG_PC_Evaluator {
                 'area'       => 'Scanner',
                 'label'      => 'Scanner engine unavailable',
                 'title'      => 'Scanner engine unavailable',
+                'coverage'   => 'not_scanned',
                 'status'     => 'Not available',
                 'badge_text' => 'Unavailable',
                 'nav_hint'   => 'Error',
@@ -216,10 +217,10 @@ final class THRG_PC_Evaluator {
                 'next_steps' => 'Ensure the PHP tokenizer extension is enabled and vendor/thrg-scan-engine is intact.',
                 'links'      => array( $mig_link, 'wp-php-compatibility' ),
             );
-        } elseif ( 0 === $scanned_comps ) {
-            $overview_current = sprintf( '0 of %d installed components scanned for PHP %s', $total_comps, $target );
+        } elseif ( $scanned_comps < $total_comps ) {
+            $overview_current = sprintf( '%d of %d installed components scanned for PHP %s', $scanned_comps, $total_comps, $target );
             $overview_meaning = sprintf(
-                'No static scan results are stored yet for PHP %1$s. This site has %2$d installed components (plugins, must-use plugins, and themes) ready to inspect.',
+                'The scan for PHP %1$s does not cover every installed component. This site has %2$d installed plugins, must-use plugins and themes.',
                 $target,
                 $total_comps
             );
@@ -227,7 +228,8 @@ final class THRG_PC_Evaluator {
             $overview_row     = array(
                 'id'         => 'scan-overview',
                 'area'       => 'Getting Started',
-                'label'      => sprintf( 'Ready to scan for PHP %s', $target ),
+                'coverage'   => $scanned_comps ? 'partial' : 'not_scanned',
+                'label'      => sprintf( 'Complete the scan for PHP %s', $target ),
                 'title'      => sprintf( 'Ready to scan for PHP %s', $target ),
                 'status'     => 'Review',
                 'badge_text' => 'Not scanned yet',
@@ -256,19 +258,23 @@ final class THRG_PC_Evaluator {
             $u_warn    = 0;
             $u_checked = 0;
             $u_lines   = array();
+            $u_pending = 0;
             $guard_ver = isset( $o['running_php'] ) ? (string) $o['running_php'] : THRG_PHP_Checker::running_php();
 
             foreach ( $update_items as $u ) {
                 $guard_ver = isset( $u['guard'] ) ? (string) $u['guard'] : $guard_ver;
                 if ( ! empty( $u['result'] ) && is_array( $u['result'] ) ) {
                     ++$u_checked;
-                    $uv = isset( $u['result']['verdict'] ) ? (string) $u['result']['verdict'] : 'ok';
-                    if ( 'breaks' === $uv ) {
+                    $uv = THRG_PC_Results::update_assessment( $u['result'] );
+                    if ( 'pending' === $uv ) {
+                        ++$u_pending;
+                    }
+                    if ( in_array( $uv, array( 'still_fails', 'needs_review' ), true ) ) {
                         ++$u_breaks;
                         $u_lines[] = sprintf( '%s %s (%d error(s) on PHP %s)', $u['slug'], $u['new_version'], (int) $u['result']['errors'], $guard_ver );
-                    } elseif ( in_array( $uv, array( 'warnings', 'partial' ), true ) ) {
+                    } elseif ( in_array( $uv, array( 'warnings_only', 'pending' ), true ) ) {
                         ++$u_warn;
-                        $u_lines[] = sprintf( '%s %s (%d warning(s) on PHP %s)', $u['slug'], $u['new_version'], (int) $u['result']['warnings'], $guard_ver );
+                        $u_lines[] = sprintf( '%s %s (review findings or incomplete evidence for PHP %s)', $u['slug'], $u['new_version'], $guard_ver );
                     }
                 }
             }
@@ -294,22 +300,23 @@ final class THRG_PC_Evaluator {
                     $u_hint    = $u_warn > 0 ? sprintf( '%d warn', $u_warn ) : 'Partial';
                     $u_current = sprintf( '%d of %d pending update(s) checked against PHP %s (%d with warnings)', $u_checked, count( $update_items ), $guard_ver, $u_warn );
                     $u_meaning = $u_lines
-                        ? 'Offered update(s) reported deprecation warnings on PHP ' . $guard_ver . ': ' . implode( '; ', $u_lines ) . '.'
+                        ? 'Offered update(s) need review or a completed scan for PHP ' . $guard_ver . ': ' . implode( '; ', $u_lines ) . '.'
                         : sprintf( '%d of %d pending update(s) have been pre-scanned so far against PHP %s.', $u_checked, count( $update_items ), $guard_ver );
                     $u_next    = $u_checked < count( $update_items )
                         ? 'Click Check Pending Updates in Settings below to finish inspecting remaining update packages.'
-                        : 'Review deprecation details before updating on production.';
+                        : 'Review the evidence and complete any partial scans before updating on production.';
                 } else {
                     $u_status  = 'No issue observed';
-                    $u_badge   = 'Updates compatible';
+                    $u_badge   = 'No counted update findings';
                     $u_hint    = 'Clean';
                     $u_current = sprintf( 'All %d pending update(s) passed static checks for PHP %s', $u_checked, $guard_ver );
                     $u_meaning = sprintf( 'Every currently offered plugin and theme update zip was inspected in memory and reported 0 errors or warnings for PHP %s.', $guard_ver );
-                    $u_next    = 'No action required for PHP compatibility on these pending updates.';
+                    $u_next    = 'Test affected features before relying on these pending updates.';
                 }
 
                 $update_row = array(
                     'id'           => 'update-checks',
+                    'coverage'     => $u_pending || $u_checked < count( $update_items ) ? 'partial' : 'complete',
                     'area'         => 'Updates',
                     'label'        => sprintf( 'Pending updates (PHP %s)', $guard_ver ),
                     'title'        => sprintf( 'Pending update compatibility (PHP %s)', $guard_ver ),
@@ -480,7 +487,7 @@ final class THRG_PC_Evaluator {
             $counts[] = sprintf( '%d %s', $warnings, 1 === $warnings ? 'warning' : 'warnings' );
         }
         if ( $skipped > 0 ) {
-            $counts[] = sprintf( '%d oversized %s skipped', $skipped, 1 === $skipped ? 'file' : 'files' );
+            $counts[] = sprintf( '%d %s not fully analyzed', $skipped, 1 === $skipped ? 'file' : 'files' );
         }
         if ( ! $counts ) {
             $counts[] = '0 errors, 0 warnings';
@@ -508,17 +515,23 @@ final class THRG_PC_Evaluator {
         }
 
         // Compatibility grade 1-7: how likely the findings are to break a site (see THRG_PC_Grade).
-        $evidence  = array_merge(
+        $evidence       = array_merge(
             array(
-                'marker'     => false,
-                'strong'     => false,
-                'boot_files' => isset( $r['boot_files'] ) && is_array( $r['boot_files'] ) ? $r['boot_files'] : array(),
+                'marker'            => false,
+                'strong'            => false,
+                'target'            => $target,
+                'coverage'          => $skipped > 0 ? 'partial' : 'complete',
+                'expected_errors'   => $errors,
+                'expected_warnings' => $warnings,
+                'boot_files'        => isset( $r['boot_files'] ) && is_array( $r['boot_files'] ) ? $r['boot_files'] : array(),
             ),
             $evidence
         );
-        $graded    = THRG_PC_Grade::component( $items, $evidence );
-        $grade     = (int) $graded['grade'];
-        $grade_why = '';
+        $graded         = THRG_PC_Results::classification( $r );
+        $grade          = (int) $graded['grade'];
+        $unknown_errors = (int) $graded['unknown'];
+        $fatal_errors   = (int) $graded['fatal'];
+        $grade_why      = '';
         if ( 'breaks' === $verdict && $grade > 6 ) {
             $grade = 2;
         } elseif ( 'warnings' === $verdict ) {
@@ -526,20 +539,16 @@ final class THRG_PC_Evaluator {
         } elseif ( 'breaks' !== $verdict ) {
             $grade = 7;
         }
-        $bundled_only = 4 === $grade;
+        $bundled_only = $errors > 0 && 0 === $own_errors;
         if ( 'breaks' === $verdict ) {
             $status = THRG_PC_Grade::status( $grade );
         }
-        if ( 3 === $grade && ! empty( $graded['reasons'] ) ) {
-            $reason_keys = array_keys( $graded['reasons'] );
-            $grade_why   = THRG_PC_Scope::reason_text( $reason_keys[0] );
-        }
         $evidence_label = ! empty( $evidence['marker'] ) && in_array( $verdict, array( 'breaks', 'warnings' ), true )
-            ? sprintf( 'Loads on PHP %s on this site', (string) $target )
+            ? sprintf( 'Active on this site; server PHP %s', isset( $evidence['running_php'] ) ? (string) $evidence['running_php'] : PHP_VERSION )
             : '';
 
         if ( 'breaks' === $verdict ) {
-            $err_prefix = 1 === $grade ? sprintf( 'Breaks on PHP %s', (string) $target ) : THRG_PC_Grade::label( $grade );
+            $err_prefix = $unknown_errors && ! $fatal_errors ? 'Compatibility error: impact unknown' : THRG_PC_Grade::label( $grade );
             $badge_text = sprintf( '%s · %d %s', $err_prefix, $errors, 1 === $errors ? 'error' : 'errors' );
             if ( $warnings > 0 ) {
                 $badge_text .= sprintf( ', %d %s', $warnings, 1 === $warnings ? 'warning' : 'warnings' );
@@ -549,10 +558,10 @@ final class THRG_PC_Evaluator {
             $badge_text = sprintf( '%d deprecation %s', $warnings, 1 === $warnings ? 'warning' : 'warnings' );
             $nav_hint   = sprintf( '%d warn', $warnings );
         } elseif ( 'partial' === $verdict ) {
-            $badge_text = sprintf( '%d large %s skipped', $skipped, 1 === $skipped ? 'file' : 'files' );
+            $badge_text = sprintf( '%d %s not fully analyzed', $skipped, 1 === $skipped ? 'file' : 'files' );
             $nav_hint   = 'Partial';
         } else {
-            $badge_text = 'Compatible';
+            $badge_text = 'No issues detected';
             $nav_hint   = 'Clean';
         }
 
@@ -565,7 +574,7 @@ final class THRG_PC_Evaluator {
             $kind_word = 'theme' === $kind ? 'theme' : 'plugin';
             if ( 1 === $grade ) {
                 $meaning      = sprintf(
-                    '%1$s (%2$s, v%3$s) has %4$d error(s) in code that runs as soon as it loads. On PHP %5$s, WordPress can hit a fatal error the moment this %6$s is loaded, which can show a white screen or deactivate it.',
+                    '%1$s (%2$s, v%3$s) has %4$d potential fatal error(s) in a file identified as part of startup. Static include discovery does not prove every operation executes. Test this %6$s on PHP %5$s before relying on it.',
                     $name,
                     strtolower( $state_label ),
                     $version,
@@ -574,6 +583,9 @@ final class THRG_PC_Evaluator {
                     $kind_word
                 );
                 $next_default = sprintf( 'Do not switch to PHP %1$s while %2$s is active. Check for an updated release, contact the developer with the file and line numbers below, or replace this %3$s first.', $target, $name, $kind_word );
+            } elseif ( 2 === $grade && $unknown_errors && ! $fatal_errors ) {
+                $meaning      = sprintf( '%s has scanner errors whose runtime impact is not mapped. Their priority is retained until the listed rules and affected features are reviewed.', $name );
+                $next_default = sprintf( 'Review the listed rules and test %s on PHP %s before upgrading. Unknown impact does not establish compatibility.', $name, $target );
             } elseif ( 2 === $grade ) {
                 $meaning      = sprintf(
                     '%1$s (%2$s, v%3$s) contains %4$d unguarded PHP %5$s error(s). If those code paths execute on PHP %5$s, PHP can throw a fatal error or halt the request.',
@@ -584,26 +596,6 @@ final class THRG_PC_Evaluator {
                     $target
                 );
                 $next_default = sprintf( 'Check for an updated release of %1$s, contact the developer with the file and line numbers below, or replace this %2$s before upgrading the server to PHP %3$s.', $name, $kind_word, $target );
-            } elseif ( 3 === $grade ) {
-                $meaning      = sprintf(
-                    '%1$s (%2$s, v%3$s) has no error that runs when it loads. %4$d fatal-error finding(s) sit on fallback paths (%5$s), which modern servers seldom take. This is a review item rather than a confirmed incompatibility.',
-                    $name,
-                    strtolower( $state_label ),
-                    $version,
-                    (int) $graded['counts'][3],
-                    '' !== $grade_why ? $grade_why : 'fallback code'
-                );
-                $next_default = sprintf( 'Look at the fallback file(s) listed below. If the features that use them are off, no action is needed. Otherwise ask the developer to update them, and test %1$s on PHP %2$s before relying on it.', $name, $target );
-            } elseif ( 4 === $grade ) {
-                $meaning      = sprintf(
-                    '%1$s (%2$s, v%3$s) has no unguarded PHP %5$s errors in its own code. %4$d error(s) were found only inside bundled third-party libraries. Those paths often run only for optional features or older environments, so this is a review item rather than a confirmed incompatibility.',
-                    $name,
-                    strtolower( $state_label ),
-                    $version,
-                    $errors,
-                    $target
-                );
-                $next_default = sprintf( 'Look at the bundled library file(s) listed below. If the plugin features that use them are off, or the code is guarded for older PHP, no action is needed. Otherwise ask the developer to update the bundled library, and test the plugin on PHP %s before relying on it.', $target );
             } else {
                 $meaning      = sprintf(
                     '%1$s (%2$s, v%3$s) contains %4$d PHP %5$s compatibility error(s) (removed INI directives or behavioral changes). These will not throw a fatal crash on PHP %5$s, though affected code paths may behave differently.',
@@ -616,7 +608,7 @@ final class THRG_PC_Evaluator {
                 $next_default = sprintf( 'Review the listed settings or behaviour changes in %1$s and test the affected features on PHP %2$s.', $name, $target );
             }
             if ( '' !== $evidence_label ) {
-                $meaning .= sprintf( ' This server already runs PHP %1$s and this %2$s is active here, so it loads on PHP %1$s on this site; other sites may use different features.', $target, $kind_word );
+                $meaning .= sprintf( ' This %2$s is active here. Activation does not establish that the affected feature was exercised for the PHP %1$s target.', $target, $kind_word );
             }
             if ( '' !== $update_ver ) {
                 $next = sprintf(
@@ -646,14 +638,14 @@ final class THRG_PC_Evaluator {
             );
             $next    = '' !== $update_ver
                 ? sprintf( 'Update %1$s to version %2$s and click Rescan, or keep WP_DEBUG_DISPLAY off on live sites while the author updates deprecated calls.', $name, $update_ver )
-                : sprintf( 'Safe to upgrade to PHP %1$s with WP_DEBUG_DISPLAY off; keep %2$s updated as future releases clean up these deprecations.', $target, $name );
+                : sprintf( 'Test %2$s on PHP %1$s before upgrading; keep it updated as future releases address these deprecations.', $target, $name );
         } elseif ( 'partial' === $verdict ) {
             $meaning = sprintf(
-                '%1$s had 0 errors or warnings in scanned files, but %2$d PHP file(s) larger than 2 MB were skipped to prevent memory exhaustion.',
+                '%1$s had 0 errors or warnings in the analyzed code, but %2$d PHP file check(s) could not finish. Review the recorded reasons before relying on this result.',
                 $name,
                 $skipped
             );
-            $next    = 'Inspect the skipped oversized file(s) listed below manually or via CLI if they contain custom runtime code.';
+            $next    = 'Review the per-file reasons below. Validate syntax with the appropriate PHP runtime or inspect files that exceed the scan limits.';
         } else {
             $meaning = sprintf(
                 'No unguarded PHP %1$s errors or deprecation warnings were detected across %2$s (%3$s, v%4$s).',
@@ -664,11 +656,18 @@ final class THRG_PC_Evaluator {
             );
             if ( $notes > 0 ) {
                 $meaning .= sprintf(
-                    ' %d finding(s) inside runtime version guards or polyfill fallbacks were verified safe and downgraded to informational notes.',
+                    ' %d finding(s) inside runtime version guards or polyfill fallbacks were excluded by static guard analysis for this target and retained as informational notes.',
                     $notes
                 );
             }
             $next = 'No action required.';
+        }
+
+        if ( $unknown_errors && $fatal_errors ) {
+            $meaning .= sprintf( ' %d additional scanner error(s) have unmapped runtime impact and also need review.', $unknown_errors );
+        }
+        if ( 'stale' === $graded['coverage'] ) {
+            $meaning .= ' Some stored findings are no longer available for classification. Run a new scan to refresh the evidence.';
         }
 
         $wporg_fix_status = '';
@@ -686,45 +685,18 @@ final class THRG_PC_Evaluator {
             if ( '' !== $check_ver ) {
                 $upd_res = THRG_PC_Results::get_update( 'plugin', sanitize_key( $short_slug ), $check_ver, $target );
                 if ( is_array( $upd_res ) && isset( $upd_res['verdict'] ) ) {
-                    if ( in_array( $upd_res['verdict'], array( 'ok', 'clean' ), true ) ) {
-                        $wporg_fix_status = 'fixed';
-                        $wporg_fix_label  = sprintf( 'Fixed in v%s on WordPress.org', $check_ver );
-                        $next             = sprintf(
-                            'Good news: We scanned v%1$s from WordPress.org against PHP %2$s and confirmed all compatibility issues are fixed (0 errors, 0 warnings). Update %3$s now.',
-                            $check_ver,
-                            $target,
-                            $name
-                        );
-                    } elseif ( 'breaks' === $verdict && in_array( $upd_res['verdict'], array( 'warnings', 'works' ), true ) ) {
-                        $wporg_fix_status = 'warnings_only';
-                        $wporg_fix_label  = sprintf( 'Fatal errors fixed in v%s (%d warnings)', $check_ver, (int) $upd_res['warnings'] );
-                        $next             = sprintf(
-                            'Good news: v%1$s on WordPress.org fixes all fatal PHP %2$s errors (%3$d deprecation warning(s) remain). Update %4$s before upgrading PHP.',
-                            $check_ver,
-                            $target,
-                            (int) $upd_res['warnings'],
-                            $name
-                        );
-                    } elseif ( 'breaks' === $verdict && $grade <= 3 && 'breaks' === $upd_res['verdict'] && isset( $upd_res['grade'] ) && (int) $upd_res['grade'] >= 4 ) {
-                        $wporg_fix_status = 'warnings_only';
-                        $wporg_fix_label  = sprintf( 'Only review items left in v%s', $check_ver );
-                        $next             = sprintf(
-                            'Good news: v%1$s on WordPress.org has nothing likely to break on PHP %2$s. What remains sits in bundled libraries or minor behaviour changes, which are review items. Update %3$s before upgrading PHP.',
-                            $check_ver,
-                            $target,
-                            $name
-                        );
-                    } elseif ( 'breaks' === $upd_res['verdict'] ) {
-                        $wporg_fix_status = 'still_fails';
-                        $wporg_fix_label  = sprintf( 'Still fails in v%s (%d errors)', $check_ver, (int) $upd_res['errors'] );
-                        $next             = sprintf(
-                            'We scanned the newer v%1$s on WordPress.org and it still has %2$d fatal error(s) on PHP %3$s. Updating alone will not fix this — contact the author or replace %4$s.',
-                            $check_ver,
-                            (int) $upd_res['errors'],
-                            $target,
-                            $name
-                        );
-                    }
+                    $assessment       = THRG_PC_Prescan::summarize_wporg_fix( $upd_res, $check_ver, $target );
+                    $wporg_fix_status = $assessment['status'];
+                    $labels           = array(
+                        'fixed'         => 'No counted issues in v%s',
+                        'warnings_only' => 'Review findings in v%s',
+                        'still_fails'   => 'Fatal potential remains in v%s',
+                        'needs_review'  => 'Unknown impact in v%s',
+                        'pending'       => 'Incomplete evidence for v%s',
+                    );
+                    $wporg_fix_label  = sprintf( $labels[ $wporg_fix_status ], $check_ver );
+                    $next             = $assessment['message'];
+
                 }
             }
         }
@@ -830,53 +802,57 @@ final class THRG_PC_Evaluator {
         $title = sprintf( '%s (%s)', $name, $version );
 
         return array(
-            'id'                  => 'comp-' . sanitize_title( $kind . '-' . $slug ),
-            'area'                => $area,
-            'label'               => $title,
-            'title'               => $title,
-            'status'              => $status,
-            'badge_text'          => $badge_text,
-            'nav_hint'            => $nav_hint,
-            'current'             => $current,
-            'why'                 => $meaning,
-            'meaning'             => $meaning,
-            'evidence'            => array( $current ),
-            'table'               => array(
+            'id'                     => 'comp-' . sanitize_title( $kind . '-' . $slug ),
+            'area'                   => $area,
+            'label'                  => $title,
+            'title'                  => $title,
+            'status'                 => $status,
+            'badge_text'             => $badge_text,
+            'nav_hint'               => $nav_hint,
+            'current'                => $current,
+            'why'                    => $meaning,
+            'meaning'                => $meaning,
+            'evidence'               => array( $current ),
+            'table'                  => array(
                 'head' => $table_rows ? array( 'Severity & Target', 'File : Line (Origin)', 'Issue & Triggered Rule' ) : array(),
                 'rows' => $table_rows,
             ),
-            'next'                => 'No action required.' === $next ? '' : $next,
-            'next_steps'          => $next,
-            'links'               => $comp_links,
-            'target'              => $target,
-            'comp_kind'           => $kind,
-            'comp_slug'           => $slug,
-            'comp_key'            => THRG_PC_Results::key( $kind, $slug ),
-            'comp_name'           => $name,
-            'comp_version'        => $version,
-            'comp_active'         => $active,
-            'comp_network_active' => $network,
-            'comp_parent_theme'   => $parent,
-            'comp_update_version' => $update_ver,
-            'wporg_fix_status'    => $wporg_fix_status,
-            'wporg_fix_label'     => $wporg_fix_label,
-            'verdict'             => $verdict,
-            'errors'              => $errors,
-            'fatal_errors'        => $fatal_errors,
-            'own_errors'          => $own_errors,
-            'bundled_only'        => $bundled_only,
-            'grade'               => $grade,
-            'grade_label'         => 7 === $grade ? 'Compatible' : THRG_PC_Grade::label( $grade ),
-            'grade_reason'        => $grade_why,
-            'evidence_label'      => $evidence_label,
-            'warnings'            => $warnings,
-            'skipped'             => $skipped,
-            'notes'               => $notes,
-            'own_issues'          => $own_issues,
-            'bundled_issues'      => $bundled_issues,
-            'files_total'         => $files_tot,
-            'findings'            => $items,
-            'scanned_at'          => isset( $r['scanned_at'] ) ? (int) $r['scanned_at'] : 0,
+            'next'                   => 'No action required.' === $next ? '' : $next,
+            'next_steps'             => $next,
+            'links'                  => $comp_links,
+            'target'                 => $target,
+            'comp_kind'              => $kind,
+            'comp_slug'              => $slug,
+            'comp_key'               => THRG_PC_Results::key( $kind, $slug ),
+            'comp_name'              => $name,
+            'comp_version'           => $version,
+            'comp_active'            => $active,
+            'comp_network_active'    => $network,
+            'comp_parent_theme'      => $parent,
+            'comp_update_version'    => $update_ver,
+            'wporg_fix_status'       => $wporg_fix_status,
+            'wporg_fix_label'        => $wporg_fix_label,
+            'verdict'                => $verdict,
+            'errors'                 => $errors,
+            'fatal_errors'           => $fatal_errors,
+            'unknown_errors'         => $unknown_errors,
+            'classification'         => $graded,
+            'own_errors'             => $own_errors,
+            'bundled_only'           => $bundled_only,
+            'grade'                  => $grade,
+            'classification_version' => THRG_PC_Grade::CLASSIFICATION_VERSION,
+            'coverage'               => $graded['coverage'],
+            'grade_label'            => 'partial' === $verdict ? 'Scan incomplete' : ( $unknown_errors && ! $fatal_errors ? 'Compatibility error: impact unknown' : THRG_PC_Grade::label( $grade ) ),
+            'grade_reason'           => $grade_why,
+            'evidence_label'         => $evidence_label,
+            'warnings'               => $warnings,
+            'skipped'                => $skipped,
+            'notes'                  => $notes,
+            'own_issues'             => $own_issues,
+            'bundled_issues'         => $bundled_issues,
+            'files_total'            => $files_tot,
+            'findings'               => $items,
+            'scanned_at'             => isset( $r['scanned_at'] ) ? (int) $r['scanned_at'] : 0,
         );
     }
 

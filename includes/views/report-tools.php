@@ -220,7 +220,11 @@ defined( 'ABSPATH' ) || exit;
                                             }
                                         }
                                         $diff     = THRG_PC_History::change( $item, $older );
-                                        $sum      = isset( $item['summary'] ) ? $item['summary'] : THRG_PC_History::summarize( $item['rows'] );
+                                        $sum      = isset( $item['summary'] ) ? $item['summary'] : ( isset( $item['attention'], $item['review'], $item['observed'] ) ? array(
+											'attention' => $item['attention'],
+											'review'    => $item['review'],
+											'observed'  => $item['observed'],
+										) : THRG_PC_History::summarize( $item['rows'] ) );
                                         $view_url = add_query_arg(
                                             array(
                                                 'page'   => THRG_PHP_Checker::SLUG,
@@ -246,14 +250,18 @@ defined( 'ABSPATH' ) || exit;
                                             </td>
                                             <td>
                                                 <?php
-                                                if ( ! empty( $diff['first'] ) ) {
+                                                if ( isset( $diff['reason'] ) && 'rules_changed' === $diff['reason'] ) {
+                                                    esc_html_e( 'Grading rules changed', 'thrg-php-checker' );
+                                                } elseif ( isset( $diff['reason'] ) && 'incomplete_evidence' === $diff['reason'] ) {
+                                                    esc_html_e( 'Evidence incomplete; comparison withheld', 'thrg-php-checker' );
+                                                } elseif ( ! empty( $diff['first'] ) ) {
                                                     esc_html_e( 'Baseline scan', 'thrg-php-checker' );
                                                 } elseif ( 0 === (int) $diff['new'] && 0 === (int) $diff['resolved'] ) {
                                                     esc_html_e( 'No change', 'thrg-php-checker' );
                                                 } else {
                                                     printf(
                                                         /* translators: 1: new issues, 2: resolved issues */
-                                                        esc_html__( '+%1$d new / -%2$d resolved', 'thrg-php-checker' ),
+                                                        esc_html__( '+%1$d new / %2$d no longer flagged', 'thrg-php-checker' ),
                                                         (int) $diff['new'],
                                                         (int) $diff['resolved']
                                                     );

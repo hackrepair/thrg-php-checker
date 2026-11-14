@@ -66,6 +66,61 @@ final class THRG_PC_Text_Report {
     }
 
     /**
+     * Shared classification details for exports and both email bodies.
+     *
+     * @param array $row Evaluated or saved row.
+     * @return string[]
+     */
+    public static function classification_lines( array $row ) {
+        if ( empty( $row['comp_key'] ) ) {
+            return array();
+        }
+        $coverage = isset( $row['coverage'] ) ? (string) $row['coverage'] : 'unknown';
+        $labels   = array(
+            'complete'    => 'Complete for this component',
+            'partial'     => 'Incomplete: some file checks could not finish',
+            'stale'       => 'Stale: retained evidence is incomplete; rescan this component',
+            'not_scanned' => 'Not scanned',
+            'unknown'     => 'Not recorded; do not infer complete coverage',
+        );
+        $lines    = array(
+            'Classification rules: ' . ( isset( $row['classification_version'] ) ? (string) $row['classification_version'] : 'earlier version (not recorded)' ),
+            'Scan coverage: ' . ( isset( $labels[ $coverage ] ) ? $labels[ $coverage ] : $labels['unknown'] ),
+        );
+        if ( isset( $row['classification_version'] ) && THRG_PC_Grade::CLASSIFICATION_VERSION !== (int) $row['classification_version'] ) {
+            $lines[] = 'Saved snapshot uses earlier grading rules; run a new scan for current classifications.';
+        }
+        if ( isset( $row['fatal_errors'] ) ) {
+            $lines[] = 'Known rules with fatal potential: ' . (int) $row['fatal_errors'];
+        }
+        if ( isset( $row['unknown_errors'] ) ) {
+            $lines[] = 'Errors with unmapped runtime impact: ' . (int) $row['unknown_errors'];
+        }
+        return $lines;
+    }
+
+    /**
+     * Evidence caveat shared by exported and emailed reports.
+     *
+     * @param array[] $rows Evaluated or saved rows.
+     * @return string
+     */
+    public static function evidence_notice( array $rows ) {
+        $health = THRG_PC_Grade::report_health( $rows );
+        $parts  = array();
+        if ( $health['legacy'] ) {
+            $parts[] = 'This report includes saved results from earlier grading rules. Their recorded classifications have been preserved.';
+        }
+        if ( $health['incomplete'] ) {
+            $parts[] = 'Coverage is incomplete, stale or unrecorded. Complete or refresh the scan before relying on this report.';
+        }
+        if ( $health['unknown'] ) {
+            $parts[] = sprintf( '%d scanner error(s) have unmapped runtime impact and require review.', $health['unknown'] );
+        }
+        return implode( ' ', $parts );
+    }
+
+    /**
      * Build a plain-text report suitable for clipboard copy, .txt download, or email attachment.
      *
      * @param array[] $rows      Evaluated findings.
@@ -88,6 +143,10 @@ final class THRG_PC_Text_Report {
             $lines[] = 'Generated: ' . $timestamp;
         }
         $lines[] = 'Running PHP: ' . PHP_VERSION . ' | Target PHP: ' . $target;
+        $notice  = self::evidence_notice( $rows );
+        if ( '' !== $notice ) {
+            $lines[] = $notice;
+        }
         $lines[] = str_repeat( '=', 64 );
         $lines[] = '';
 
@@ -96,6 +155,7 @@ final class THRG_PC_Text_Report {
             if ( ! empty( $r['comp_key'] ) && ! empty( $r['grade'] ) && (int) $r['grade'] < 7 ) {
                 $lines[] = 'Grade: ' . $r['grade_label'] . ( ! empty( $r['evidence_label'] ) ? ' (' . $r['evidence_label'] . ')' : '' );
             }
+            $lines   = array_merge( $lines, self::classification_lines( $r ) );
             $lines[] = 'Current value: ' . self::strip_links( $r['current'] );
             $lines[] = 'What this means: ' . self::strip_links( $r['meaning'] );
             $lines[] = 'Suggested next steps: ' . self::strip_links( $r['next_steps'] );

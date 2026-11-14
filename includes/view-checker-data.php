@@ -42,6 +42,8 @@ $has_fatal_err = false;
 $warn_comps    = 0;
 $review_names  = array();
 $has_tech_rows = 0;
+$partial_scan  = 0;
+$stale_scan    = 0;
 
 foreach ( $rows as $row ) {
     if ( 'Potential weakness' === $row['status'] ) {
@@ -50,10 +52,12 @@ foreach ( $rows as $row ) {
         } else {
             ++$counts['attention'];
         }
-    } elseif ( 'No issue observed' === $row['status'] ) {
-        ++$counts['clean'];
-    } else {
-        ++$counts['review'];
+    } elseif ( ! empty( $row['comp_key'] ) ) {
+        if ( 'No issue observed' === $row['status'] ) {
+            ++$counts['clean'];
+        } else {
+            ++$counts['review'];
+        }
     }
 
     if ( ! empty( $row['comp_key'] ) && 'No issue observed' === $row['status'] ) {
@@ -80,7 +84,11 @@ foreach ( $rows as $row ) {
                 }
             }
         } else {
-            $nav_review[] = $row;
+            if ( empty( $row['comp_key'] ) ) {
+                $nav_server[] = $row;
+            } else {
+                $nav_review[] = $row;
+            }
             if ( ! empty( $row['comp_key'] ) ) {
                 if ( isset( $row['grade'] ) && (int) $row['grade'] >= 3 && (int) $row['grade'] <= 5 ) {
                     $review_names[] = (string) $row['comp_name'];
@@ -100,6 +108,17 @@ $scan_running = THRG_PC_Scanner::is_running( $scan_state );
 $scan_owned   = $scan_running && isset( $scan_state['user_id'] ) && ( 0 === (int) $scan_state['user_id'] || get_current_user_id() === (int) $scan_state['user_id'] );
 $scanned_now  = count( $observations['results'] );
 $total_comps  = count( $components );
+foreach ( $observations['results'] as $result ) {
+    if ( ! empty( $result['skipped'] ) ) {
+        ++$partial_scan;
+    }
+}
+
+foreach ( $rows as $row ) {
+    if ( isset( $row['coverage'] ) && 'stale' === $row['coverage'] ) {
+        ++$stale_scan;
+    }
+}
 
 $history_all     = THRG_PC_History::all();
 $history_enabled = THRG_PC_History::enabled();
@@ -144,7 +163,7 @@ $badge_label = static function ( array $row ) {
         return __( 'Action needed', 'thrg-php-checker' );
     }
     if ( 'No issue observed' === $row['status'] ) {
-        return __( 'Compatible', 'thrg-php-checker' );
+        return __( 'No issues detected', 'thrg-php-checker' );
     }
     return __( 'Review', 'thrg-php-checker' );
 };
@@ -192,8 +211,8 @@ if ( ! empty( $observations['engine_reason'] ) ) {
         $verdict_title = sprintf(
             /* translators: 1: target PHP version, 2: count of components with compatibility errors, 3: component names */
             _n(
-                'Review before upgrading to PHP %1$s — %2$d component has non-fatal compatibility errors (%3$s)',
-                'Review before upgrading to PHP %1$s — %2$d components have non-fatal compatibility errors (%3$s)',
+                'Review before upgrading to PHP %1$s — %2$d component has compatibility errors requiring review (%3$s)',
+                'Review before upgrading to PHP %1$s — %2$d components have compatibility errors requiring review (%3$s)',
                 count( $broken_names ),
                 'thrg-php-checker'
             ),
@@ -203,10 +222,18 @@ if ( ! empty( $observations['engine_reason'] ) ) {
         );
         $verdict_desc = sprintf(
             /* translators: %s: target PHP version */
-            __( 'The red item(s) below contain unguarded PHP %s compatibility errors (such as removed INI directives or behavioral changes) rather than hard fatal crashes. Review, update, or test them before switching PHP versions.', 'thrg-php-checker' ),
+            __( 'The listed PHP %s compatibility errors include rules whose impact needs review. Check the rule details and test the affected features before switching PHP versions.', 'thrg-php-checker' ),
             $selected_target
         );
     }
+} elseif ( ! $viewed_entry && $stale_scan > 0 ) {
+    $verdict_tone  = 'neutral';
+    $verdict_title = __( 'Stored scan evidence needs a refresh', 'thrg-php-checker' );
+    $verdict_desc  = __( 'Some older results lack evidence required by the current scanner. Rescan the affected components to refresh their classification summaries. Existing findings remain visible.', 'thrg-php-checker' );
+} elseif ( ! $viewed_entry && ( $partial_scan > 0 || $scanned_now < $total_comps ) ) {
+    $verdict_tone  = 'neutral';
+    $verdict_title = __( 'Compatibility scan incomplete', 'thrg-php-checker' );
+    $verdict_desc  = __( 'Some components have not been scanned or contain skipped files. Review the available findings and complete the scan before relying on the results.', 'thrg-php-checker' );
 } elseif ( ! empty( $review_names ) ) {
     $verdict_tone  = 'neutral';
     $shown_review  = implode( ', ', array_slice( $review_names, 0, 3 ) );
@@ -224,7 +251,7 @@ if ( ! empty( $observations['engine_reason'] ) ) {
     );
     $verdict_desc = sprintf(
         /* translators: %s: target PHP version */
-        __( 'None of your active plugins or themes is likely to break on PHP %s. The flagged components are inactive, or their errors sit in fallback code, bundled third-party libraries, or minor behaviour changes. Check the listed files, update where an update exists, and test before switching PHP versions.', 'thrg-php-checker' ),
+        __( 'Review the flagged components before upgrading to PHP %s. Inactive components may fail if activated, and behavior changes need testing. Static analysis does not exercise your site workflows.', 'thrg-php-checker' ),
         $selected_target
     );
 } elseif ( $warn_comps > 0 ) {
@@ -242,14 +269,14 @@ if ( ! empty( $observations['engine_reason'] ) ) {
     );
     $verdict_desc = sprintf(
         /* translators: %s: target PHP version */
-        __( 'All scanned plugins and themes can run on PHP %s. Deprecation warnings are early heads-up notices for developers about future PHP versions — they will not crash your site today (keep WP_DEBUG_DISPLAY off on live sites).', 'thrg-php-checker' ),
+        __( 'The scanned code has deprecation findings for PHP %s. Test affected features before upgrading and review your production logging settings.', 'thrg-php-checker' ),
         $selected_target
     );
 } else {
     $verdict_tone  = 'ok';
     $verdict_title = sprintf(
         /* translators: 1: count of scanned components, 2: target PHP version */
-        __( 'All clear! All %1$d scanned components passed PHP %2$s compatibility checks', 'thrg-php-checker' ),
+        __( 'No counted issues detected in %1$d scanned components for PHP %2$s', 'thrg-php-checker' ),
         $scanned_now,
         $selected_target
     );

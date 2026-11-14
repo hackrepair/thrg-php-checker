@@ -108,10 +108,13 @@ final class THRG_PC_History {
             'attention' => 0,
             'review'    => 0,
             'observed'  => 0,
+            'server'    => 0,
             'issues'    => array(),
         );
         foreach ( $rows as $row ) {
-            if ( 'Potential weakness' === $row['status'] ) {
+            if ( isset( $row['id'] ) && 'php-version' === $row['id'] ) {
+                ++$out['server'];
+            } elseif ( 'Potential weakness' === $row['status'] ) {
                 ++$out['attention'];
             } elseif ( 'No issue observed' === $row['status'] ) {
                 ++$out['observed'];
@@ -152,20 +155,22 @@ final class THRG_PC_History {
         array_unshift(
             $entries,
             array(
-                'schema'    => self::SCHEMA,
-                'id'        => $id,
-                'target'    => substr( (string) $target, 0, 10 ),
-                'time'      => (int) $now,
-                'site'      => substr( (string) $site, 0, 190 ),
-                'version'   => substr( (string) $version, 0, 20 ),
-                'user'      => (int) $user_id,
-                'name'      => substr( (string) $user_name, 0, 60 ),
-                'attention' => $summary['attention'],
-                'review'    => $summary['review'],
-                'observed'  => $summary['observed'],
-                'issues'    => $summary['issues'],
-                'hash'      => $hash,
-                'rows'      => $rows,
+                'schema'                 => self::SCHEMA,
+                'summary'                => $summary,
+                'classification_version' => THRG_PC_Grade::CLASSIFICATION_VERSION,
+                'id'                     => $id,
+                'target'                 => substr( (string) $target, 0, 10 ),
+                'time'                   => (int) $now,
+                'site'                   => substr( (string) $site, 0, 190 ),
+                'version'                => substr( (string) $version, 0, 20 ),
+                'user'                   => (int) $user_id,
+                'name'                   => substr( (string) $user_name, 0, 60 ),
+                'attention'              => $summary['attention'],
+                'review'                 => $summary['review'],
+                'observed'               => $summary['observed'],
+                'issues'                 => $summary['issues'],
+                'hash'                   => $hash,
+                'rows'                   => $rows,
             )
         );
         $entries     = array_slice( $entries, 0, self::MAX_ENTRIES );
@@ -250,17 +255,34 @@ final class THRG_PC_History {
      * @return array{first:bool,new:int,resolved:int}
      */
     public static function change( array $entry, $older ) {
+        $reason = '';
         if ( ! is_array( $older ) ) {
+            $reason = 'baseline';
+        } elseif ( ( isset( $entry['target'] ) ? $entry['target'] : '' ) !== ( isset( $older['target'] ) ? $older['target'] : '' ) ) {
+            $reason = 'target_changed';
+        } elseif ( ( isset( $entry['classification_version'] ) ? $entry['classification_version'] : 1 ) !== ( isset( $older['classification_version'] ) ? $older['classification_version'] : 1 ) ) {
+            $reason = 'rules_changed';
+        } else {
+            foreach ( array( $entry, $older ) as $snapshot ) {
+                $health = THRG_PC_Grade::report_health( isset( $snapshot['rows'] ) ? $snapshot['rows'] : array() );
+                if ( $health['incomplete'] || $health['legacy'] ) {
+                    $reason = 'incomplete_evidence';
+                }
+            }
+        }
+        if ( '' !== $reason ) {
             return array(
-                'first'    => true,
-                'new'      => 0,
-                'resolved' => 0,
-            );
+				'first'    => true,
+				'new'      => 0,
+				'resolved' => 0,
+				'reason'   => $reason,
+			);
         }
         $now  = isset( $entry['issues'] ) ? (array) $entry['issues'] : array();
         $then = isset( $older['issues'] ) ? (array) $older['issues'] : array();
         return array(
             'first'    => false,
+            'reason'   => 'comparable',
             'new'      => count( array_diff( $now, $then ) ),
             'resolved' => count( array_diff( $then, $now ) ),
         );

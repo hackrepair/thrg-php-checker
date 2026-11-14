@@ -137,7 +137,7 @@ final class THRG_PHP_Checker {
         return THRG_PC_Text_Report::plain_text( $rows, $site_host, $timestamp, $version, $target );
     }
 
-    const VERSION               = '1.2.1';
+    const VERSION               = '1.2.8';
     const SLUG                  = 'thrg-php-checker';
     const PAGE_URL              = 'tools.php?page=thrg-php-checker';
     const NEW_TAB_HINT          = '<span class="screen-reader-text"> (opens in a new tab)</span>';

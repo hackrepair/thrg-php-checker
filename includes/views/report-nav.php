@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
                         <?php
                         printf(
                             /* translators: %d: count of components likely to break */
-                            esc_html__( 'Likely to Break (%d)', 'thrg-php-checker' ),
+                            esc_html__( 'Compatibility Errors (%d)', 'thrg-php-checker' ),
                             count( $nav_attention )
                         );
                         ?>
@@ -94,7 +94,7 @@ defined( 'ABSPATH' ) || exit;
                                     <?php
                                     printf(
                                         /* translators: %d: number of clean components */
-                                        esc_html__( 'Compatible (%d)', 'thrg-php-checker' ),
+                                        esc_html__( 'No issues detected (%d)', 'thrg-php-checker' ),
                                         count( $clean_comps )
                                     );
                                     ?>

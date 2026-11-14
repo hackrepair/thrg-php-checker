@@ -113,7 +113,11 @@ defined( 'ABSPATH' ) || exit;
                                 if ( $summaries[ $t ]['breaks'] > 0 ) {
                                     printf(
                                         /* translators: %d: count of incompatible components */
-                                        esc_html__( '%d likely to break', 'thrg-php-checker' ),
+                                        ! empty( $summaries[ $t ]['unknown'] )
+                                            /* translators: %d: count of components with scanner errors */
+                                            ? esc_html__( '%d with errors requiring review', 'thrg-php-checker' )
+                                            /* translators: %d: count of components with potential fatal errors */
+                                            : esc_html__( '%d with potential fatal errors', 'thrg-php-checker' ),
                                         (int) $summaries[ $t ]['breaks']
                                     );
                                 } elseif ( $summaries[ $t ]['warnings'] > 0 ) {
@@ -164,12 +168,12 @@ defined( 'ABSPATH' ) || exit;
     <section class="thrg-summary" aria-label="<?php esc_attr_e( 'Compatibility Summary', 'thrg-php-checker' ); ?>">
         <div class="thrg-summary-tile thrg-summary-tile--weakness">
             <span class="thrg-summary-count"><?php echo (int) $counts['attention']; ?></span>
-            <span class="thrg-summary-label"><?php esc_html_e( 'Likely to break', 'thrg-php-checker' ); ?></span>
+            <span class="thrg-summary-label"><?php esc_html_e( 'Compatibility errors', 'thrg-php-checker' ); ?></span>
             <span class="thrg-summary-sub">
                 <?php
                 printf(
                     /* translators: %s: target PHP version */
-                    esc_html__( 'Own code likely to fail on PHP %s', 'thrg-php-checker' ),
+                    esc_html__( 'Components requiring error review for PHP %s', 'thrg-php-checker' ),
                     esc_html( $selected_target )
                 );
                 if ( ! empty( $counts['server'] ) ) {
@@ -185,7 +189,7 @@ defined( 'ABSPATH' ) || exit;
                 <?php
                 printf(
                     /* translators: %s: target PHP version */
-                    esc_html__( 'Fallback code, bundled libraries, minor changes or deprecations on PHP %s', 'thrg-php-checker' ),
+                    esc_html__( 'Behavior changes, deprecations or incomplete scans for PHP %s', 'thrg-php-checker' ),
                     esc_html( $selected_target )
                 );
                 ?>
@@ -193,7 +197,7 @@ defined( 'ABSPATH' ) || exit;
         </div>
         <div class="thrg-summary-tile thrg-summary-tile--ok">
             <span class="thrg-summary-count"><?php echo (int) $counts['clean']; ?></span>
-            <span class="thrg-summary-label"><?php esc_html_e( 'Compatible (Clean)', 'thrg-php-checker' ); ?></span>
+            <span class="thrg-summary-label"><?php esc_html_e( 'No issues detected', 'thrg-php-checker' ); ?></span>
             <span class="thrg-summary-sub">
                 <?php
                 printf(

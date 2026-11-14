@@ -82,6 +82,9 @@ defined( 'ABSPATH' ) || exit;
     <?php endif; ?>
 
     <?php if ( $viewed_entry ) : ?>
+        <?php if ( ! isset( $viewed_entry['classification_version'] ) || THRG_PC_Grade::CLASSIFICATION_VERSION !== (int) $viewed_entry['classification_version'] ) : ?>
+            <p class="thrg-pc-own notice notice-info"><?php esc_html_e( 'This saved report uses earlier grading rules. Run a new scan for current classifications.', 'thrg-php-checker' ); ?></p>
+        <?php endif; ?>
         <div class="thrg-pc-banner thrg-pc-banner--history">
             <div>
                 <strong>

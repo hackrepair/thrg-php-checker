@@ -134,7 +134,8 @@ final class THRG_PC_Engine {
             require_once $lib . '/phpcsutils/phpcsutils-autoload.php';
         }
         if ( ! isset( $loaded[ $test_version ] ) ) {
-            $config = new \PHP_CodeSniffer\Config( array( '--no-cache' ), false );
+            // Source annotations must not suppress an independent compatibility scan.
+            $config = new \PHP_CodeSniffer\Config( array( '--no-cache', '--ignore-annotations' ), false );
             $config->setConfigData( 'installed_paths', "$lib/phpcompatibility,$lib/phpcompatibility-paragonie,$lib/phpcompatibility-wp,$lib/phpcsutils", true );
             $config->standards = array( 'PHPCompatibilityWP' );
             $config->setConfigData( 'testVersion', $test_version, true );
@@ -358,6 +359,20 @@ final class THRG_PC_Engine {
                 }
             }
             $findings = THRG_PC_Context::mark_guarded( $findings, $tokens, $target );
+            // PHPCS tokenizes malformed source permissively. A host parse failure
+            // is a coverage gap, not proof of incompatibility on another PHP target.
+            try {
+                $source = $file->numTokens ? $file->getTokensAsString( 0, $file->numTokens, true ) : ''; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- Upstream PHPCS API.
+                token_get_all( $source, TOKEN_PARSE );
+            } catch ( CompileError $e ) {
+                $findings[] = self::skipped_note(
+                    sprintf(
+                        /* translators: %s: PHP version used to run the scanner */
+                        __( 'Syntax could not be validated on PHP %s. The code may be malformed or intended for a different PHP runtime.', 'thrg-php-checker' ),
+                        PHP_VERSION
+                    )
+                );
+            }
             $file->cleanUp();
         } catch ( Throwable $e ) {
             $findings = array( self::skipped_note( __( 'The scanner could not parse this file.', 'thrg-php-checker' ) ) );

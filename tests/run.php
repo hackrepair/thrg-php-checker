@@ -94,7 +94,28 @@ function delete_transient( $name ) {
 function wp_strip_all_tags( $text ) {
     return strip_tags( (string) $text );
 }
-function add_action() {}
+function add_action( $hook = '', $callback = null ) {
+    if ( 'phpmailer_init' === $hook ) {
+        $GLOBALS['thrg_test_mail_hooks'][] = $callback;
+    }
+}
+function remove_action( $hook, $callback ) {
+    if ( 'phpmailer_init' === $hook ) {
+        $GLOBALS['thrg_test_mail_hooks'] = array_values( array_filter( isset( $GLOBALS['thrg_test_mail_hooks'] ) ? $GLOBALS['thrg_test_mail_hooks'] : array(), static function ( $h ) use ( $callback ) { return $h !== $callback; } ) );
+    }
+}
+function get_users( $args ) {
+    unset( $args );
+    return array( (object) array( 'ID' => 991, 'display_name' => 'Local Reviewer', 'user_email' => 'reviewer@fixture.test' ) );
+}
+function wp_mail( $to, $subject, $message, $headers ) {
+    $mailer = (object) array( 'AltBody' => '' );
+    foreach ( isset( $GLOBALS['thrg_test_mail_hooks'] ) ? $GLOBALS['thrg_test_mail_hooks'] : array() as $callback ) {
+        $callback( $mailer );
+    }
+    $GLOBALS['thrg_test_captured_mail'][] = array( 'to' => $to, 'subject' => $subject, 'html' => $message, 'text' => $mailer->AltBody, 'headers' => $headers );
+    return true;
+}
 function add_filter() {}
 function apply_filters( $hook, $value ) {
     unset( $hook );
@@ -272,10 +293,37 @@ foreach ( $guard_paths as $path ) {
     @unlink( $path );
 }
 
+// Host syntax validation is a coverage check, and never executes source.
+list( $syntax_rules, $syntax_config ) = THRG_PC_Engine::ruleset( '8.3' );
+$union_source = "<?php\nfunction host_syntax_fixture(int|string \$value) { return \$value; }\n";
+$union_scan = THRG_PC_Engine::scan_content( $union_source, 'union.php', $syntax_rules, $syntax_config, '8.3' );
+$union_counts = THRG_PC_Results::count( $union_scan );
+assert_same( PHP_VERSION_ID < 80000, $union_counts['skipped'] > 0, 'Source newer than the host parser is a coverage gap, not a target compatibility diagnosis' );
+$execution_marker = sys_get_temp_dir() . '/thrg-pc-not-executed-' . uniqid();
+$static_source = '<?php file_put_contents(' . var_export( $execution_marker, true ) . ', "executed");';
+THRG_PC_Engine::scan_content( $static_source, 'never-execute.php', $syntax_rules, $syntax_config, '8.3' );
+assert_true( ! file_exists( $execution_marker ), 'Native syntax validation does not execute scanned code' );
+
+// Source formatting directives do not control an independent compatibility scan.
+$annotation_file = $tmp_dir . '/annotations.php';
+foreach ( array( 'ignore-file' => "<?php\n// phpcs:ignoreFile\ncreate_function('', '');\n", 'disable' => "<?php\n// phpcs:disable\ncreate_function('', '');\n", 'inline-ignore' => "<?php\ncreate_function('', ''); // phpcs:ignore\n" ) as $annotation_name => $annotation_source ) {
+    file_put_contents( $annotation_file, $annotation_source );
+    $annotation_scan = THRG_PC_Engine::scan( array( $annotation_file ), '8.3', microtime( true ) + 30.0 );
+    assert_true( THRG_PC_Results::count( $annotation_scan['scanned'][ $annotation_file ] )['errors'] > 0, $annotation_name . ' cannot suppress file compatibility errors' );
+    $annotation_memory = THRG_PC_Engine::scan_content( $annotation_source, 'annotation-memory.php', $syntax_rules, $syntax_config, '8.3' );
+    assert_true( THRG_PC_Results::count( $annotation_memory )['errors'] > 0, $annotation_name . ' cannot suppress in-memory archive findings' );
+}
+file_put_contents( $annotation_file, '' );
+$empty_file_scan = THRG_PC_Engine::scan( array( $annotation_file ), '8.3', microtime( true ) + 30.0 );
+assert_same( array(), $empty_file_scan['scanned'][ $annotation_file ], 'An empty file is not a failed parse' );
+assert_same( array(), THRG_PC_Engine::scan_content( '', 'empty-memory.php', $syntax_rules, $syntax_config, '8.3' ), 'Empty in-memory content is not a failed parse' );
+@unlink( $annotation_file );
+
 $malformed_file = $tmp_dir . '/malformed.php';
 file_put_contents( $malformed_file, "<?php\nfunction broken( {\n" );
 $malformed_scan = THRG_PC_Engine::scan( array( $malformed_file ), '8.4', microtime( true ) + 30.0 );
 assert_true( isset( $malformed_scan['scanned'][ $malformed_file ] ), 'Malformed PHP must produce a scan result without crashing the request' );
+assert_true( THRG_PC_Results::count( $malformed_scan['scanned'][ $malformed_file ] )['skipped'] > 0, 'Malformed source cannot be reported as a complete clean scan' );
 @unlink( $malformed_file );
 
 @unlink( $unguarded_file );
@@ -323,7 +371,8 @@ $dyn_scan_82 = THRG_PC_Engine::scan( $dyn_files, '8.2', microtime( true ) + 30.0
 $ord_findings = $dyn_scan_82['scanned'][ $dyn_ordinary_file ];
 $ord_counts   = THRG_PC_Results::count( $ord_findings );
 assert_same( 1, $ord_counts['warnings'], 'Ordinary undeclared property ($this->undeclared_prop) must warn on PHP 8.2+ while ignoring declared & promoted properties' );
-assert_same( 'PHPCompatibility.Classes.ForbiddenDynamicProperties.Found', $ord_findings[0]['source'], 'Dynamic property warning must report the exact rule code' );
+$ord_warnings = array_values( array_filter( $ord_findings, static function ( $f ) { return 'warning' === $f['type']; } ) );
+assert_same( 'PHPCompatibility.Classes.ForbiddenDynamicProperties.Found', $ord_warnings[0]['source'], 'Dynamic property warning must report the exact rule code' );
 
 $allow_counts = THRG_PC_Results::count( $dyn_scan_82['scanned'][ $dyn_inherited_allow_file ] );
 assert_same( 0, $allow_counts['warnings'], 'Class inheriting #[AllowDynamicProperties] must produce 0 warnings' );
@@ -369,7 +418,7 @@ foreach ( array( '8.0' => $legacy_80, '8.4' => $legacy_84 ) as $legacy_target =>
     assert_same( 'PHPCompatibility.FunctionNameRestrictions.RemovedPHP4StyleConstructors.Removed', $legacy_rows[0]['source'], 'Old constructor reports the removed-in-8.0 rule code on PHP ' . $legacy_target );
     assert_same( 3, $legacy_rows[0]['line'], 'Old constructor is reported on the method line on PHP ' . $legacy_target );
     assert_same( 'since PHP 7.0', THRG_PC_Results::rule_php_version( $legacy_rows[0]['message'], $legacy_rows[0]['source'], $legacy_target ), 'Old constructor message names the version it was deprecated in' );
-    assert_same( true, THRG_PC_Results::is_fatal_rule( $legacy_rows[0]['source'] ), 'Old constructor is in the fatal tier' );
+    assert_same( false, THRG_PC_Results::is_fatal_rule( $legacy_rows[0]['source'] ), 'Old constructor impact requires review rather than an assumed fatal crash' );
     assert_same( 0, THRG_PC_Results::count( $legacy_scan['scanned'][ $legacy_both ] )['errors'], 'Class that also has __construct() is not reported on PHP ' . $legacy_target );
     assert_same( 0, THRG_PC_Results::count( $legacy_scan['scanned'][ $legacy_ns ] )['errors'], 'Namespaced class is not reported on PHP ' . $legacy_target );
     assert_same( 0, THRG_PC_Results::count( $legacy_scan['scanned'][ $legacy_plain ] )['errors'], 'Ordinary class is not reported on PHP ' . $legacy_target );
@@ -513,18 +562,67 @@ foreach ( $graded_rows as $graded_row ) {
     }
 }
 assert_true( ! empty( $graded['bundled-only/bundled-only.php']['bundled_only'] ), 'Errors only in bundled code must be flagged bundled_only' );
-assert_same( 'Review', $graded['bundled-only/bundled-only.php']['status'], 'Bundled-only errors must use the Review status, not Potential weakness' );
+assert_same( 'Potential weakness', $graded['bundled-only/bundled-only.php']['status'], 'Bundled fatal errors retain fatal priority' );
 assert_same( 'breaks', $graded['bundled-only/bundled-only.php']['verdict'], 'Stored verdict stays breaks so filters and update checks keep working' );
-assert_true( 0 === strpos( $graded['bundled-only/bundled-only.php']['badge_text'], 'Review: bundled library' ), 'Bundled-only badge must read Review: bundled library' );
+assert_true( 0 === strpos( $graded['bundled-only/bundled-only.php']['badge_text'], 'Potential fatal error' ), 'Bundled fatal badge reflects impact' );
 assert_true( empty( $graded['mixed/mixed.php']['bundled_only'] ), 'Errors in the plugin\'s own code must not be flagged bundled_only' );
 assert_same( 'Potential weakness', $graded['mixed/mixed.php']['status'], 'Own-code errors keep the Potential weakness status' );
-assert_true( 0 === strpos( $graded['mixed/mixed.php']['badge_text'], 'Likely to break' ), 'Own-code errors in a function-scope finding read Likely to break' );
+assert_true( 0 === strpos( $graded['mixed/mixed.php']['badge_text'], 'Potential fatal error' ), 'Function-scope fatal findings use cautious wording' );
 assert_same( 2, $graded['mixed/mixed.php']['grade'], 'Own-code error without load-time evidence is grade 2' );
-assert_same( 4, $graded['bundled-only/bundled-only.php']['grade'], 'Bundled-only errors are grade 4' );
+assert_same( 2, $graded['bundled-only/bundled-only.php']['grade'], 'Bundled fatal findings are grade 2' );
 
 // 3c. Default target PHP version is 8.3 whatever PHP the server runs.
 assert_same( '8.3', THRG_PHP_Checker::default_target(), 'Default target PHP version must be 8.3' );
 assert_true( in_array( THRG_PHP_Checker::default_target(), THRG_PHP_Checker::scan_targets(), true ), 'Default target must be a supported scan target' );
+
+// Confidence regressions: site settings and origin cannot prove a fatal path unreachable.
+$confidence_fatal = array( 'type' => 'error', 'source' => 'PHPCompatibility.FunctionUse.RemovedFunctions.create_functionRemoved', 'scope' => 'function', 'file' => 'feature.php' );
+assert_same( 2, THRG_PC_Grade::finding_grade( $confidence_fatal, array( 'marker' => true, 'strong' => true ) ), 'Enabling runtime logging cannot downgrade a fatal function' );
+assert_same( 2, THRG_PC_Grade::finding_grade( array_merge( $confidence_fatal, array( 'reason' => 'fallback_caller' ) ), array() ), 'File-local caller analysis does not prove global reachability' );
+assert_same( 2, THRG_PC_Grade::finding_grade( array_merge( $confidence_fatal, array( 'file' => 'vendor/library/feature.php' ) ), array() ), 'Bundled origin does not lower fatal impact' );
+
+$confidence_mixed = array( $confidence_fatal, array( 'type' => 'skipped' ), array( 'type' => 'warning' ) );
+$confidence_result = THRG_PC_Grade::component( $confidence_mixed, array() );
+assert_same( $confidence_result, THRG_PC_Grade::component( array_reverse( $confidence_mixed ), array() ), 'Finding order does not change priority or counts' );
+assert_same( 1, $confidence_result['fatal'], 'Partial scan retains its fatal count' );
+assert_same( 'partial', $confidence_result['coverage'], 'Skipped files remain visible alongside fatal findings' );
+assert_same( 4, $confidence_result['classification_version'], 'Classification result identifies its rules version' );
+assert_same( THRG_PC_Grade::finding_grade( $confidence_fatal, array() ), THRG_PC_Grade::finding_grade( array_merge( $confidence_fatal, array( 'name_hint' => 1, 'file' => 'legacy.php' ) ), array( 'marker' => true ) ), 'Renaming a file and activating it cannot lower fatal impact' );
+assert_same( array( 'first' => true, 'new' => 0, 'resolved' => 0, 'reason' => 'rules_changed' ), THRG_PC_History::change( array( 'classification_version' => 2, 'issues' => array() ), array( 'issues' => array( 'plugin-old' ) ) ), 'A grading rule change cannot report an old finding as resolved' );
+
+// Structured impact must distinguish an identified fatal rule from an unmapped error.
+$unknown_finding = array_merge( $confidence_fatal, array( 'source' => 'FutureVendor.NewRule.Error' ) );
+$classified_unknown = THRG_PC_Grade::classify( $unknown_finding, array( 'target' => '8.3' ) );
+assert_same( 'unknown', $classified_unknown['impact'], 'Unmapped errors do not become invented fatal diagnoses' );
+assert_same( 2, $classified_unknown['grade'], 'Unknown errors retain attention priority' );
+assert_same( 'unmapped_rule', $classified_unknown['evidence_kind'], 'Unknown rule has an inspectable reason' );
+assert_same( '8.3', $classified_unknown['target'], 'Classification retains its supplied target' );
+assert_same( false, THRG_PC_Results::is_fatal_rule( 'FutureVendor.NewRule.Error' ), 'Fatal-rule adapter uses the same explicit mapping' );
+$classified_fatal = THRG_PC_Grade::classify( $confidence_fatal );
+assert_same( 'fatal', $classified_fatal['impact'], 'Known removed-function rule has fatal potential' );
+assert_same( 'unknown', $classified_fatal['reachability'], 'Function scope alone cannot establish execution' );
+assert_same( 'unknown', THRG_PC_Grade::component( array(), array() )['coverage'], 'Absence of findings is not proof of coverage' );
+assert_same( 'complete', THRG_PC_Grade::component( array(), array( 'coverage' => 'complete' ) )['coverage'], 'Caller can explicitly report a completed scan' );
+assert_same( 'stale', THRG_PC_Grade::component( array( array( 'type' => 'skipped' ) ), array( 'coverage' => 'stale' ) )['coverage'], 'A scan gap cannot erase stale evidence' );
+assert_same( 'unknown', THRG_PC_Grade::classify( array_merge( $confidence_fatal, array( 'reason' => 'fallback_caller' ) ) )['reachability'], 'A local caller hint cannot establish global execution' );
+assert_same( 'conditional', THRG_PC_Grade::classify( array_merge( $confidence_fatal, array( 'scope' => 'conditional', 'reason' => 'fallback_missing' ) ) )['reachability'], 'An environment branch is conditional rather than assumed rare' );
+$boot_hint = THRG_PC_Grade::classify( array_merge( $confidence_fatal, array( 'scope' => 'file' ) ), array( 'boot_files' => array( 'feature.php' ) ) );
+assert_same( 'startup_file_hint', $boot_hint['evidence_kind'], 'Literal include discovery remains an identified hint' );
+assert_same( 'unknown', $boot_hint['reachability'], 'Startup-file membership is not a control-flow proof' );
+$structured = THRG_PC_Grade::component( array( $confidence_fatal, $unknown_finding, array( 'type' => 'skipped' ) ), array( 'coverage' => 'complete' ) );
+assert_same( 1, $structured['fatal'], 'Unknown impacts are not counted as known fatal rules' );
+assert_same( 1, $structured['unknown'], 'Unknown impacts have an independent count' );
+assert_same( 'partial', $structured['coverage'], 'Skipped finding overrides a claimed complete scan' );
+assert_same( $structured, THRG_PC_Grade::component( array( array( 'type' => 'skipped' ), $unknown_finding, $confidence_fatal ), array( 'coverage' => 'complete' ) ), 'Structured aggregation is independent of order' );
+assert_same( $unknown_finding, array_merge( $confidence_fatal, array( 'source' => 'FutureVendor.NewRule.Error' ) ), 'Classification leaves the raw finding unchanged' );
+
+$missing_classification = THRG_PC_Grade::component( array(), array( 'coverage' => 'complete', 'expected_errors' => 2 ) );
+assert_same( 2, $missing_classification['unknown'], 'Missing retained errors become unknown impacts rather than disappearing' );
+assert_same( 'stale', $missing_classification['coverage'], 'Missing retained evidence requires a rescan' );
+assert_same( 2, $missing_classification['grade'], 'Stored errors remain prominent when details are missing' );
+$syntax_classification = THRG_PC_Grade::classify( array_merge( $confidence_fatal, array( 'source' => 'Generic.PHP.Syntax.Error' ) ), array( 'boot_files' => array( 'feature.php' ) ) );
+assert_same( 1, $syntax_classification['grade'], 'Parse failures in a startup file remain startup candidates even inside a function' );
+assert_same( 'unknown', $syntax_classification['reachability'], 'Parse evidence still does not prove an include executes' );
 
 // 3d. Compatibility grade 1-7 (1.2.7).
 $g_ctx  = array( 'boot_files' => array( 'main.php' ), 'marker' => false, 'strong' => false );
@@ -536,18 +634,18 @@ assert_same( 2, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scop
 assert_same( 2, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scope' => 'conditional' ) ), $g_ctx ), 'Conditional top-level error is grade 2 without a fallback reason' );
 assert_same( 2, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scope' => 'file' ) ), array() ), 'Without a boot-file list nothing reaches grade 1' );
 assert_same( 2, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scope' => 'file', 'source' => 'PHPCompatibility.FunctionNameRestrictions.RemovedPHP4StyleConstructors.Removed' ) ), $g_ctx ), 'Rules that do not fail at load time never reach grade 1' );
-assert_same( 3, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scope' => 'file', 'reason' => 'fallback_or' ) ), $g_ctx ), 'A fallback reason makes a fatal own-code error grade 3, even at file scope' );
-assert_same( 4, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'file' => 'vendor/lib/a.php' ) ), $g_ctx ), 'Bundled library error is grade 4' );
+assert_same( 2, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scope' => 'conditional', 'reason' => 'fallback_or' ) ), $g_ctx ), 'A fallback hint does not lower fatal impact' );
+assert_same( 2, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'file' => 'vendor/lib/a.php' ) ), $g_ctx ), 'Bundled fatal error retains grade 2' );
 assert_same( 5, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'source' => 'PHPCompatibility.IniDirectives.RemovedIniDirectives.safe_modeRemoved' ) ), $g_ctx ), 'Non-fatal rule is grade 5' );
 assert_same( 6, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'type' => 'warning' ) ), $g_ctx ), 'Warning is grade 6' );
 assert_same( 0, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'type' => 'note' ) ), $g_ctx ), 'Notes do not count' );
 assert_same( 2, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scope' => 'function', 'name_hint' => 1 ) ), $g_ctx ), 'A legacy file name alone does not lower the grade' );
-assert_same( 3, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scope' => 'function', 'name_hint' => 1 ) ), array_merge( $g_ctx, array( 'marker' => true ) ) ), 'A legacy file name plus loads-here evidence is grade 3' );
-assert_same( 3, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scope' => 'function' ) ), array_merge( $g_ctx, array( 'marker' => true, 'strong' => true ) ) ), 'Strong evidence lowers grade 2 to 3' );
+assert_same( 2, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scope' => 'function', 'name_hint' => 1 ) ), array_merge( $g_ctx, array( 'marker' => true ) ) ), 'A legacy filename and activation do not lower fatal impact' );
+assert_same( 2, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scope' => 'function' ) ), array_merge( $g_ctx, array( 'marker' => true, 'strong' => true ) ) ), 'Runtime logging does not lower fatal impact' );
 assert_same( 1, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scope' => 'file' ) ), array_merge( $g_ctx, array( 'marker' => true, 'strong' => true ) ) ), 'Evidence never lowers grade 1' );
 assert_same( 2, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scope' => 'function' ) ), array_merge( $g_ctx, array( 'marker' => true ) ) ), 'Marker alone (no runtime log) does not lower grade 2' );
 $ev_ok = THRG_PC_Grade::evidence( true, '8.3', '8.3', true, false );
-assert_true( $ev_ok['marker'] && $ev_ok['strong'], 'Active component on a server already at the target PHP has evidence, strong with the runtime log on' );
+assert_true( $ev_ok['marker'] && ! $ev_ok['strong'], 'Activation is context only even with runtime logging' );
 $ev_off = THRG_PC_Grade::evidence( true, '8.3', '8.3', false, false );
 assert_true( $ev_off['marker'] && ! $ev_off['strong'], 'Without the runtime log the evidence is a label only' );
 $ev_old = THRG_PC_Grade::evidence( true, '8.1', '8.3', true, false );
@@ -571,6 +669,11 @@ $sc_cases = array(
     'legacygate.php' => "<?php\nif ( 'mysql link' == \$type && @mysql_ping( \$h ) ) {\n    return true;\n}\n",
     'twin.php'      => "<?php\nif ( \$this->use_mysqli ) {\n    \$r = mysqli_query( \$this->dbh, 'SELECT 1' );\n} else {\n    \$r = mysql_query( 'SELECT 1', \$this->dbh );\n}\n",
     'notwin.php'    => "<?php\nif ( \$flag ) {\n    \$r = something_else();\n} else {\n    \$r = mysql_query( 'SELECT 1' );\n}\n",
+    'callback.php' => "<?php\nfunction callback_db() { mysql_connect(); }\nadd_action( 'init', 'callback_db' );\nif ( ! function_exists( 'mysqli_connect' ) ) { callback_db(); }\n",
+    'cross-decl.php' => "<?php\nfunction cross_db() { mysql_connect(); }\nif ( ! function_exists( 'mysqli_connect' ) ) { cross_db(); }\n",
+    'cross-call.php' => "<?php\ncross_db();\n",
+    'dynamic.php' => "<?php\nfunction dynamic_db() { mysql_connect(); }\n\$callback = 'dynamic_db';\n\$callback();\n",
+    'array-callback.php' => "<?php\nclass CallbackDb { function run() { mysql_connect(); } }\nadd_action( 'init', array( new CallbackDb(), 'run' ) );\n",
     'classbody.php' => "<?php\nclass Crypto {\n    public \$mode = MCRYPT_RIJNDAEL_128;\n}\n",
     'legacy-db.php' => "<?php\nfunction old_thing() {\n    return create_function( '\$a', 'return \$a;' );\n}\n",
 );
@@ -604,9 +707,14 @@ assert_same( 'class-body', $sc_first( 'classbody.php' )['scope'], 'Property defa
 assert_same( 1, $sc_first( 'legacy-db.php' )['name_hint'], 'A legacy file name sets the name hint' );
 assert_true( empty( $sc_first( 'load.php' )['name_hint'] ), 'An ordinary file name sets no name hint' );
 foreach ( array( 'else.php', 'missing.php', 'or.php', 'caller.php', 'legacygate.php', 'twin.php' ) as $sc_name ) {
-    assert_same( 3, THRG_PC_Grade::finding_grade( $sc_first( $sc_name ), $g_ctx ), $sc_name . ' grades as rarely-run code' );
+    assert_same( 2, THRG_PC_Grade::finding_grade( $sc_first( $sc_name ), $g_ctx ), $sc_name . ' retains potential fatal impact despite fallback hints' );
 }
 assert_same( 2, THRG_PC_Grade::finding_grade( $sc_first( 'callerok.php' ), $g_ctx ), 'Ordinary function call grades as likely to break' );
+foreach ( array( 'callback.php', 'cross-decl.php', 'dynamic.php', 'array-callback.php' ) as $caller_fixture ) {
+    $caller_classification = THRG_PC_Grade::classify( $sc_first( $caller_fixture ) );
+    assert_same( 'fatal', $caller_classification['impact'], $caller_fixture . ' retains fatal impact' );
+    assert_same( 'unknown', $caller_classification['reachability'], $caller_fixture . ' does not claim all callers are known' );
+}
 foreach ( $sc_paths as $sc_path ) {
     @unlink( $sc_path );
 }
@@ -630,6 +738,21 @@ $boot_theme = THRG_PC_Boot::files( array( 'kind' => 'theme', 'slug' => 'demo', '
 sort( $boot_theme );
 assert_same( array( 'functions.php', 'inc/a.php' ), $boot_theme, 'A theme starts at functions.php and skips includes it cannot resolve' );
 assert_same( array(), THRG_PC_Boot::files( array( 'kind' => 'plugin', 'slug' => 'nothere/nothere.php', 'dir' => $boot_dir . '/missing', 'file' => '' ) ), 'A missing main file yields no boot files' );
+// Startup file discovery remains a hint across early exits and unresolved paths.
+$startup_cases = array(
+    'return' => "<?php\nreturn;\nrequire __DIR__ . '/inc/a.php';\n",
+    'conditional-return' => "<?php\nif ( \$enabled ) { return; }\nrequire __DIR__ . '/inc/a.php';\n",
+    'exit' => "<?php\nexit;\nrequire __DIR__ . '/inc/a.php';\n",
+    'dynamic-path' => "<?php\nrequire \$directory . '/inc/a.php';\n",
+);
+foreach ( $startup_cases as $case_name => $source ) {
+    file_put_contents( $boot_dir . '/bootdemo.php', $source );
+    $candidate_files = THRG_PC_Boot::files( array( 'kind' => 'plugin', 'slug' => 'bootdemo/bootdemo.php', 'dir' => $boot_dir ) );
+    $startup_classification = THRG_PC_Grade::classify( array_merge( $g_base, array( 'file' => 'inc/a.php', 'scope' => 'file' ) ), array( 'boot_files' => $candidate_files ) );
+    assert_same( 'fatal', $startup_classification['impact'], $case_name . ': startup uncertainty cannot erase impact' );
+    assert_same( 'unknown', $startup_classification['reachability'], $case_name . ': static discovery cannot prove a file executes' );
+}
+
 foreach ( array( 'inc/a.php', 'inc/b.php', 'inc/c.php', 'inc/d.php', 'inc/e.php', 'inc/f.php', 'inc', 'functions.php', 'bootdemo.php' ) as $boot_f ) {
     $boot_p = $boot_dir . '/' . $boot_f;
     is_dir( $boot_p ) ? @rmdir( $boot_p ) : @unlink( $boot_p );
@@ -664,8 +787,17 @@ $gr_map = static function ( array $rows ) {
     return $out;
 };
 $gr_rows = $gr_map( THRG_PHP_Checker::evaluate( $gr_input ) );
+$unknown_result = array_merge( $gr_input['results'][0], array( 'findings' => array( $unknown_finding ), 'errors' => 1, 'warnings' => 0, 'verdict' => 'breaks' ) );
+$unknown_input = array_merge( $gr_input, array( 'results' => array( $unknown_result ) ) );
+$unknown_rows = $gr_map( THRG_PHP_Checker::evaluate( $unknown_input ) );
+$unknown_card = reset( $unknown_rows );
+assert_same( 1, $unknown_card['unknown_errors'], 'Evaluator retains unknown-impact count' );
+assert_same( 0, $unknown_card['fatal_errors'], 'Evaluator does not invent a fatal rule diagnosis' );
+assert_same( 'Compatibility error: impact unknown', $unknown_card['grade_label'], 'Unknown impact is visible in the report wording' );
+assert_same( 'Potential weakness', $unknown_card['status'], 'Unknown error remains prominent in every status consumer' );
+
 assert_same( 1, $gr_rows['loadfail/loadfail.php']['grade'], 'Boot-file error is grade 1 in the report row' );
-assert_true( 0 === strpos( $gr_rows['loadfail/loadfail.php']['badge_text'], 'Breaks on PHP 8.3' ), 'Grade 1 badge reads Breaks on PHP 8.3' );
+assert_true( 0 === strpos( $gr_rows['loadfail/loadfail.php']['badge_text'], 'Potential startup incompatibility' ), 'Grade 1 badge reads Breaks on PHP 8.3' );
 assert_same( 'Potential weakness', $gr_rows['loadfail/loadfail.php']['status'], 'Grade 1 is red' );
 assert_same( 2, $gr_rows['inner/inner.php']['grade'], 'Function-scope error is grade 2 in the report row' );
 assert_same( '', $gr_rows['inner/inner.php']['evidence_label'], 'No evidence label without evidence input' );
@@ -674,9 +806,9 @@ $gr_input['evidence'] = array(
     'plugin:loadfail/loadfail.php' => array( 'marker' => true, 'strong' => true ),
 );
 $gr_rows_ev = $gr_map( THRG_PHP_Checker::evaluate( $gr_input ) );
-assert_same( 3, $gr_rows_ev['inner/inner.php']['grade'], 'Strong evidence lowers the grade-2 card to grade 3' );
-assert_same( 'Review', $gr_rows_ev['inner/inner.php']['status'], 'Grade 3 uses the amber Review status' );
-assert_same( 'Loads on PHP 8.3 on this site', $gr_rows_ev['inner/inner.php']['evidence_label'], 'Evidence label names the PHP version' );
+assert_same( 2, $gr_rows_ev['inner/inner.php']['grade'], 'Runtime evidence does not lower the card priority' );
+assert_same( 'Potential weakness', $gr_rows_ev['inner/inner.php']['status'], 'Fatal findings retain attention status' );
+assert_same( 'Active on this site; server PHP ' . PHP_VERSION . '', $gr_rows_ev['inner/inner.php']['evidence_label'], 'Evidence label names the PHP version' );
 assert_same( 1, $gr_rows_ev['loadfail/loadfail.php']['grade'], 'Evidence never lowers a grade-1 card' );
 $gr_order = array_values(
     array_filter(
@@ -688,15 +820,23 @@ $gr_order = array_values(
 );
 assert_same( 'loadfail/loadfail.php', $gr_order[0]['comp_slug'], 'Worst grade is listed first' );
 $gr_plain = THRG_PHP_Checker::plain_text( THRG_PHP_Checker::evaluate( $gr_input ), 'example.com', '2026-05-01 00:00:00 UTC', '1.2.7', '8.3' );
-assert_true( false !== strpos( $gr_plain, 'Grade: Breaks on load' ), 'Plain-text report includes the grade' );
+assert_true( false !== strpos( $gr_plain, 'Grade: Potential startup incompatibility' ), 'Plain-text report includes the grade' );
 
 // Update pre-scan: a newer version with only review items counts as the fatal errors being fixed.
 THRG_PC_Results::save( array( 'kind' => 'plugin', 'slug' => 'upd/upd.php', 'name' => 'Upd', 'version' => '1.0.0', 'files_total' => 1 ), '8.3', array( array_merge( $g_base, array( 'scope' => 'function', 'origin' => 'own' ) ) ) );
 THRG_PC_Results::save_update( 'plugin', 'upd', '1.1.0', '8.3', array( array_merge( $g_base, array( 'file' => 'vendor/lib/a.php', 'origin' => 'bundled' ) ) ) );
 $upd_comp = array( array( 'kind' => 'plugin', 'slug' => 'upd/upd.php', 'name' => 'Upd', 'version' => '1.0.0', 'active' => true, 'network_active' => false, 'parent_theme' => false, 'update_version' => '1.1.0' ) );
 $upd_rows = THRG_PHP_Checker::evaluate( array_merge( $gr_input, array( 'components' => $upd_comp, 'results' => THRG_PC_Results::for_target( '8.3', $upd_comp ), 'evidence' => array() ) ) );
-assert_same( 'warnings_only', $upd_rows[0]['wporg_fix_status'], 'Newer version with only review items is reported as fatal errors fixed' );
-assert_same( 4, THRG_PC_Results::get_update( 'plugin', 'upd', '1.1.0', '8.3' )['grade'], 'Update pre-scan results store their grade' );
+assert_same( 'still_fails', $upd_rows[0]['wporg_fix_status'], 'Bundled fatal errors in an update are not reported as fixed' );
+assert_same( 2, THRG_PC_Results::get_update( 'plugin', 'upd', '1.1.0', '8.3' )['grade'], 'Update pre-scan results store their grade' );
+
+// Cached old display grades cannot determine the new update impact.
+$old_update_cache = get_option( THRG_PC_Results::UPDATE_OPTION, array() );
+$old_update_key = 'plugin:upd:1.1.0:8.3';
+$old_update_cache[ $old_update_key ]['grade'] = 4;
+update_option( THRG_PC_Results::UPDATE_OPTION, $old_update_cache );
+assert_same( 2, THRG_PC_Results::get_update( 'plugin', 'upd', '1.1.0', '8.3' )['grade'], 'Reading a cached update reclassifies raw fatal findings instead of trusting its old grade' );
+assert_same( 4, get_option( THRG_PC_Results::UPDATE_OPTION )[ $old_update_key ]['grade'], 'Reading current classification does not rewrite historical cached input' );
 
 // 4. History & target-aware diffing.
 THRG_PC_History::clear();
@@ -734,7 +874,7 @@ $eval_fixed = THRG_PHP_Checker::evaluate(
     )
 );
 assert_same( 'fixed', $eval_fixed[0]['wporg_fix_status'], 'Plugin whose newer 1.1.0 version has 0 errors/warnings on target 8.4 must report wporg_fix_status = fixed' );
-assert_same( 'Fixed in v1.1.0 on WordPress.org', $eval_fixed[0]['wporg_fix_label'], 'Plugin card must display Fixed in v1.1.0 on WordPress.org badge' );
+assert_same( 'No counted issues in v1.1.0', $eval_fixed[0]['wporg_fix_label'], 'Plugin card describes the scan result without guaranteeing a fix' );
 
 // 8. Runtime PHP deprecation notice collector & debug.log parser grouped by plugin.
 THRG_PC_Runtime_Log::clear();
@@ -848,7 +988,9 @@ THRG_PC_Scanner::set_state( $seed_job );
 assert_same( array(), THRG_PC_Scanner::get_state(), 'Abandoned scan expires so another administrator can start later' );
 
 $claim = new ReflectionMethod( THRG_PC_Scanner::class, 'claim_state' );
-$claim->setAccessible( true ); // Needed before PHP 8.1.
+if ( PHP_VERSION_ID < 80100 ) {
+    $claim->setAccessible( true );
+}
 $first_job = $seed_job;
 $first_job['updated_at'] = time();
 $first_job['job_id'] = str_repeat( 'c', 32 );
@@ -862,7 +1004,9 @@ assert_same( $first_job, THRG_PC_Scanner::get_state(), 'Conditional delete prese
 assert_true( THRG_PC_Scanner::clear_state( $first_job ), 'Matching conditional cleanup removes the job' );
 
 $lock_method = new ReflectionMethod( THRG_PC_Scanner::class, 'claim_step_lock' );
-$lock_method->setAccessible( true ); // Needed before PHP 8.1.
+if ( PHP_VERSION_ID < 80100 ) {
+    $lock_method->setAccessible( true );
+}
 $lock = $lock_method->invoke( null, $first_job['job_id'] );
 $parallel_step_rejected = false;
 try {
@@ -874,7 +1018,9 @@ assert_true( $parallel_step_rejected, 'Overlapping step cannot claim a held lock
 delete_option( THRG_PC_Scanner::STEP_LOCK_OPTION );
 
 $replace = new ReflectionMethod( THRG_PC_Scanner::class, 'replace_state' );
-$replace->setAccessible( true ); // Needed before PHP 8.1.
+if ( PHP_VERSION_ID < 80100 ) {
+    $replace->setAccessible( true );
+}
 THRG_PC_Scanner::set_state( $first_job );
 assert_true( ! $replace->invoke( null, $second_job, $first_job ), 'Progress update rejects a different current state' );
 assert_same( $first_job, THRG_PC_Scanner::get_state(), 'Rejected progress update leaves current job intact' );
@@ -938,21 +1084,61 @@ assert_true( ! THRG_PC_Updater::release_has_asset( '1.2.1', $release ), 'Mismatc
 $release->assets = array( (object) array( 'name' => 'thrg-php-checker.1.1.9.zip' ) );
 assert_true( ! THRG_PC_Updater::release_has_asset( '1.2.0', $release ), 'Release without exact asset is rejected' );
 
+// Exercise the bundled API's actual reference/download selection without HTTP.
+require_once dirname( __DIR__ ) . '/plugin-update-checker/plugin-update-checker.php';
+class THRG_PC_Test_GitHub_Api extends \YahnisElsts\PluginUpdateChecker\v5p7\Vcs\GitHubApi {
+    public $fixture;
+    public $requested = array();
+    protected function api( $url, $query_params = array() ) {
+        unset( $query_params );
+        $this->requested[] = $url;
+        return $this->fixture;
+    }
+}
+$asset_api = new THRG_PC_Test_GitHub_Api( 'https://github.com/hackrepair/thrg-php-checker/' );
+$asset_api->fixture = (object) array(
+    'tag_name' => 'v1.2.8', 'zipball_url' => 'https://example.test/branch.zip', 'created_at' => '2026-11-14T00:00:00Z',
+    'assets' => array(
+        (object) array( 'name' => 'thrg-php-checker.1.2.7.zip', 'url' => 'https://api.github.test/assets/old', 'browser_download_url' => 'https://github.test/old.zip', 'download_count' => 1 ),
+        (object) array( 'name' => 'thrg-php-checker.1.2.8.wporg.zip', 'url' => 'https://api.github.test/assets/wporg', 'browser_download_url' => 'https://github.test/wporg.zip', 'download_count' => 1 ),
+        (object) array( 'name' => 'thrg-php-checker.1.2.8.zip', 'url' => 'https://api.github.test/assets/exact', 'browser_download_url' => 'https://github.test/exact.zip', 'download_count' => 1 ),
+    ),
+);
+THRG_PC_Updater::configure_release_assets( $asset_api );
+$selected_release = $asset_api->getLatestRelease();
+assert_same( '1.2.8', $selected_release->version, 'Bundled update reference retains the accepted release version' );
+assert_same( 'https://github.test/exact.zip', $selected_release->downloadUrl, 'Actual download URL ignores earlier wrong-version and WordPress.org ZIPs' );
+assert_same( '/repos/:user/:repo/releases/latest', $asset_api->requested[0], 'Updater examines only the latest release endpoint' );
+$asset_api->setAuthentication( 'fixture-only' );
+assert_same( 'https://api.github.test/assets/exact', $asset_api->getLatestRelease()->downloadUrl, 'Authenticated selection also binds to the exact asset' );
+$asset_api->fixture->assets = array_slice( $asset_api->fixture->assets, 0, 2 );
+assert_same( null, $asset_api->getLatestRelease(), 'Missing exact asset cannot fall back to another ZIP or source archive' );
+$asset_api->fixture->tag_name = 'v1.2.9';
+$asset_api->fixture->assets[] = (object) array( 'name' => 'thrg-php-checker.1.2.9.zip', 'url' => 'https://api.github.test/assets/next', 'browser_download_url' => 'https://github.test/next.zip', 'download_count' => 1 );
+assert_same( 'https://api.github.test/assets/next', $asset_api->getLatestRelease()->downloadUrl, 'A later release refreshes the exact-name selector on the same API instance' );
+$asset_api->fixture->draft = true;
+assert_same( null, $asset_api->getLatestRelease(), 'Draft release is not offered as an update' );
+$asset_api->fixture->draft = false;
+$asset_api->fixture->prerelease = true;
+assert_same( null, $asset_api->getLatestRelease(), 'Prerelease is not offered as a stable update' );
+
 THRG_PC_Email::mark_cooldown( 11 );
 assert_same( 1, get_transient( 'thrg_pc_mail_11' ), 'Email cooldown is created' );
 assert_same( array( 11 => 'thrg_pc_mail_11' ), get_option( 'thrg_pc_mail_cooldowns' ), 'Cooldown key is tracked' );
 
 $wporg_cache = new ReflectionMethod( 'THRG_PC_Prescan', 'wporg_cache' );
-$wporg_cache->setAccessible( true ); // Needed before PHP 8.1.
-$wporg_cache->setAccessible( true );
+if ( PHP_VERSION_ID < 80100 ) {
+    $wporg_cache->setAccessible( true );
+}
 $wporg_cache->invoke( null, 'thrg_pc_wporg_abcdef012345', array( 'status' => 'ok' ) );
 $wporg_cache->invoke( null, 'thrg_pc_wporg_abcdef012345', array( 'status' => 'ok' ) );
 assert_same( array( 'status' => 'ok' ), get_transient( 'thrg_pc_wporg_abcdef012345' ), 'WordPress.org lookup is cached' );
 assert_same( array( 'thrg_pc_wporg_abcdef012345' ), get_option( 'thrg_pc_wporg_keys' ), 'WordPress.org cache key is tracked once' );
 
 $wporg_scan = new ReflectionMethod( 'THRG_PC_Prescan', 'scan_wporg_package' );
-$wporg_scan->setAccessible( true ); // Needed before PHP 8.1.
-$wporg_scan->setAccessible( true );
+if ( PHP_VERSION_ID < 80100 ) {
+    $wporg_scan->setAccessible( true );
+}
 assert_same( null, $wporg_scan->invoke( null, 'demo', '1.0.0', 'https://example.com/demo.zip', '8.3', microtime( true ) + 5 ), 'WordPress.org fix check refuses package hosts other than downloads.wordpress.org' );
 assert_same( null, $wporg_scan->invoke( null, 'demo', '1.0.0', 'http://downloads.wordpress.org/plugin/demo.zip', '8.3', microtime( true ) + 5 ), 'WordPress.org fix check refuses plain http package URLs' );
 function is_multisite() { return false; }
@@ -1012,9 +1198,16 @@ THRG_PC_Results::save( $sum_components[1], '8.3', array( array( 'type' => 'error
 THRG_PC_Results::save( $sum_components[2], '8.3', array( array( 'type' => 'error', 'file' => 'inc/b.php', 'line' => 3, 'source' => 'PHPCompatibility.Variables.NewUniformVariableSyntax.Found', 'message' => 'x', 'origin' => 'own' ) ) );
 THRG_PC_Results::save( $sum_components[3], '8.3', array() );
 $sum_out = THRG_PC_Results::target_summaries( array( '8.3' ), $sum_components );
-assert_same( 1, $sum_out['8.3']['breaks'], 'Quick-switch counts only own-code fatal errors as likely to break' );
-assert_same( 2, $sum_out['8.3']['warnings'], 'Quick-switch counts bundled-only and behaviour-change components as review' );
+assert_same( 2, $sum_out['8.3']['breaks'], 'Quick-switch counts fatal errors regardless of origin' );
+assert_same( 1, $sum_out['8.3']['warnings'], 'Quick-switch counts behaviour changes as review' );
 assert_same( 1, $sum_out['8.3']['ok'], 'Quick-switch counts clean components as ok' );
+$sum_unknown = array( 'kind' => 'plugin', 'slug' => 'unknown/unknown.php', 'name' => 'Unknown Impact', 'version' => '1.0', 'files_total' => 1 );
+THRG_PC_Results::save( $sum_unknown, '8.3', array( $unknown_finding ) );
+$sum_components[] = $sum_unknown;
+$sum_with_unknown = THRG_PC_Results::target_summaries( array( '8.3' ), $sum_components );
+assert_same( 1, $sum_with_unknown['8.3']['unknown'], 'Target summary identifies unknown-impact components independently' );
+assert_same( 3, $sum_with_unknown['8.3']['breaks'], 'Target summary preserves attention priority for unknown errors' );
+
 THRG_PC_Results::clear_all();
 assert_same( 'since PHP 7.0', THRG_PC_Results::rule_php_version( 'Since PHP 7.0, functions inspecting arguments...', 'PHPCompatibility.FunctionUse.ArgumentFunctionsReportCurrentValue.NeedsInspection', '8.3' ), 'Extracts originating PHP version from message' );
 assert_same( 'since PHP 8.2', THRG_PC_Results::rule_php_version( 'Creation of dynamic property...', 'PHPCompatibility.Classes.ForbiddenDynamicProperties.Found', '8.3' ), 'Extracts PHP 8.2 for dynamic properties' );
@@ -1028,6 +1221,101 @@ foreach ( array( 'require_admin_ajax', 'require_admin_post' ) as $helper ) {
 }
 
 // Every request handler verifies a nonce and an administrator capability.
+// Aggregate before bounding display details, and reject aggregates for changed evidence.
+$many_findings = array_fill( 0, 150, $confidence_fatal );
+THRG_PC_Results::save( $sum_unknown, '8.3', $many_findings );
+$bounded_record = THRG_PC_Results::get( 'plugin', 'unknown/unknown.php', '1.0', '8.3' );
+assert_same( 100, count( $bounded_record['findings'] ), 'Display findings stay bounded' );
+assert_same( 150, THRG_PC_Results::classification( $bounded_record )['fatal'], 'Aggregate preserves all findings before display trimming' );
+assert_same( 'complete', THRG_PC_Results::classification( $bounded_record )['coverage'], 'Current full aggregate preserves completed coverage' );
+$legacy_bounded = $bounded_record;
+unset( $legacy_bounded['classification'] );
+assert_same( 'stale', THRG_PC_Results::classification( $legacy_bounded )['coverage'], 'Legacy truncated details cannot establish full classification' );
+assert_same( 50, THRG_PC_Results::classification( $legacy_bounded )['unknown'], 'Missing legacy errors retain independent unknown impact' );
+$changed_evidence = $bounded_record;
+$changed_evidence['findings'][0]['source'] = 'Changed.Rule.Error';
+assert_same( 'stale', THRG_PC_Results::classification( $changed_evidence )['coverage'], 'A retained evidence change invalidates the saved aggregate' );
+$old_parser_record = $bounded_record;
+unset( $old_parser_record['scan_evidence_version'] );
+assert_same( 'stale', THRG_PC_Results::classification( $old_parser_record )['coverage'], 'Older scans cannot claim the new syntax evidence without a rescan' );
+
+$gap_details = THRG_PC_Results::trim_findings( array_merge( $many_findings, array( array( 'type' => 'skipped', 'file' => 'invalid.php', 'message' => 'Syntax validation incomplete' ) ) ) );
+assert_same( 100, count( $gap_details ), 'Retaining gap reasons does not increase the storage bound' );
+assert_same( 1, THRG_PC_Results::count( $gap_details )['skipped'], 'A crowded report retains the reason coverage is incomplete' );
+assert_same( $gap_details, THRG_PC_Results::trim_findings( $gap_details ), 'Bounded display normalization remains idempotent for cache fingerprints' );
+
+$old_rule_record = $bounded_record;
+$old_rule_record['classification']['classification_version'] = 2;
+assert_same( 'stale', THRG_PC_Results::classification( $old_rule_record )['coverage'], 'Old rule aggregates are not silently trusted' );
+
+// Stage 4: every output retains evidence limits, and updates require full evidence.
+$stage4_stale = array_merge( $unknown_card, array( 'coverage' => 'stale' ) );
+$stage4_partial = array_merge( $unknown_card, array( 'coverage' => 'partial', 'status' => 'Review', 'unknown_errors' => 0 ) );
+$stage4_rows = array( $stage4_stale, $stage4_partial );
+$stage4_export = THRG_PC_Text_Report::plain_text( $stage4_rows, 'fixture.test', '2026-11-14', '1.2.7', '8.3' );
+assert_true( false !== strpos( $stage4_export, 'Errors with unmapped runtime impact: 1' ), 'Export exposes unknown impact explicitly' );
+assert_true( false !== strpos( $stage4_export, 'Scan coverage: Stale:' ), 'Export preserves stale evidence' );
+assert_true( false !== strpos( $stage4_export, 'Scan coverage: Incomplete:' ), 'Export preserves skipped-file coverage' );
+$stage4_change = THRG_PC_History::change( array( 'classification_version' => 4, 'target' => '8.3', 'rows' => array( $stage4_stale ), 'issues' => array() ), array( 'classification_version' => 4, 'target' => '8.3', 'rows' => array( $unknown_card ), 'issues' => array( 'old-issue' ) ) );
+assert_same( 'incomplete_evidence', $stage4_change['reason'], 'Incomplete evidence blocks misleading resolved counts' );
+assert_same( 0, $stage4_change['resolved'], 'Incomplete report cannot resolve an older issue' );
+assert_true( false !== strpos( THRG_PC_Email::change_line( array( 'first' => true, 'reason' => 'rules_changed' ) ), 'Grading rules changed' ), 'Emails explain rule changes instead of claiming a first scan' );
+assert_true( THRG_PC_Schedule::worth_sending( $stage4_rows, true ), 'Issue-only schedules retain unknown and incomplete results' );
+$stage4_args = array( 'rows' => $stage4_rows, 'site' => 'fixture.test', 'target' => '8.3', 'when' => '2026-11-14', 'change' => $stage4_change, 'older_when' => '', 'note' => '<script>fixture</script>', 'sender' => 'Fixture Sender', 'recipient' => 'Local Reviewer', 'view_url' => '', 'scheduled' => true );
+$stage4_html = THRG_PC_Email::html( $stage4_args );
+$stage4_text = THRG_PC_Email::text( $stage4_args );
+foreach ( array( $stage4_html, $stage4_text ) as $rendered_mail ) {
+    assert_true( false !== strpos( $rendered_mail, 'Errors with unmapped runtime impact: 1' ), 'Both email alternatives expose unknown impact' );
+    assert_true( false !== strpos( $rendered_mail, 'Scan coverage: Stale:' ), 'Both email alternatives preserve stale coverage' );
+    assert_true( false !== strpos( $rendered_mail, 'Evidence is incomplete' ), 'Both email alternatives withhold misleading comparisons' );
+    assert_true( false === strpos( $rendered_mail, 'Nothing on fixture.test is likely to break' ), 'Email narrative makes no unsupported execution claim' );
+}
+assert_true( false === strpos( $stage4_html, '<script>fixture</script>' ), 'Email details and notes retain HTML escaping' );
+assert_true( false !== strpos( THRG_PC_Email::subject( $stage4_rows, 'fixture.test', '8.3' ), 'scan evidence needs review' ), 'Email subject cannot imply clearance with stale evidence' );
+$stage4_update_cases = array(
+    'pending' => array( 'target' => '8.3', 'verdict' => 'partial', 'skipped' => 1, 'errors' => 0, 'warnings' => 0, 'findings' => array() ),
+    'needs_review' => array( 'target' => '8.3', 'verdict' => 'breaks', 'errors' => 1, 'warnings' => 0, 'findings' => array( $unknown_finding ) ),
+    'still_fails' => array( 'target' => '8.3', 'verdict' => 'breaks', 'errors' => 1, 'warnings' => 0, 'findings' => array( $confidence_fatal ) ),
+    'warnings_only' => array( 'target' => '8.3', 'verdict' => 'breaks', 'errors' => 1, 'warnings' => 0, 'findings' => array( array( 'type' => 'error', 'source' => 'PHPCompatibility.IniDirectives.RemovedIniDirectives.safe_modeRemoved' ) ) ),
+    'fixed' => array( 'target' => '8.3', 'verdict' => 'ok', 'errors' => 0, 'warnings' => 0, 'findings' => array() ),
+);
+foreach ( $stage4_update_cases as $expected_update_status => $record ) {
+    $record['scan_evidence_version'] = THRG_PC_Results::EVIDENCE_VERSION;
+    assert_same( $expected_update_status, THRG_PC_Results::update_assessment( $record ), 'Update assessment uses structured evidence: ' . $expected_update_status );
+    assert_same( $expected_update_status, THRG_PC_Prescan::summarize_wporg_fix( $record, '2.0.0', '8.3' )['status'], 'Manual WordPress.org summary agrees: ' . $expected_update_status );
+}
+update_option( 'date_format', 'Y-m-d' );
+update_option( 'time_format', 'H:i' );
+$stage4_entry = array( 'id' => '', 'time' => strtotime( '2026-11-14 12:00:00 UTC' ), 'target' => '8.3', 'classification_version' => 4, 'rows' => $stage4_rows );
+$stage4_sent = THRG_PC_Email::send( $stage4_entry, null, array( 991 ), 'Local capture fixture', array( 'name' => 'Fixture Sender', 'email' => 'sender@fixture.test' ), true );
+assert_same( 1, $stage4_sent['sent'], 'Scheduled sender builds one captured message for the selected fixture administrator' );
+$stage4_capture = end( $GLOBALS['thrg_test_captured_mail'] );
+assert_same( 'reviewer@fixture.test', $stage4_capture['to'], 'Captured message uses only the fixture recipient' );
+assert_true( false !== strpos( $stage4_capture['html'], 'Scan coverage: Stale:' ), 'Actual sender HTML includes current evidence limits' );
+assert_true( false !== strpos( $stage4_capture['text'], 'Errors with unmapped runtime impact: 1' ), 'Actual sender sets its plain-text alternative with the same classification' );
+assert_same( array(), $GLOBALS['thrg_test_mail_hooks'], 'Sender removes its per-message mailer callback after capture' );
+assert_true( false !== strpos( $stage4_capture['subject'], 'Scheduled PHP 8.3 Check: scan evidence needs review' ), 'Scheduled subject identifies evidence limits and applies to weekly or monthly runs' );
+
+$stage4_server_row = array_merge( $unknown_card, array( 'id' => 'php-version', 'comp_key' => '', 'status' => 'Review' ) );
+$stage4_with_server = array_merge( $stage4_rows, array( $stage4_server_row ) );
+assert_same( 1, count( THRG_PC_Email::groups( $stage4_with_server )['server'] ), 'Email keeps the server lifecycle separate from component counts' );
+assert_same( 1, THRG_PC_History::summarize( $stage4_with_server )['server'], 'New history summaries identify the separate server check' );
+assert_same( 1, THRG_PC_History::summarize( $stage4_with_server )['review'], 'Server check does not inflate component review counts' );
+$stage4_gap_input = array_merge( $gr_input, array( 'results' => array( $gr_input['results'][0] ) ) );
+$stage4_gap_rows = THRG_PHP_Checker::evaluate( $stage4_gap_input );
+assert_true( THRG_PC_Grade::report_health( $stage4_gap_rows )['incomplete'], 'Partial component scans retain their coverage gap in exported rows' );
+$stage4_comparable = THRG_PC_History::change( array( 'classification_version' => 4, 'target' => '8.3', 'rows' => array( $unknown_card ), 'issues' => array() ), array( 'classification_version' => 4, 'target' => '8.3', 'rows' => array( $unknown_card ), 'issues' => array( 'old' ) ) );
+assert_same( 'comparable', $stage4_comparable['reason'], 'Complete reports under the same rules can still be compared' );
+assert_same( 1, $stage4_comparable['resolved'], 'Comparable snapshots retain the no-longer-flagged count' );
+assert_true( false !== strpos( THRG_PC_Email::change_line( $stage4_comparable ), 'no longer flagged' ), 'Comparable change wording does not claim runtime fixes' );
+
+$stage4_mixed_update = array( 'target' => '8.3', 'verdict' => 'breaks', 'errors' => 2, 'warnings' => 0, 'skipped' => 1, 'findings' => array( $confidence_fatal, $unknown_finding ) );
+assert_same( 'still_fails', THRG_PC_Results::update_assessment( $stage4_mixed_update ), 'Known fatal potential stays prominent alongside unknown impact and incomplete coverage' );
+assert_true( false !== strpos( THRG_PC_Prescan::summarize_wporg_fix( $stage4_mixed_update, '2.0.0', '8.3' )['message'], 'incomplete or stale' ), 'Update guidance retains the coverage caveat alongside fatal potential' );
+
+$stage4_legacy_mail = THRG_PC_Text_Report::evidence_notice( array( array( 'comp_key' => 'legacy', 'status' => 'No issue observed' ) ) );
+assert_true( false !== strpos( $stage4_legacy_mail, 'earlier grading rules' ), 'Legacy snapshot caveats carry into exported and emailed reports' );
+
 $handler_sources = array(
     'includes/class-thrg-php-checker.php'    => array( 'ajax_scan_start', 'ajax_scan_step', 'ajax_scan_stop', 'ajax_prescan_now', 'ajax_check_wporg_fix', 'handle_start_post', 'handle_save_settings', 'handle_delete_report', 'handle_clear_history', 'handle_toggle_history', 'handle_email_report' ),
     'includes/class-thrg-pc-runtime-log.php' => array( 'handle_post' ),

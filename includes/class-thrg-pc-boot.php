@@ -1,10 +1,10 @@
 <?php
-/** Files that are certain to load when WordPress loads a plugin or theme.
+/** Possible startup files discovered from literal include expressions.
  *
  * Starts at the main plugin file (or a theme's functions.php) and follows
- * include/require statements at the top level that use a literal path. It does
- * not go deeper and does not guess: anything it cannot read with certainty is
- * left out, so "loads on boot" is never claimed without evidence.
+ * include/require statements at the top level that use a literal path. It follows one
+ * level only and does not resolve control flow, early exits or dynamic paths.
+ * The classifier treats membership as a hint, never as execution coverage.
  *
  * @package THRG_PHP_Checker
  */
@@ -18,7 +18,7 @@ final class THRG_PC_Boot {
     const MAX_BYTES = 2097152;
 
     /**
-     * Relative paths of files that load on boot.
+     * Relative paths of possible startup files.
      *
      * @param array $component Component with kind, slug, dir and optional file.
      * @return string[]

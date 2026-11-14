@@ -2,7 +2,7 @@
 
 Developer notes for contributors. For what the plugin does, see [README.md](README.md "What the plugin does and how to install it").
 
-Current version: **1.2.7** (local prerelease on `prerelease-1.2.7`, not released; latest tag `v1.2.4`, November 12, 2026; 1.2.5 is in WordPress.org review, 1.2.6 is a local prerelease). See `releases/v1.2.7.md`.
+Current candidate: **1.2.8**, local branch `release/1.2.8`, unpublished. Latest published GitHub release remains 1.2.4. The grading work originated on local `prerelease-1.2.7`; see `releases/v1.2.8.md` for current behavior.
 
 ## Scope
 
@@ -10,7 +10,7 @@ An in-process, read-only static PHP 8.1–8.5 compatibility analyzer for install
 
 ## Architecture
 
-- `index.php`: plugin header (`Version: 1.2.7`), constants (`THRG_PHP_CHECKER_VERSION`, `THRG_PHP_CHECKER_FILE`, `THRG_PHP_CHECKER_DIR`), GitHub release updater bootstrap, class includes, and deactivation cleanup for scheduled hooks and transient scan state.
+- `index.php`: plugin header (`Version: 1.2.8`), constants (`THRG_PHP_CHECKER_VERSION`, `THRG_PHP_CHECKER_FILE`, `THRG_PHP_CHECKER_DIR`), GitHub release updater bootstrap, class includes, and deactivation cleanup for scheduled hooks and transient scan state.
 - `includes/class-thrg-php-checker.php`: main controller (`Tools > PHP Checker`), admin request handlers (with shared `require_admin_ajax()` / `require_admin_post()` helpers), and page bootstrap; delegates evaluation, server advisories, and plain-text formatting to:
   - `includes/class-thrg-pc-server-advisory.php`: server PHP EOL & security advisory checks (`PHP_SUPPORT`, `PHP_ADVISORIES`, `PATCH_LIST_AS_OF`).
   - `includes/class-thrg-pc-evaluator.php`: `collect()` and `evaluate()` pipeline with client-first priority ordering (incompatible components first, warning components second, server/update checks third, clean components last).
@@ -24,7 +24,7 @@ An in-process, read-only static PHP 8.1–8.5 compatibility analyzer for install
 - `includes/class-thrg-pc-prescan.php`: optional in-memory zip pre-scanner for pending plugin/theme updates (`thrg_pc_update_results`), off by default, plus `check_wporg_fix()` to verify whether a failing WordPress.org plugin is fixed in a newer release on the target PHP version.
 - `includes/class-thrg-pc-runtime-log.php`: opt-in live `E_DEPRECATED | E_USER_DEPRECATED` collector (with backtrace attribution for WordPress `_deprecated_function()` calls) and on-demand `wp-content/debug.log` deprecation importer (`thrg_pc_runtime_deprecations`), grouped by plugin or theme.
 - `includes/class-thrg-pc-history.php`: bounded local report history (`thrg_pc_history`, max 25 reports, 600 KB ceiling, 5-minute deduplication) with target-aware diffing (`previous_for()`, `change()`).
-- `includes/class-thrg-pc-email.php`: emails a saved PHP compatibility report to selected site administrators following the THRG Email Standard (`[domain] [PHP Checker] (Monthly )PHP X.Y Check: ...`). Full-width branded HTML + plain-text `AltBody`, CRLF-safe `Reply-To`, server-side administrator lookup, and 60-second per-user rate limit.
+- `includes/class-thrg-pc-email.php`: emails a saved PHP compatibility report to selected site administrators following the THRG Email Standard (`[domain] [PHP Checker] (Scheduled )PHP X.Y Check: ...`). Full-width branded HTML + plain-text `AltBody`, CRLF-safe `Reply-To`, server-side administrator lookup, and 60-second per-user rate limit.
 - `includes/class-thrg-pc-schedule.php`: opt-in weekly or monthly PHP readiness & update-alert email scheduler (`thrg_pc_schedule`, `thrg_pc_schedule_log`, single event `thrg_pc_scheduled_report`, 10-minute lock, `heal()` on `admin_init`).
 - `includes/view-checker.php`, `includes/view-checker-data.php`, `includes/view-{header,scan,report,footer}.php`, `includes/views/{report-nav,report-cards,finding-row,report-clean,report-share-schedule,report-tools}.php`, `assets/checker.css`, `assets/js/checker.js`: the admin interface, featuring the THRG 2026 heart branding, target PHP switcher, plain-English Readiness Verdict banner, summary tiles, urgency-grouped left navigation, streamlined finding cards with collapsible technical code drawers, **Check if fixed on WP.org** buttons, runtime deprecation log grouped by plugin, and single-component rescan buttons.
 - `includes/class-thrg-pc-updater.php`, `includes/class-thrg-pc-update-notices.php`, `plugin-update-checker/`: GitHub release updater and native View Details parser.
@@ -79,18 +79,31 @@ The `--wporg` build follows the Stickies WordPress.org edition (`thrg-stickies`,
 
 ## Verification & Quality Gates
 
-- **Unit & Integration Tests (`tests/run.php`):** 123 assertions covering engine availability, unguarded error detection, `Internal.*` sniff exclusion, `function_exists()` + dead-branch variable guard downgrading, non-fatal vs. fatal rule classification, originating PHP version tags, `NeedsInspection` sorting, PHP 8.2+ dynamic property fixtures (`PlainWidget`, `#[AllowDynamicProperties]` inheritance, `stdClass`, magic `__set()`, guarded dynamic property), file origin classification (`own` vs `bundled` including `Libraries/`, `lib/`, `Mailer/`, `Imap2/`), skipped-file partial verdicts, orphan pruning, client-first evaluation ordering, WordPress.org newer-version fix verification, runtime PHP deprecation log parsing and plugin grouping, plain-text rule/origin formatting, history diffing, email subject/Reply-To security, weekly/monthly schedule calculation, WordPress.org lookup caching and host checks, and uninstall cleanup.
+- **Unit & Integration Tests (`tests/run.php`):** 383 assertions covering engine availability, unguarded error detection, `Internal.*` sniff exclusion, `function_exists()` + dead-branch variable guard downgrading, non-fatal vs. fatal rule classification, originating PHP version tags, `NeedsInspection` sorting, PHP 8.2+ dynamic property fixtures (`PlainWidget`, `#[AllowDynamicProperties]` inheritance, `stdClass`, magic `__set()`, guarded dynamic property), file origin classification (`own` vs `bundled` including `Libraries/`, `lib/`, `Mailer/`, `Imap2/`), skipped-file partial verdicts, orphan pruning, client-first evaluation ordering, WordPress.org newer-version fix verification, runtime PHP deprecation log parsing and plugin grouping, plain-text rule/origin formatting, history diffing, email subject/Reply-To security, weekly/monthly schedule calculation, WordPress.org lookup caching and host checks, and uninstall cleanup.
   ```sh
   php tests/run.php
   ```
-- **Coding Standards (`phpcs.xml.dist`):** 32/32 first-party PHP files pass `WordPress-Core`, `WordPress-Extra`, and `WordPress-Docs` with 0 errors and 0 warnings:
+- **Coding Standards (`phpcs.xml.dist`):** 36/36 first-party PHP files pass `WordPress-Core`, `WordPress-Extra`, and `WordPress-Docs` with 0 errors and 0 warnings:
   ```sh
   /usr/local/bin/phpcs --standard=phpcs.xml.dist
   ```
 - **Release Packaging (`scripts/build-release.py`):** Builds `dist/thrg-php-checker.X.Y.Z.zip` with normalized `0644` permissions on every entry, verified byte-for-byte against source files, and writes `dist/thrg-php-checker.X.Y.Z.zip.sha256`.
 - **Architecture Refactoring:** See [REFACTOR.md](REFACTOR.md) for the structural breakdown and completed modularization passes.
 
-## Release 1.2.7 — in progress, November 13, 2026
+## Candidate 1.2.8 — November 14, 2026
+
+- Grading contract version 4 separates impact, reachability, evidence, origin and coverage; numeric priorities remain compatibility adapters.
+- Scan-evidence policy 2 requires host syntax validation and ignores source PHPCS suppression comments. A host parser failure is a coverage gap, not proof of a target-version failure.
+- New scans save a full bounded aggregate before trimming detailed rows. Cached records are tied to rule version, source totals, target and retained-evidence fingerprint. Older insufficient evidence requires a refresh.
+- Exports, HTML/plain-text emails, history comparisons, summaries and update checks retain unknown-impact and coverage limits. Server lifecycle checks are separate from component counts.
+- Updater release filtering configures the actual asset selector for the accepted version; integration fixtures exercise the bundled API's selected download URL without HTTP or changing vendor files.
+- The package builder requires identical header, global, controller and readme versions. Both distribution ZIPs remain separate.
+- Full grading validation ran 375 assertions across PHP 7.4, 8.2, 8.3, 8.4 and 8.5. The candidate adds eight updater integration assertions (383 total); candidate checks are recorded separately from the historical baseline.
+
+## Archived local prerelease 1.2.7 — November 13, 2026
+
+The notes below describe the earlier local experiment and are superseded by the 1.2.8 confidence contract.
+
 
 Local prerelease on `prerelease-1.2.7` (cut from `prerelease-1.2.6`); ships after 1.2.6. A seven-grade compatibility scale replaces the flat "Incompatible" (plan: project doc `plan-1.2.7-graded-compatibility-scale.md`). Pieces:
 - `includes/class-thrg-pc-scope.php` (`THRG_PC_Scope`): called from `THRG_PC_Context::mark_guarded()` for each counted finding; records `scope` (file, class-body, conditional, function) and a `reason` when the code is on a fallback path (else of a feature check, branch when a feature is missing, `check || call`, function only called from such branches, legacy resource gate, legacy `mysql_`/`mcrypt_`/`ereg_` branch next to a `mysqli_`/`openssl_`/`preg_` twin). `place_finding()` adds a `name_hint` for legacy-looking file names.

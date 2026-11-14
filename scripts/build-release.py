@@ -20,6 +20,9 @@ root    = Path( __file__ ).resolve().parents[1]
 main    = next( f for f in root.glob( '*.php' ) if re.search( r'Plugin Name:', f.read_text() ) )
 slug    = main.stem if main.stem != 'index' else root.name
 version = re.search( r'Version:\s*([0-9.]+)', main.read_text() ).group( 1 )
+global_version = re.search( r"const\s+THRG_PHP_CHECKER_VERSION\s*=\s*'([^']+)'", main.read_text() ).group( 1 )
+controller_version = re.search( r"const\s+VERSION\s*=\s*'([^']+)'", ( root / 'includes/class-thrg-php-checker.php' ).read_text() ).group( 1 )
+assert global_version == controller_version == version, 'Plugin header, global version and controller fallback version must agree'
 
 # The two readmes must agree on version and changelog headings before anything is built.
 def readme_info( path: Path ):

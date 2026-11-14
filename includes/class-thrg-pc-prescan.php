@@ -718,6 +718,9 @@ final class THRG_PC_Prescan {
 
         // Check if we already scanned this newer version against $target.
         $existing = THRG_PC_Results::get_update( 'plugin', $short, $remote_version, $target );
+        if ( is_array( $existing ) && 'stale' === THRG_PC_Results::classification( $existing )['coverage'] ) {
+            $existing = null;
+        }
         if ( null === $existing && '' !== $package_url ) {
             $existing = self::scan_wporg_package( $short, $remote_version, $package_url, $target, $deadline );
         }
@@ -917,47 +920,40 @@ final class THRG_PC_Prescan {
      * @param string $target         Target PHP version.
      * @return array
      */
-    private static function summarize_wporg_fix( array $existing, $remote_version, $target ) {
+    public static function summarize_wporg_fix( array $existing, $remote_version, $target ) {
         $verdict  = (string) $existing['verdict'];
         $errors   = (int) $existing['errors'];
         $warnings = (int) $existing['warnings'];
 
-        if ( in_array( $verdict, array( 'ok', 'clean' ), true ) ) {
-            $status = 'fixed';
-            $msg    = sprintf(
-                /* translators: 1: newer version, 2: target PHP version */
-                __( 'Fixed in v%1$s on WordPress.org (0 errors, 0 warnings on PHP %2$s). Update this plugin to resolve its compatibility issues.', 'thrg-php-checker' ),
-                $remote_version,
-                $target
-            );
-        } elseif ( in_array( $verdict, array( 'warnings', 'works' ), true ) ) {
-            $status = 'warnings_only';
-            $msg    = sprintf(
-                /* translators: 1: newer version, 2: target PHP version, 3: warning count */
-                __( 'v%1$s on WordPress.org has 0 fatal errors on PHP %2$s (%3$d deprecation warning(s) remain).', 'thrg-php-checker' ),
-                $remote_version,
-                $target,
-                $warnings
-            );
-        } else {
-            $status = 'still_fails';
-            $msg    = sprintf(
-                /* translators: 1: newer version, 2: target PHP version, 3: error count */
-                __( 'Still fails in latest v%1$s on WordPress.org (%3$d fatal error(s) on PHP %2$s). Do not rely on updating alone.', 'thrg-php-checker' ),
-                $remote_version,
-                $target,
-                $errors
-            );
+        $classification = THRG_PC_Results::classification( $existing );
+        $status         = THRG_PC_Results::update_assessment( $existing );
+        $messages       = array(
+            /* translators: 1: update version, 2: target PHP version */
+            'pending'       => __( 'v%1$s on WordPress.org has incomplete or stale scan evidence for PHP %2$s. A fix cannot be established from this result.', 'thrg-php-checker' ),
+            /* translators: 1: update version, 2: target PHP version */
+            'needs_review'  => __( 'v%1$s on WordPress.org contains errors with unmapped impact for PHP %2$s. Review the rules and test the affected features.', 'thrg-php-checker' ),
+            /* translators: 1: update version, 2: target PHP version */
+            'still_fails'   => __( 'v%1$s on WordPress.org still contains known rules with fatal potential for PHP %2$s. Do not rely on updating alone.', 'thrg-php-checker' ),
+            /* translators: 1: update version, 2: target PHP version */
+            'warnings_only' => __( 'v%1$s on WordPress.org has behavior changes or warnings for PHP %2$s, with no mapped fatal findings or unknown-impact errors. Review and test before upgrading.', 'thrg-php-checker' ),
+            /* translators: 1: update version, 2: target PHP version */
+            'fixed'         => __( 'No counted issues were detected in the complete scan of v%1$s on WordPress.org for PHP %2$s. Test important features before upgrading.', 'thrg-php-checker' ),
+        );
+        // phpcs:ignore WordPress.WP.I18n.MissingTranslatorsComment -- Formats above use 1: update version, 2: target PHP version.
+        $msg = sprintf( $messages[ $status ], $remote_version, $target );
+        if ( 'still_fails' === $status && 'complete' !== $classification['coverage'] ) {
+            $msg .= ' ' . __( 'Scan evidence is also incomplete or stale; refresh it for a complete assessment.', 'thrg-php-checker' );
         }
 
         return self::wporg_result(
             $status,
             $msg,
             array(
-                'version'  => $remote_version,
-                'verdict'  => $verdict,
-                'errors'   => $errors,
-                'warnings' => $warnings,
+                'version'        => $remote_version,
+                'classification' => $classification,
+                'verdict'        => $verdict,
+                'errors'         => $errors,
+                'warnings'       => $warnings,
             )
         );
     }

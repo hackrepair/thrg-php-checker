@@ -17,9 +17,10 @@ defined( 'ABSPATH' ) || exit;
  */
 final class THRG_PC_Results {
 
-    const OPTION        = 'thrg_pc_results';
-    const UPDATE_OPTION = 'thrg_pc_update_results';
-    const MAX_FINDINGS  = 100;
+    const OPTION           = 'thrg_pc_results';
+    const UPDATE_OPTION    = 'thrg_pc_update_results';
+    const MAX_FINDINGS     = 100;
+    const EVIDENCE_VERSION = 2;
 
     /**
      * Count findings by category (errors, warnings, skipped, notes).
@@ -154,21 +155,7 @@ final class THRG_PC_Results {
      * @return bool
      */
     public static function is_fatal_rule( $source ) {
-        $source = (string) $source;
-        foreach ( array(
-            'PHPCompatibility.IniDirectives.RemovedIniDirectives.',
-            'PHPCompatibility.FunctionUse.ArgumentFunctionsReportCurrentValue.',
-            'PHPCompatibility.Variables.RemovedPredefinedGlobalVariables.',
-            // Behaviour changes: the code still runs, it just evaluates differently.
-            'PHPCompatibility.Variables.NewUniformVariableSyntax.',
-            'PHPCompatibility.Operators.ChangedConcatOperatorPrecedence.',
-            'PHPCompatibility.Lists.AssignmentOrder.',
-        ) as $non_fatal_prefix ) {
-            if ( 0 === strpos( $source, $non_fatal_prefix ) ) {
-                return false;
-            }
-        }
-        return true;
+        return 'fatal' === THRG_PC_Grade::rule_impact( $source );
     }
 
     /**
@@ -241,7 +228,18 @@ final class THRG_PC_Results {
                     $notes[] = $f;
                 }
             }
-            $keep = array_slice( array_merge( $errors, $warnings, $skipped, $notes ), 0, self::MAX_FINDINGS );
+            // Keep actionable gap reasons even when errors and warnings fill the
+            // display limit. Full impact totals are preserved by the aggregate.
+            $gap_count = min( 10, count( $skipped ) );
+            $keep      = array_slice(
+                array_merge(
+                    array_slice( array_merge( $errors, $warnings ), 0, self::MAX_FINDINGS - $gap_count ),
+                    array_slice( $skipped, 0, $gap_count ),
+                    $notes
+                ),
+                0,
+                self::MAX_FINDINGS
+            );
         }
         return $keep;
     }
@@ -314,22 +312,26 @@ final class THRG_PC_Results {
         if ( ! isset( $all[ $target ] ) || ! is_array( $all[ $target ] ) ) {
             $all[ $target ] = array();
         }
-        $all[ $target ][ self::key( $kind, $slug ) ] = array(
-            'kind'        => $kind,
-            'slug'        => $slug,
-            'name'        => isset( $component['name'] ) ? (string) $component['name'] : $slug,
-            'version'     => '' === $version ? '0' : $version,
-            'target'      => $target,
-            'verdict'     => $verdict,
-            'errors'      => $counts['errors'],
-            'warnings'    => $counts['warnings'],
-            'skipped'     => $counts['skipped'],
-            'notes'       => $counts['notes'],
-            'files_total' => isset( $component['files_total'] ) ? absint( $component['files_total'] ) : 0,
-            'findings'    => self::trim_findings( $findings ),
-            'boot_files'  => self::clean_boot_files( isset( $component['boot_files'] ) ? $component['boot_files'] : array() ),
-            'scanned_at'  => $now > 0 ? (int) $now : time(),
+        $all[ $target ][ self::key( $kind, $slug ) ]     = array(
+            'scan_evidence_version' => self::EVIDENCE_VERSION,
+            'kind'                  => $kind,
+            'slug'                  => $slug,
+            'name'                  => isset( $component['name'] ) ? (string) $component['name'] : $slug,
+            'version'               => '' === $version ? '0' : $version,
+            'target'                => $target,
+            'verdict'               => $verdict,
+            'errors'                => $counts['errors'],
+            'warnings'              => $counts['warnings'],
+            'skipped'               => $counts['skipped'],
+            'notes'                 => $counts['notes'],
+            'files_total'           => isset( $component['files_total'] ) ? absint( $component['files_total'] ) : 0,
+            'findings'              => $findings,
+            'boot_files'            => self::clean_boot_files( isset( $component['boot_files'] ) ? $component['boot_files'] : array() ),
+            'scanned_at'            => $now > 0 ? (int) $now : time(),
         );
+        $record_key                                      = self::key( $kind, $slug );
+        $all[ $target ][ $record_key ]['classification'] = self::classification( $all[ $target ][ $record_key ] );
+        $all[ $target ][ $record_key ]['findings']       = self::trim_findings( $findings );
         update_option( self::OPTION, $all, false );
         return true;
     }
@@ -413,22 +415,20 @@ final class THRG_PC_Results {
             }
             $summary = array(
                 'total'    => count( $rows ),
+                'unknown'  => 0,
+                'stale'    => 0,
                 'breaks'   => 0,
                 'warnings' => 0,
                 'ok'       => 0,
             );
             foreach ( $rows as $r ) {
-                $likely = false;
-                if ( 'breaks' === $r['verdict'] ) {
-                    $g      = THRG_PC_Grade::component(
-                        isset( $r['findings'] ) && is_array( $r['findings'] ) ? $r['findings'] : array(),
-                        array(
-                            'marker'     => false,
-                            'strong'     => false,
-                            'boot_files' => isset( $r['boot_files'] ) && is_array( $r['boot_files'] ) ? $r['boot_files'] : array(),
-                        )
-                    );
-                    $likely = (int) $g['grade'] <= 2 || (int) $g['grade'] > 6;
+                $g      = self::classification( $r );
+                $likely = THRG_PC_Grade::is_blocking( $g['grade'] );
+                if ( $g['unknown'] > 0 ) {
+                    ++$summary['unknown'];
+                }
+                if ( 'stale' === $g['coverage'] ) {
+                    ++$summary['stale'];
                 }
                 if ( $likely ) {
                     ++$summary['breaks'];
@@ -441,6 +441,65 @@ final class THRG_PC_Results {
             $out[ $t ] = $summary;
         }
         return $out;
+    }
+
+    /**
+     * Classify retained evidence or reuse a matching aggregate saved before trimming.
+     *
+     * @param array $row Stored component or update record.
+     * @return array
+     */
+    public static function classification( array $row ) {
+        $source_counts = array();
+        foreach ( array( 'errors', 'warnings', 'skipped', 'notes' ) as $key ) {
+            $source_counts[ $key ] = isset( $row[ $key ] ) ? (int) $row[ $key ] : 0;
+        }
+        $target           = isset( $row['target'] ) ? (string) $row['target'] : '';
+        $evidence_version = isset( $row['scan_evidence_version'] ) ? (int) $row['scan_evidence_version'] : 0;
+        // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize -- Fingerprint trusted stored evidence; no deserialization.
+        $retained_hash = hash( 'sha256', serialize( array( self::trim_findings( isset( $row['findings'] ) && is_array( $row['findings'] ) ? $row['findings'] : array() ), isset( $row['boot_files'] ) ? $row['boot_files'] : array(), $evidence_version ) ) );
+        $saved         = isset( $row['classification'] ) && is_array( $row['classification'] ) ? $row['classification'] : array();
+        if ( isset( $saved['classification_version'], $saved['source_counts'], $saved['target'], $saved['grade'], $saved['fatal'], $saved['unknown'], $saved['coverage'], $saved['retained_hash'] ) &&
+            THRG_PC_Grade::CLASSIFICATION_VERSION === $saved['classification_version'] && $source_counts === $saved['source_counts'] && $target === $saved['target'] && $retained_hash === $saved['retained_hash'] ) {
+            return $saved;
+        }
+        $out                  = THRG_PC_Grade::component(
+            isset( $row['findings'] ) && is_array( $row['findings'] ) ? $row['findings'] : array(),
+            array(
+                'target'            => $target,
+                'coverage'          => self::EVIDENCE_VERSION !== $evidence_version ? 'stale' : ( $source_counts['skipped'] ? 'partial' : 'complete' ),
+                'expected_errors'   => $source_counts['errors'],
+                'expected_warnings' => $source_counts['warnings'],
+                'boot_files'        => isset( $row['boot_files'] ) && is_array( $row['boot_files'] ) ? $row['boot_files'] : array(),
+            )
+        );
+        $out['source_counts'] = $source_counts;
+        $out['target']        = $target;
+        $out['retained_hash'] = $retained_hash;
+        return $out;
+    }
+
+    /**
+     * Shared update assessment; a clear verdict requires complete current evidence.
+     *
+     * @param array $row Stored update result.
+     * @return string pending, needs_review, still_fails, warnings_only or fixed.
+     */
+    public static function update_assessment( array $row ) {
+        $c = self::classification( $row );
+        if ( $c['fatal'] > 0 ) {
+            return 'still_fails';
+        }
+        if ( 'complete' !== $c['coverage'] ) {
+            return 'pending';
+        }
+        if ( $c['unknown'] > 0 ) {
+            return 'needs_review';
+        }
+        if ( $c['impacts']['behavior_change'] || $c['impacts']['warning'] ) {
+            return 'warnings_only';
+        }
+        return 'fixed';
     }
 
     /**
@@ -467,20 +526,24 @@ final class THRG_PC_Results {
         $all     = is_array( $raw ) ? $raw : array();
         $key     = $kind . ':' . $slug . ':' . $version . ':' . $target;
 
-        $all[ $key ] = array(
-            'kind'       => $kind,
-            'slug'       => $slug,
-            'version'    => $version,
-            'target'     => $target,
-            'verdict'    => $verdict,
-            'errors'     => $counts['errors'],
-            'warnings'   => $counts['warnings'],
-            'skipped'    => $counts['skipped'],
-            'notes'      => $counts['notes'],
-            'grade'      => 'breaks' === $verdict ? min( 6, (int) THRG_PC_Grade::component( self::trim_findings( $findings ), array() )['grade'] ) : ( 'warnings' === $verdict ? 6 : 7 ),
-            'findings'   => self::trim_findings( $findings ),
-            'scanned_at' => time(),
+        $all[ $key ]                   = array(
+            'scan_evidence_version' => self::EVIDENCE_VERSION,
+            'kind'                  => $kind,
+            'slug'                  => $slug,
+            'version'               => $version,
+            'target'                => $target,
+            'verdict'               => $verdict,
+            'errors'                => $counts['errors'],
+            'warnings'              => $counts['warnings'],
+            'skipped'               => $counts['skipped'],
+            'notes'                 => $counts['notes'],
+            'grade'                 => 'breaks' === $verdict ? min( 6, (int) THRG_PC_Grade::component( self::trim_findings( $findings ), array() )['grade'] ) : ( 'warnings' === $verdict ? 6 : 7 ),
+            'findings'              => $findings,
+            'scanned_at'            => time(),
         );
+        $all[ $key ]['classification'] = self::classification( $all[ $key ] );
+        $all[ $key ]['grade']          = $all[ $key ]['classification']['grade'];
+        $all[ $key ]['findings']       = self::trim_findings( $findings );
         if ( count( $all ) > 100 ) {
             $all = array_slice( $all, -100, 100, true );
         }
@@ -503,7 +566,14 @@ final class THRG_PC_Results {
             return null;
         }
         $key = (string) $kind . ':' . (string) $slug . ':' . (string) $version . ':' . (string) $target;
-        return isset( $raw[ $key ] ) && is_array( $raw[ $key ] ) ? $raw[ $key ] : null;
+        if ( ! isset( $raw[ $key ] ) || ! is_array( $raw[ $key ] ) ) {
+            return null;
+        }
+        $row                   = $raw[ $key ];
+        $classification        = self::classification( $row );
+        $row['grade']          = $classification['grade'];
+        $row['classification'] = $classification;
+        return $row;
     }
 
     /**

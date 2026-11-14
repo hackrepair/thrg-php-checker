@@ -57,11 +57,16 @@ final class THRG_PC_Email {
      */
     public static function groups( array $rows ) {
         $out = array(
-            'fix'  => array(),
-            'look' => array(),
-            'good' => array(),
+            'fix'    => array(),
+            'look'   => array(),
+            'good'   => array(),
+            'server' => array(),
         );
         foreach ( $rows as $r ) {
+            if ( isset( $r['id'] ) && 'php-version' === $r['id'] ) {
+                $out['server'][] = $r;
+                continue;
+            }
             if ( 'Potential weakness' === $r['status'] ) {
                 $out['fix'][] = $r;
             } elseif ( 'No issue observed' === $r['status'] ) {
@@ -129,27 +134,37 @@ final class THRG_PC_Email {
      * @return string
      */
     public static function subject( array $rows, $site, $target = '8.4', $change = null, $scheduled = false ) {
-        $g      = self::groups( $rows );
-        $fix    = count( $g['fix'] );
-        $look   = count( $g['look'] );
-        $new    = is_array( $change ) && empty( $change['first'] ) ? (int) $change['new'] : 0;
-        $done   = is_array( $change ) && empty( $change['first'] ) ? (int) $change['resolved'] : 0;
+        $g    = self::groups( $rows );
+        $fix  = count( $g['fix'] );
+        $look = count( $g['look'] );
+        $new  = is_array( $change ) && empty( $change['first'] ) ? (int) $change['new'] : 0;
+        $done = is_array( $change ) && empty( $change['first'] ) ? (int) $change['resolved'] : 0;
+        foreach ( $g['server'] as $server_row ) {
+            if ( 'Potential weakness' === $server_row['status'] ) {
+                ++$fix;
+            } elseif ( 'No issue observed' !== $server_row['status'] ) {
+                ++$look;
+            }
+        }
         $prefix = 'PHP ' . ( '' !== (string) $target ? (string) $target : '8.4' ) . ' Check';
 
-        if ( $fix ) {
+        $health = THRG_PC_Grade::report_health( $rows );
+        if ( $health['incomplete'] || $health['legacy'] ) {
+            $s = $prefix . ': scan evidence needs review';
+        } elseif ( $fix ) {
             $s = sprintf( '%s: %s %s attention', $prefix, self::plural( $fix, 'issue', 'issues' ), 1 === $fix ? 'needs' : 'need' );
             if ( $new ) {
                 $s .= sprintf( ' (%d new since last check)', $new );
             }
         } elseif ( $look ) {
-            $s = sprintf( '%s: nothing blocking, %s to review', $prefix, self::plural( $look, 'item', 'items' ) );
+            $s = sprintf( '%s: %s to review', $prefix, self::plural( $look, 'item', 'items' ) );
         } else {
-            $s = sprintf( '%s: all clear on %s', $prefix, self::plural( count( $rows ), 'item', 'items' ) );
+            $s = sprintf( '%s: no counted findings on %s', $prefix, self::plural( count( $rows ), 'item', 'items' ) );
         }
         if ( ! $fix && $done ) {
-            $s .= sprintf( ' (%d fixed since last check)', $done );
+            $s .= sprintf( ' (%d no longer flagged since last check)', $done );
         }
-        return '[' . $site . '] [PHP Checker] ' . ( $scheduled ? 'Monthly ' : '' ) . $s;
+        return '[' . $site . '] [PHP Checker] ' . ( $scheduled ? 'Scheduled ' : '' ) . $s;
     }
 
     /**
@@ -161,31 +176,13 @@ final class THRG_PC_Email {
      * @return string
      */
     public static function narrative( array $rows, $site, $target = '8.4' ) {
-        $g    = self::groups( $rows );
-        $fix  = count( $g['fix'] );
-        $look = count( $g['look'] );
-        if ( $fix ) {
-            return sprintf(
-                'Today\'s PHP %s readiness check on %s found %s that could break or need attention before upgrading PHP%s. Static analysis inspects code without running it, so review each item and test on staging before switching PHP versions.',
-                $target,
-                $site,
-                self::plural( $fix, 'item', 'items' ),
-                $look ? sprintf( ', plus %s worth a look (fallback code, libraries, deprecations)', self::plural( $look, 'item', 'items' ) ) : ''
-            );
+        $g       = self::groups( $rows );
+        $notice  = THRG_PC_Text_Report::evidence_notice( $rows );
+        $summary = sprintf( 'The component and scan findings for PHP %s on %s contain %d item(s) needing attention and %d item(s) needing review. Static analysis does not exercise site workflows; test important features before upgrading.', $target, $site, count( $g['fix'] ), count( $g['look'] ) );
+        if ( $g['server'] ) {
+            $summary .= ' Server PHP lifecycle checks are listed separately.';
         }
-        if ( $look ) {
-            return sprintf(
-                'Nothing on %2$s is likely to break on PHP %1$s. %3$s worth a look (fallback code, bundled libraries, minor changes or deprecations) before or after you upgrade.',
-                $target,
-                $site,
-                self::plural( $look, 'item is', 'items are' )
-            );
-        }
-        return sprintf(
-            'Good news: every scanned plugin, must-use plugin, and theme on %s passed the PHP %s static compatibility check with no known breaking issues.',
-            $site,
-            $target
-        );
+        return '' !== $notice ? $notice . ' ' . $summary : $summary;
     }
 
     /**
@@ -196,6 +193,16 @@ final class THRG_PC_Email {
      * @return string
      */
     public static function change_line( $change, $older_when = '' ) {
+        if ( is_array( $change ) && isset( $change['reason'] ) ) {
+            $messages = array(
+                'rules_changed'       => 'Grading rules changed since the previous report; changes are not counted as fixes.',
+                'target_changed'      => 'These reports use different PHP targets and cannot be compared.',
+                'incomplete_evidence' => 'Evidence is incomplete or uses earlier grading rules; no resolved count is inferred.',
+            );
+            if ( isset( $messages[ $change['reason'] ] ) ) {
+                return $messages[ $change['reason'] ];
+            }
+        }
         if ( ! is_array( $change ) || ! empty( $change['first'] ) ) {
             return 'This is the first saved report for this PHP target, so future emails will show what changed.';
         }
@@ -205,7 +212,7 @@ final class THRG_PC_Email {
         }
         $parts = array();
         if ( $change['resolved'] ) {
-            $parts[] = self::plural( $change['resolved'], 'issue resolved', 'issues resolved' );
+            $parts[] = self::plural( $change['resolved'], 'item no longer flagged', 'items no longer flagged' );
         }
         if ( $change['new'] ) {
             $parts[] = self::plural( $change['new'], 'new issue', 'new issues' );
@@ -282,6 +289,9 @@ final class THRG_PC_Email {
         $h .= '<div style="font-size:16px;font-weight:700;color:#1d2327;margin:0 0 6px;">' . self::e( $r['title'] ) . '</div>';
         if ( ! empty( $r['comp_key'] ) && ! empty( $r['grade'] ) && (int) $r['grade'] < 7 ) {
             $h .= '<div style="font-size:12px;font-weight:700;color:#8a4b00;margin:0 0 6px;">' . self::e( $r['grade_label'] . ( ! empty( $r['evidence_label'] ) ? ' · ' . $r['evidence_label'] : '' ) ) . '</div>';
+        }
+        foreach ( THRG_PC_Text_Report::classification_lines( $r ) as $line ) {
+            $h .= '<div style="font-size:12px;color:#50575e;margin:0 0 4px;">' . self::e( $line ) . '</div>';
         }
         $h .= '<div style="font-size:14px;line-height:1.55;color:#3c434a;margin:0 0 10px;">' . self::e( self::clean( $r['why'] ) ) . '</div>';
         if ( $full && ! empty( $r['evidence'] ) ) {
@@ -365,7 +375,7 @@ final class THRG_PC_Email {
         $tiles = array(
             array( count( $g['fix'] ), 'need attention', '#fdecea', '#c62828' ),
             array( count( $g['look'] ), 'to review', '#fff4d6', '#8a5a00' ),
-            array( count( $g['good'] ), 'no known problems', '#e6f3ec', '#2e6b4f' ),
+            array( count( $g['good'] ), 'no counted findings', '#e6f3ec', '#2e6b4f' ),
         );
         $h    .= '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;border-spacing:6px 0;margin:0 -6px 22px;"><tr>';
         foreach ( $tiles as $t ) {
@@ -374,8 +384,9 @@ final class THRG_PC_Email {
         $h .= '</tr></table>';
 
         $sections = array(
-            array( 'fix', 'Fix or replace before upgrading PHP', '#e53935', true ),
-            array( 'look', 'Worth a look (deprecations & notes)', '#d39b1f', true ),
+            array( 'fix', 'Review before upgrading PHP', '#e53935', true ),
+            array( 'look', 'Review findings and scan coverage', '#d39b1f', true ),
+            array( 'server', 'Server PHP lifecycle', '#8a4b00', true ),
         );
         foreach ( $sections as $s ) {
             if ( ! $g[ $s[0] ] ) {
@@ -390,10 +401,13 @@ final class THRG_PC_Email {
         }
 
         if ( $g['good'] ) {
-            $h .= '<div style="font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#2e6b4f;margin:4px 0 8px;">No known problems found (' . count( $g['good'] ) . ')</div>';
+            $h .= '<div style="font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#2e6b4f;margin:4px 0 8px;">No counted findings (' . count( $g['good'] ) . ')</div>';
             $h .= '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">';
             foreach ( $g['good'] as $r ) {
                 $h .= '<tr><td style="padding:5px 0;font-size:14px;line-height:1.5;color:#3c434a;"><span style="color:#2e6b4f;font-weight:700;">&#10003;</span> <strong style="color:#1d2327;">' . self::e( $r['title'] ) . '</strong> &mdash; ' . self::e( self::clean( $r['why'] ) ) . '</td></tr>';
+                foreach ( THRG_PC_Text_Report::classification_lines( $r ) as $line ) {
+                    $h .= '<tr><td style="padding:0 0 4px;font-size:12px;color:#50575e;">' . self::e( $line ) . '</td></tr>';
+                }
             }
             $h .= '</table>';
         }
@@ -442,10 +456,11 @@ final class THRG_PC_Email {
             $out .= self::SCHEDULED_INTRO . "\n\n";
         }
         $out .= self::narrative( $rows, $site, $target ) . "\n" . self::change_line( $a['change'], $a['older_when'] ) . "\n\n";
-        $out .= count( $g['fix'] ) . ' need attention · ' . count( $g['look'] ) . ' to review · ' . count( $g['good'] ) . " no known problems\n";
+        $out .= count( $g['fix'] ) . ' need attention · ' . count( $g['look'] ) . ' to review · ' . count( $g['good'] ) . " no counted findings\n";
         foreach ( array(
-            'fix'  => 'FIX OR REPLACE BEFORE UPGRADING PHP',
-            'look' => 'WORTH A LOOK (FALLBACK CODE, LIBRARIES, DEPRECATIONS)',
+            'fix'    => 'REVIEW BEFORE UPGRADING PHP',
+            'look'   => 'REVIEW FINDINGS AND SCAN COVERAGE',
+            'server' => 'SERVER PHP LIFECYCLE',
         ) as $k => $label ) {
             if ( ! $g[ $k ] ) {
                 continue;
@@ -455,6 +470,9 @@ final class THRG_PC_Email {
                 $out .= "\n- " . $r['title'] . "\n";
                 if ( ! empty( $r['comp_key'] ) && ! empty( $r['grade'] ) && (int) $r['grade'] < 7 ) {
                     $out .= '  [' . $r['grade_label'] . ( ! empty( $r['evidence_label'] ) ? ' · ' . $r['evidence_label'] : '' ) . "]\n";
+                }
+                foreach ( THRG_PC_Text_Report::classification_lines( $r ) as $line ) {
+                    $out .= '  ' . $line . "\n";
                 }
                 $out .= '  ' . self::clean( $r['why'] ) . "\n";
                 foreach ( array_slice( $r['evidence'], 0, 3 ) as $line ) {
@@ -471,9 +489,12 @@ final class THRG_PC_Email {
             }
         }
         if ( $g['good'] ) {
-            $out .= "\nNO KNOWN PROBLEMS FOUND\n";
+            $out .= "\nNO COUNTED FINDINGS\n";
             foreach ( $g['good'] as $r ) {
                 $out .= '✓ ' . $r['title'] . "\n";
+                foreach ( THRG_PC_Text_Report::classification_lines( $r ) as $line ) {
+                    $out .= '  ' . $line . "\n";
+                }
             }
         }
         if ( '' !== (string) $a['view_url'] ) {
