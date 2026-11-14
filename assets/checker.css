@@ -1141,3 +1141,18 @@ body.js.thrg-pc-screen:not(.thrg-pc-notices-shown) .thrg-pc-wrap > .error:not(.t
     margin-left: 6px;
     font-weight: 600;
 }
+
+.thrg-pc-copy-findings-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.thrg-pc-copy-findings-source {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}

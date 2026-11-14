@@ -235,6 +235,30 @@ defined( 'ABSPATH' ) || exit;
                                             </table>
                                         </details>
                                     <?php endif; ?>
+                                    <?php
+                                    $copy_name  = ! empty( $row['comp_name'] ) ? (string) $row['comp_name'] : (string) $row['label'];
+                                    $copy_ver   = ! empty( $row['comp_version'] ) ? ' v' . $row['comp_version'] : '';
+                                    $copy_lines = array(
+                                        /* translators: 1: plugin or theme name and version, 2: PHP version */
+                                        sprintf( __( 'PHP compatibility findings for %1$s on PHP %2$s (THRG PHP Checker)', 'thrg-php-checker' ), $copy_name . $copy_ver, $row_target_label ),
+                                        '',
+                                    );
+                                    foreach ( $active_issues as $copy_issue ) {
+                                        $c_file       = isset( $copy_issue['file'] ) ? (string) $copy_issue['file'] : '';
+                                        $c_line       = isset( $copy_issue['line'] ) ? (int) $copy_issue['line'] : 0;
+                                        $c_src        = isset( $copy_issue['source'] ) ? (string) $copy_issue['source'] : '';
+                                        $c_msg        = isset( $copy_issue['message'] ) ? (string) $copy_issue['message'] : '';
+                                        $c_type       = isset( $copy_issue['type'] ) ? strtoupper( (string) $copy_issue['type'] ) : 'WARNING';
+                                        $copy_lines[] = ( $c_line > 0 ? $c_file . ':' . $c_line : $c_file ) . ' [' . $c_type . '] ' . $c_msg . ( '' !== $c_src ? ' (' . $c_src . ')' : '' );
+                                    }
+                                    ?>
+                                    <div class="thrg-pc-copy-findings-bar">
+                                        <button type="button" class="button button-secondary thrg-pc-copy-findings">
+                                            <?php esc_html_e( 'Copy these findings for your developer', 'thrg-php-checker' ); ?>
+                                        </button>
+                                        <span class="thrg-pc-copy-status" aria-live="polite"></span>
+                                        <textarea class="thrg-pc-copy-findings-source" readonly tabindex="-1" aria-hidden="true"><?php echo esc_textarea( implode( "\n", $copy_lines ) ); ?></textarea>
+                                    </div>
                                 </div>
                             </details>
                         <?php endif; ?>

@@ -268,6 +268,31 @@
     }
 
     // Copy, Download, and Print buttons.
+    document.addEventListener( 'click', function ( e ) {
+        var btn = e.target.closest ? e.target.closest( '.thrg-pc-copy-findings' ) : null;
+        if ( ! btn ) {
+            return;
+        }
+        var bar = btn.parentNode;
+        var src = bar.querySelector( '.thrg-pc-copy-findings-source' );
+        var status = bar.querySelector( '.thrg-pc-copy-status' );
+        if ( ! src ) {
+            return;
+        }
+        var done = function () {
+            if ( status ) {
+                status.textContent = 'Copied. Paste it into an email or support ticket.';
+            }
+        };
+        if ( navigator.clipboard && navigator.clipboard.writeText ) {
+            navigator.clipboard.writeText( src.value ).then( done );
+        } else {
+            src.select();
+            document.execCommand( 'copy' );
+            done();
+        }
+    } );
+
     var copyBtn = document.getElementById( 'thrg-pc-copy-btn' );
     var downloadBtn = document.getElementById( 'thrg-pc-download-btn' );
     var printBtn = document.getElementById( 'thrg-pc-print-btn' );
