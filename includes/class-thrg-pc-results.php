@@ -337,6 +337,16 @@ final class THRG_PC_Results {
     }
 
     /**
+     * Whether a stored result was produced by the current evidence format.
+     *
+     * @param array|null $item Stored result or null.
+     * @return bool
+     */
+    public static function is_current( $item ) {
+        return is_array( $item ) && isset( $item['scan_evidence_version'] ) && self::EVIDENCE_VERSION === (int) $item['scan_evidence_version'];
+    }
+
+    /**
      * Get one component's stored result for a target PHP version and exact component version.
      *
      * @param string $kind    Component kind.

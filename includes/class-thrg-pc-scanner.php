@@ -350,7 +350,7 @@ final class THRG_PC_Scanner {
             if ( 'active' === $scope && empty( $comp['active'] ) ) {
                 continue;
             }
-            if ( ! $rescan && 'single' !== $scope && null !== THRG_PC_Results::get( $comp['kind'], $comp['slug'], $comp['version'], $target ) ) {
+            if ( ! $rescan && 'single' !== $scope && THRG_PC_Results::is_current( THRG_PC_Results::get( $comp['kind'], $comp['slug'], $comp['version'], $target ) ) ) {
                 continue;
             }
             $queue[] = $comp;

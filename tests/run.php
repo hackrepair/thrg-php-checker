@@ -298,7 +298,11 @@ list( $syntax_rules, $syntax_config ) = THRG_PC_Engine::ruleset( '8.3' );
 $union_source = "<?php\nfunction host_syntax_fixture(int|string \$value) { return \$value; }\n";
 $union_scan = THRG_PC_Engine::scan_content( $union_source, 'union.php', $syntax_rules, $syntax_config, '8.3' );
 $union_counts = THRG_PC_Results::count( $union_scan );
-assert_same( PHP_VERSION_ID < 80000, $union_counts['skipped'] > 0, 'Source newer than the host parser is a coverage gap, not a target compatibility diagnosis' );
+assert_same( 0, $union_counts['skipped'], 'Newer syntax on an older host is not a coverage gap, and a capable host parses it' );
+list( $syntax_rules74, $syntax_config74 ) = THRG_PC_Engine::ruleset( '7.4' );
+$broken_scan   = THRG_PC_Engine::scan_content( "<?php\nfunction broken( {\n", 'broken.php', $syntax_rules74, $syntax_config74, '7.4' );
+$broken_counts = THRG_PC_Results::count( $broken_scan );
+assert_true( $broken_counts['skipped'] > 0, 'Malformed source is still a coverage gap when the host is at least the target' );
 $execution_marker = sys_get_temp_dir() . '/thrg-pc-not-executed-' . uniqid();
 $static_source = '<?php file_put_contents(' . var_export( $execution_marker, true ) . ', "executed");';
 THRG_PC_Engine::scan_content( $static_source, 'never-execute.php', $syntax_rules, $syntax_config, '8.3' );
@@ -321,7 +325,7 @@ assert_same( array(), THRG_PC_Engine::scan_content( '', 'empty-memory.php', $syn
 
 $malformed_file = $tmp_dir . '/malformed.php';
 file_put_contents( $malformed_file, "<?php\nfunction broken( {\n" );
-$malformed_scan = THRG_PC_Engine::scan( array( $malformed_file ), '8.4', microtime( true ) + 30.0 );
+$malformed_scan = THRG_PC_Engine::scan( array( $malformed_file ), '7.4', microtime( true ) + 30.0 );
 assert_true( isset( $malformed_scan['scanned'][ $malformed_file ] ), 'Malformed PHP must produce a scan result without crashing the request' );
 assert_true( THRG_PC_Results::count( $malformed_scan['scanned'][ $malformed_file ] )['skipped'] > 0, 'Malformed source cannot be reported as a complete clean scan' );
 @unlink( $malformed_file );
@@ -1330,5 +1334,37 @@ foreach ( $handler_sources as $handler_file => $handler_names ) {
         assert_true( (bool) preg_match( '/current_user_can|require_admin_ajax|require_admin_post/', $handler_head ), $handler_name . '() checks capability' );
     }
 }
+
+// 1.2.8 review fixes: stale results are queued again and scope-aware coverage.
+assert_true( THRG_PC_Results::is_current( array( 'scan_evidence_version' => THRG_PC_Results::EVIDENCE_VERSION ) ), 'Result saved with the current evidence format is current' );
+assert_true( ! THRG_PC_Results::is_current( array( 'scan_evidence_version' => THRG_PC_Results::EVIDENCE_VERSION - 1 ) ), 'Result from an earlier evidence format is stale' );
+assert_true( ! THRG_PC_Results::is_current( array( 'version' => '1.0.0' ) ), 'Result with no evidence version is stale' );
+assert_true( ! THRG_PC_Results::is_current( null ), 'Missing result is not current' );
+$scanner_src = file_get_contents( dirname( __DIR__ ) . '/includes/class-thrg-pc-scanner.php' );
+assert_true( false !== strpos( $scanner_src, 'THRG_PC_Results::is_current( THRG_PC_Results::get(' ), 'Scan start skips only components whose stored result is current' );
+$beta_comp      = array( 'kind' => 'plugin', 'slug' => 'beta/beta.php', 'name' => 'Beta Plugin', 'version' => '1.0.0', 'active' => false, 'network_active' => false, 'parent_theme' => false );
+$scope_base     = array(
+    'now'             => strtotime( '2026-05-01 UTC' ),
+    'php_version'     => '8.3.10',
+    'running_php'     => '8.3',
+    'target'          => '8.4',
+    'engine_reason'   => '',
+    'components'      => array_merge( $installed_now, array( $beta_comp ) ),
+    'results'         => $synced,
+    'prescan_enabled' => false,
+    'update_items'    => array(),
+);
+$scope_all      = THRG_PHP_Checker::evaluate( array_merge( $scope_base, array( 'scope' => 'all' ) ) );
+$scope_active   = THRG_PHP_Checker::evaluate( array_merge( $scope_base, array( 'scope' => 'active' ) ) );
+$has_overview   = static function ( $rows ) {
+    foreach ( $rows as $r ) {
+        if ( isset( $r['id'] ) && 'scan-overview' === $r['id'] ) {
+            return true;
+        }
+    }
+    return false;
+};
+assert_true( $has_overview( $scope_all ), 'All-components scope reports an unscanned inactive plugin as incomplete' );
+assert_true( ! $has_overview( $scope_active ), 'Active-only scope is complete when every active component is scanned' );
 
 echo "OK ({$assertions} assertions passed)\n";

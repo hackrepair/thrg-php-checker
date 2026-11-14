@@ -365,13 +365,16 @@ final class THRG_PC_Engine {
                 $source = $file->numTokens ? $file->getTokensAsString( 0, $file->numTokens, true ) : ''; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- Upstream PHPCS API.
                 token_get_all( $source, TOKEN_PARSE );
             } catch ( CompileError $e ) {
-                $findings[] = self::skipped_note(
-                    sprintf(
-                        /* translators: %s: PHP version used to run the scanner */
-                        __( 'Syntax could not be validated on PHP %s. The code may be malformed or intended for a different PHP runtime.', 'thrg-php-checker' ),
-                        PHP_VERSION
-                    )
-                );
+                // A host older than the target cannot be expected to parse newer syntax; that is not a coverage gap.
+                if ( '' !== $target && version_compare( PHP_VERSION, $target, '>=' ) ) {
+                    $findings[] = self::skipped_note(
+                        sprintf(
+                            /* translators: %s: PHP version used to run the scanner */
+                            __( 'Syntax could not be validated on PHP %s. The code may be malformed or intended for a different PHP runtime.', 'thrg-php-checker' ),
+                            PHP_VERSION
+                        )
+                    );
+                }
             }
             $file->cleanUp();
         } catch ( Throwable $e ) {

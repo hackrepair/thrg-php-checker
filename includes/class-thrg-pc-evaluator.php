@@ -59,6 +59,7 @@ final class THRG_PC_Evaluator {
             'engine_reason'   => THRG_PC_Engine::unavailable_reason(),
             'components'      => $comps,
             'results'         => $rows,
+            'scope'           => 'active' === THRG_PHP_Checker::settings()['default_scope'] ? 'active' : 'all',
             'prescan_enabled' => ! empty( THRG_PHP_Checker::settings()['prescan_updates'] ),
             'update_items'    => $update_items,
             'now'             => time(),
@@ -191,8 +192,30 @@ final class THRG_PC_Evaluator {
         );
 
         // 2. Scan coverage & target overview (shown only when engine is unavailable or 0 components scanned yet).
-        $total_comps   = count( $comps );
-        $scanned_comps = count( $results );
+        $scoped_comps = $comps;
+        if ( 'active' === ( isset( $o['scope'] ) ? $o['scope'] : 'all' ) ) {
+            $scoped_comps = array_values(
+                array_filter(
+                    $comps,
+                    static function ( $c ) {
+                        return ! empty( $c['active'] );
+                    }
+                )
+            );
+        }
+        $total_comps   = count( $scoped_comps );
+        $scanned_keys  = array();
+        foreach ( $results as $r ) {
+            if ( isset( $r['kind'], $r['slug'] ) ) {
+                $scanned_keys[ THRG_PC_Results::key( $r['kind'], $r['slug'] ) ] = true;
+            }
+        }
+        $scanned_comps = 0;
+        foreach ( $scoped_comps as $c ) {
+            if ( isset( $scanned_keys[ THRG_PC_Results::key( $c['kind'], $c['slug'] ) ] ) ) {
+                ++$scanned_comps;
+            }
+        }
         $overview_row  = null;
 
         if ( ! empty( $o['engine_reason'] ) ) {
