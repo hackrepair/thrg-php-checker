@@ -13,9 +13,9 @@ defined( 'ABSPATH' ) || exit;
                     <span class="thrg-pc-section-bar__title">
                         <?php
                         if ( ! empty( $broken_names ) && $has_fatal_err ) {
-                            esc_html_e( 'Most urgent first: likely to break your site, then may break parts of it, then warnings', 'thrg-php-checker' );
+                            esc_html_e( 'Sorted by risk: the plugins most likely to break your site come first, minor warnings last', 'thrg-php-checker' );
                         } elseif ( ! empty( $broken_names ) ) {
-                            esc_html_e( 'Most urgent first: problems, then warnings', 'thrg-php-checker' );
+                            esc_html_e( 'Sorted by risk: problems first, minor warnings last', 'thrg-php-checker' );
                         } else {
                             esc_html_e( 'Findings sorted by urgency: Active plugins & theme first', 'thrg-php-checker' );
                         }
