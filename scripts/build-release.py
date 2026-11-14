@@ -152,6 +152,34 @@ with zipfile.ZipFile( output ) as z:
         assert re.search( r'^Contributors: hackrepair, tvcnet$', readme_text, flags=re.MULTILINE )
         assert '== External services ==' in readme_text
         assert 'security reporting' not in readme_text.lower() and 'jim@hackrepair.com' not in readme_text
+        # WordPress.org review gates (lessons from earlier submissions; Plugin Check does not enforce these).
+        def header_value( text: str, label: str ) -> str:
+            m = re.search( r'^[ \t*]*' + re.escape( label ) + r':\s*(\S+)', text, flags=re.MULTILINE )
+            assert m, f'wporg gate: {label} missing'
+            return m.group( 1 )
+        root_php = [ n for n in names if n.count( '/' ) == 1 and n.endswith( '.php' ) ]
+        with_header = [ n for n in root_php if 'Plugin Name:' in z.read( n ).decode( 'utf-8' ) ]
+        assert with_header == [ slug + '/' + slug + '.php' ], f'wporg gate: only {slug}.php may carry the plugin header, found {with_header}'
+        req_header = header_value( main_text, 'Requires at least' )
+        req_readme = header_value( readme_text, 'Requires at least' )
+        assert req_header == req_readme, f'wporg gate: Requires at least differs (header {req_header}, readme {req_readme})'
+        assert re.fullmatch( r'\d+\.\d', req_header ), f'wporg gate: Requires at least must be a major version such as 6.4, not {req_header}'
+        assert header_value( main_text, 'Requires PHP' ) == header_value( readme_text, 'Requires PHP' ), 'wporg gate: Requires PHP differs'
+        assert re.fullmatch( r'\d+\.\d(\.\d+)?', header_value( readme_text, 'Tested up to' ) ), 'wporg gate: Tested up to format'
+        assert header_value( main_text, 'Version' ) == version == header_value( readme_text, 'Stable tag' ), 'wporg gate: Version and Stable tag differ'
+        assert header_value( main_text, 'Text Domain' ) == slug, 'wporg gate: Text Domain must equal the slug'
+        tags_line = re.search( r'^Tags:\s*(.+)$', readme_text, flags=re.MULTILINE ).group( 1 )
+        assert len( [ t for t in tags_line.split( ',' ) if t.strip() ] ) <= 5, 'wporg gate: more than 5 tags'
+        after_headers = readme_text.split( 'License URI:', 1 )[1].split( '\n', 1 )[1]
+        short_desc    = next( line for line in after_headers.splitlines() if line.strip() )
+        assert len( short_desc.strip() ) <= 150, f'wporg gate: short description is {len( short_desc.strip() )} characters (limit 150)'
+        for section in ( '== Description ==', '== Installation ==', '== Frequently Asked Questions ==', '== Changelog ==' ):
+            assert section in readme_text, f'wporg gate: readme section {section} missing'
+        for n in names:
+            if not n.endswith( ( '.php', '.txt', '.md', '.js', '.css', '.json', '.svg', '.html', '.xml' ) ):
+                continue
+            blob = z.read( n ).decode( 'utf-8', errors='ignore' ).lower()
+            assert not re.search( r'claude|anthropic|co-authored', blob ), f'wporg gate: forbidden word in {n}'
     else:
         assert slug + '/includes/companion-plugins.php' in names
         assert slug + '/readme-wporg.txt' not in names
