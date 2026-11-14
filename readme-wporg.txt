@@ -9,7 +9,7 @@ Stable tag: 1.2.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Your friendly WordPress PHP compatibility checker. Tests plugins and themes for PHP 8.1–8.5, puts likely blockers first, and shows how complete each scan is.
+Your friendly WordPress PHP compatibility checker. Tests plugins and themes for PHP 8.1–8.5 and puts likely blockers first.
 
 == Description ==
 

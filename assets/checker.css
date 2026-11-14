@@ -162,6 +162,19 @@
 
 .thrg-pc-toolbar__field select {
     min-width: 220px;
+    max-width: 100%;
+}
+
+@media (min-width: 783px) {
+    .thrg-pc-toolbar__field {
+        flex: 0 0 auto;
+    }
+
+    /* Wide enough for the longest option so the count is never cut off. */
+    .thrg-pc-toolbar__field select#thrg-pc-scope {
+        min-width: 26rem;
+        max-width: none;
+    }
 }
 
 .thrg-pc-toolbar__actions {
