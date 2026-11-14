@@ -973,6 +973,24 @@ $behaviour_grade = THRG_PC_Grade::component(
 	array( 'boot_files' => array() )
 );
 assert_same( 5, $behaviour_grade['grade'], 'A lone behaviour-change error is grade 5 (minor changes), not a likely break' );
+
+// Quick-switch summary follows the grade scale: own fatal = likely to break, bundled-only or behaviour-change = review, clean = ok.
+THRG_PC_Results::clear_all();
+$sum_components = array(
+	array( 'kind' => 'plugin', 'slug' => 'own/own.php', 'name' => 'Own Fatal', 'version' => '1.0', 'files_total' => 1 ),
+	array( 'kind' => 'plugin', 'slug' => 'lib/lib.php', 'name' => 'Bundled Only', 'version' => '1.0', 'files_total' => 1 ),
+	array( 'kind' => 'plugin', 'slug' => 'beh/beh.php', 'name' => 'Behaviour Change', 'version' => '1.0', 'files_total' => 1 ),
+	array( 'kind' => 'plugin', 'slug' => 'ok/ok.php', 'name' => 'Clean', 'version' => '1.0', 'files_total' => 1 ),
+);
+THRG_PC_Results::save( $sum_components[0], '8.3', array( array( 'type' => 'error', 'file' => 'inc/a.php', 'line' => 3, 'source' => 'PHPCompatibility.FunctionUse.RemovedFunctions.eachDeprecatedRemoved', 'message' => 'x', 'origin' => 'own' ) ) );
+THRG_PC_Results::save( $sum_components[1], '8.3', array( array( 'type' => 'error', 'file' => 'vendor/lib/a.php', 'line' => 3, 'source' => 'PHPCompatibility.FunctionUse.RemovedFunctions.eachDeprecatedRemoved', 'message' => 'x', 'origin' => 'bundled' ) ) );
+THRG_PC_Results::save( $sum_components[2], '8.3', array( array( 'type' => 'error', 'file' => 'inc/b.php', 'line' => 3, 'source' => 'PHPCompatibility.Variables.NewUniformVariableSyntax.Found', 'message' => 'x', 'origin' => 'own' ) ) );
+THRG_PC_Results::save( $sum_components[3], '8.3', array() );
+$sum_out = THRG_PC_Results::target_summaries( array( '8.3' ), $sum_components );
+assert_same( 1, $sum_out['8.3']['breaks'], 'Quick-switch counts only own-code fatal errors as likely to break' );
+assert_same( 2, $sum_out['8.3']['warnings'], 'Quick-switch counts bundled-only and behaviour-change components as review' );
+assert_same( 1, $sum_out['8.3']['ok'], 'Quick-switch counts clean components as ok' );
+THRG_PC_Results::clear_all();
 assert_same( 'since PHP 7.0', THRG_PC_Results::rule_php_version( 'Since PHP 7.0, functions inspecting arguments...', 'PHPCompatibility.FunctionUse.ArgumentFunctionsReportCurrentValue.NeedsInspection', '8.3' ), 'Extracts originating PHP version from message' );
 assert_same( 'since PHP 8.2', THRG_PC_Results::rule_php_version( 'Creation of dynamic property...', 'PHPCompatibility.Classes.ForbiddenDynamicProperties.Found', '8.3' ), 'Extracts PHP 8.2 for dynamic properties' );
 

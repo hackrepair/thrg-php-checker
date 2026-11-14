@@ -432,7 +432,7 @@ final class THRG_PC_Results {
                 }
                 if ( $likely ) {
                     ++$summary['breaks'];
-                } elseif ( in_array( $r['verdict'], array( 'warnings', 'partial' ), true ) ) {
+                } elseif ( 'breaks' === $r['verdict'] || in_array( $r['verdict'], array( 'warnings', 'partial' ), true ) ) {
                     ++$summary['warnings'];
                 } else {
                     ++$summary['ok'];
