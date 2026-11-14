@@ -203,8 +203,8 @@ final class THRG_PC_Evaluator {
                 )
             );
         }
-        $total_comps   = count( $scoped_comps );
-        $scanned_keys  = array();
+        $total_comps  = count( $scoped_comps );
+        $scanned_keys = array();
         foreach ( $results as $r ) {
             if ( isset( $r['kind'], $r['slug'] ) ) {
                 $scanned_keys[ THRG_PC_Results::key( $r['kind'], $r['slug'] ) ] = true;
@@ -216,7 +216,7 @@ final class THRG_PC_Evaluator {
                 ++$scanned_comps;
             }
         }
-        $overview_row  = null;
+        $overview_row = null;
 
         if ( ! empty( $o['engine_reason'] ) ) {
             $overview_row = array(
