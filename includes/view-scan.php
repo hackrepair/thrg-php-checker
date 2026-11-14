@@ -113,7 +113,7 @@ defined( 'ABSPATH' ) || exit;
                                 if ( $summaries[ $t ]['breaks'] > 0 ) {
                                     printf(
                                         /* translators: %d: count of incompatible components */
-                                        esc_html__( '%d incompatible', 'thrg-php-checker' ),
+                                        esc_html__( '%d likely to break', 'thrg-php-checker' ),
                                         (int) $summaries[ $t ]['breaks']
                                     );
                                 } elseif ( $summaries[ $t ]['warnings'] > 0 ) {
@@ -164,25 +164,28 @@ defined( 'ABSPATH' ) || exit;
     <section class="thrg-summary" aria-label="<?php esc_attr_e( 'Compatibility Summary', 'thrg-php-checker' ); ?>">
         <div class="thrg-summary-tile thrg-summary-tile--weakness">
             <span class="thrg-summary-count"><?php echo (int) $counts['attention']; ?></span>
-            <span class="thrg-summary-label"><?php esc_html_e( 'Incompatible / Action Needed', 'thrg-php-checker' ); ?></span>
+            <span class="thrg-summary-label"><?php esc_html_e( 'Likely to break', 'thrg-php-checker' ); ?></span>
             <span class="thrg-summary-sub">
                 <?php
                 printf(
                     /* translators: %s: target PHP version */
-                    esc_html__( 'Will break on PHP %s or server PHP is EOL', 'thrg-php-checker' ),
+                    esc_html__( 'Own code likely to fail on PHP %s', 'thrg-php-checker' ),
                     esc_html( $selected_target )
                 );
+                if ( ! empty( $counts['server'] ) ) {
+                    echo ' ' . esc_html__( '(server PHP is also end of life)', 'thrg-php-checker' );
+                }
                 ?>
             </span>
         </div>
         <div class="thrg-summary-tile thrg-summary-tile--review">
             <span class="thrg-summary-count"><?php echo (int) $counts['review']; ?></span>
-            <span class="thrg-summary-label"><?php esc_html_e( 'Warnings / To Review', 'thrg-php-checker' ); ?></span>
+            <span class="thrg-summary-label"><?php esc_html_e( 'Review', 'thrg-php-checker' ); ?></span>
             <span class="thrg-summary-sub">
                 <?php
                 printf(
                     /* translators: %s: target PHP version */
-                    esc_html__( 'Works in PHP %s (deprecations or upcoming EOL)', 'thrg-php-checker' ),
+                    esc_html__( 'Fallback code, bundled libraries, minor changes or deprecations on PHP %s', 'thrg-php-checker' ),
                     esc_html( $selected_target )
                 );
                 ?>

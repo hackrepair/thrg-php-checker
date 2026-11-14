@@ -116,6 +116,7 @@ PHP Checker automatically prunes uninstalled plugins/themes and outdated compone
 * The report filters are now "Will likely break" and "Needs a look".
 * The WordPress.org fix check counts a newer version as fixed when only review items remain.
 * Emails and the text report show each component's grade.
+* Changes that only alter how code runs, such as the PHP 7.0 variable syntax change, count as "Minor changes" and no longer trigger the red "Hold off" banner. The summary tiles and the quick-switch buttons use the same grade wording, and the server's end-of-life row is no longer counted as a component.
 
 = 1.2.6 =
 * Notices from WordPress and other plugins now appear below the PHP Checker header instead of inside it.

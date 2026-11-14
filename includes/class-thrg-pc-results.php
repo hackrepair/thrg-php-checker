@@ -159,6 +159,10 @@ final class THRG_PC_Results {
             'PHPCompatibility.IniDirectives.RemovedIniDirectives.',
             'PHPCompatibility.FunctionUse.ArgumentFunctionsReportCurrentValue.',
             'PHPCompatibility.Variables.RemovedPredefinedGlobalVariables.',
+            // Behaviour changes: the code still runs, it just evaluates differently.
+            'PHPCompatibility.Variables.NewUniformVariableSyntax.',
+            'PHPCompatibility.Operators.ChangedConcatOperatorPrecedence.',
+            'PHPCompatibility.Lists.AssignmentOrder.',
         ) as $non_fatal_prefix ) {
             if ( 0 === strpos( $source, $non_fatal_prefix ) ) {
                 return false;
@@ -414,7 +418,19 @@ final class THRG_PC_Results {
                 'ok'       => 0,
             );
             foreach ( $rows as $r ) {
+                $likely = false;
                 if ( 'breaks' === $r['verdict'] ) {
+                    $g      = THRG_PC_Grade::component(
+                        isset( $r['findings'] ) && is_array( $r['findings'] ) ? $r['findings'] : array(),
+                        array(
+                            'marker'     => false,
+                            'strong'     => false,
+                            'boot_files' => isset( $r['boot_files'] ) && is_array( $r['boot_files'] ) ? $r['boot_files'] : array(),
+                        )
+                    );
+                    $likely = (int) $g['grade'] <= 2 || (int) $g['grade'] > 6;
+                }
+                if ( $likely ) {
                     ++$summary['breaks'];
                 } elseif ( in_array( $r['verdict'], array( 'warnings', 'partial' ), true ) ) {
                     ++$summary['warnings'];

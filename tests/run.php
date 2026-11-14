@@ -958,6 +958,21 @@ assert_same( 'bundled', THRG_PC_Results::file_origin( 'back/Libraries/Mailer/Mai
 assert_same( false, THRG_PC_Results::is_fatal_rule( 'PHPCompatibility.IniDirectives.RemovedIniDirectives.track_errorsDeprecatedRemoved' ), 'RemovedIniDirectives is non-fatal tier' );
 assert_same( false, THRG_PC_Results::is_fatal_rule( 'PHPCompatibility.FunctionUse.ArgumentFunctionsReportCurrentValue.Changed' ), 'ArgumentFunctionsReportCurrentValue is non-fatal tier' );
 assert_same( true, THRG_PC_Results::is_fatal_rule( 'PHPCompatibility.FunctionUse.RemovedFunctions.eachDeprecatedRemoved' ), 'RemovedFunctions is fatal tier' );
+assert_same( false, THRG_PC_Results::is_fatal_rule( 'PHPCompatibility.Variables.NewUniformVariableSyntax.Found' ), 'Uniform variable syntax is a behaviour change, not fatal' );
+assert_same( false, THRG_PC_Results::is_fatal_rule( 'PHPCompatibility.Operators.ChangedConcatOperatorPrecedence.Found' ), 'Concat precedence is a behaviour change, not fatal' );
+assert_same( false, THRG_PC_Results::is_fatal_rule( 'PHPCompatibility.Lists.AssignmentOrder.Affected' ), 'List assignment order is a behaviour change, not fatal' );
+$behaviour_grade = THRG_PC_Grade::component(
+	array(
+		array(
+			'type'   => 'error',
+			'file'   => 'src/DisplayType/ControllerFactory.php',
+			'source' => 'PHPCompatibility.Variables.NewUniformVariableSyntax.Found',
+			'origin' => 'own',
+		),
+	),
+	array( 'boot_files' => array() )
+);
+assert_same( 5, $behaviour_grade['grade'], 'A lone behaviour-change error is grade 5 (minor changes), not a likely break' );
 assert_same( 'since PHP 7.0', THRG_PC_Results::rule_php_version( 'Since PHP 7.0, functions inspecting arguments...', 'PHPCompatibility.FunctionUse.ArgumentFunctionsReportCurrentValue.NeedsInspection', '8.3' ), 'Extracts originating PHP version from message' );
 assert_same( 'since PHP 8.2', THRG_PC_Results::rule_php_version( 'Creation of dynamic property...', 'PHPCompatibility.Classes.ForbiddenDynamicProperties.Found', '8.3' ), 'Extracts PHP 8.2 for dynamic properties' );
 

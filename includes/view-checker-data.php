@@ -30,6 +30,7 @@ $counts        = array(
     'attention' => 0,
     'review'    => 0,
     'clean'     => 0,
+    'server'    => 0,
 );
 $primary_rows  = array();
 $clean_comps   = array();
@@ -43,7 +44,11 @@ $has_tech_rows = 0;
 
 foreach ( $rows as $row ) {
     if ( 'Potential weakness' === $row['status'] ) {
-        ++$counts['attention'];
+        if ( empty( $row['comp_key'] ) ) {
+            ++$counts['server'];
+        } else {
+            ++$counts['attention'];
+        }
     } elseif ( 'No issue observed' === $row['status'] ) {
         ++$counts['clean'];
     } else {
@@ -163,8 +168,8 @@ if ( ! empty( $observations['engine_reason'] ) ) {
         $verdict_title = sprintf(
             /* translators: 1: target PHP version, 2: count of incompatible components, 3: component names */
             _n(
-                'Hold off on upgrading to PHP %1$s — %2$d component has fatal compatibility errors (%3$s)',
-                'Hold off on upgrading to PHP %1$s — %2$d components have fatal compatibility errors (%3$s)',
+                'Hold off on upgrading to PHP %1$s — %2$d component is likely to break (%3$s)',
+                'Hold off on upgrading to PHP %1$s — %2$d components are likely to break (%3$s)',
                 count( $broken_names ),
                 'thrg-php-checker'
             ),
@@ -174,7 +179,7 @@ if ( ! empty( $observations['engine_reason'] ) ) {
         );
         $verdict_desc = sprintf(
             /* translators: %s: target PHP version */
-            __( 'The red item(s) at the top of the report below contain code that can cause a fatal error on PHP %s. Update, replace, or deactivate them before switching PHP versions in your hosting panel.', 'thrg-php-checker' ),
+            __( 'The red item(s) at the top of the report below contain code that is likely to cause a fatal error on PHP %s. Update, replace, or deactivate them before switching PHP versions in your hosting panel.', 'thrg-php-checker' ),
             $selected_target
         );
     } else {
