@@ -110,7 +110,7 @@ PHP Checker automatically prunes uninstalled plugins/themes and outdated compone
 
 = 1.2.8 =
 * Separate compatibility impact, execution evidence, origin and scan coverage. Logging settings, filenames, fallback hints and bundled origin cannot lower fatal impact.
-* Keep unmapped errors prominent without labeling their impact as proven fatal. Startup-file discovery remains a hint.
+* Keep unmapped errors prominent without labeling their impact as proven fatal. Components with code that appears to run when the plugin loads are labelled "Likely to fail on load" and trigger the red "Hold off" banner. Fatal-mapped errors inside functions, classes or bundled libraries are labelled "May fail when used" and get a calmer review banner.
 * Preserve complete aggregate counts before bounding displayed findings, retain coverage-gap reasons, and request refreshed evidence when older results lack required checks.
 * Mark syntax the host cannot validate as incomplete coverage when the server runs at least the target PHP; do not execute scanned code or infer a target-PHP fatal error from the host parser alone. Servers older than the target skip this check.
 * Ignore source PHPCS suppression comments during compatibility scans and handle empty files normally.
