@@ -108,6 +108,9 @@ final class THRG_PC_Context {
     public static function place_finding( array $finding, $file ) {
         $finding['file']   = (string) $file;
         $finding['origin'] = THRG_PC_Results::file_origin( $file );
+        if ( THRG_PC_Scope::name_hint( $file ) ) {
+            $finding['name_hint'] = 1;
+        }
         if ( self::compat_path( $file ) ) {
             $finding = self::as_note(
                 $finding,
@@ -156,6 +159,9 @@ final class THRG_PC_Context {
             unset( $findings[ $i ]['column'] );
             $ptr = isset( $at[ $key ] ) ? $at[ $key ] : null;
             if ( null === $ptr || ! self::runtime_rule( $finding['source'] ) ) {
+                if ( null !== $ptr && in_array( $finding['type'], array( 'error', 'warning' ), true ) ) {
+                    $findings[ $i ] = THRG_PC_Scope::annotate( $findings[ $i ], $tokens, $ptr );
+                }
                 continue;
             }
             $removed            = self::removed_finding( $finding );
@@ -174,6 +180,8 @@ final class THRG_PC_Context {
                     /* translators: %s: original compatibility finding message. */
                     __( 'Not counted — guarded code that does not run on this PHP version: %s', 'thrg-php-checker' )
                 );
+            } else {
+                $findings[ $i ] = THRG_PC_Scope::annotate( $findings[ $i ], $tokens, $ptr );
             }
         }
         return $findings;

@@ -210,6 +210,16 @@ final class THRG_PC_Results {
                 'source'  => isset( $finding['source'] ) ? (string) $finding['source'] : '',
                 'origin'  => $origin,
             );
+            $last     = count( $keep ) - 1;
+            if ( isset( $finding['scope'] ) && in_array( $finding['scope'], array( 'file', 'class-body', 'conditional', 'function' ), true ) ) {
+                $keep[ $last ]['scope'] = (string) $finding['scope'];
+            }
+            if ( ! empty( $finding['reason'] ) && preg_match( '/^[a-z_]{1,24}$/', (string) $finding['reason'] ) ) {
+                $keep[ $last ]['reason'] = (string) $finding['reason'];
+            }
+            if ( ! empty( $finding['name_hint'] ) ) {
+                $keep[ $last ]['name_hint'] = 1;
+            }
         }
         if ( count( $keep ) > self::MAX_FINDINGS ) {
             $errors   = array();
@@ -230,6 +240,30 @@ final class THRG_PC_Results {
             $keep = array_slice( array_merge( $errors, $warnings, $skipped, $notes ), 0, self::MAX_FINDINGS );
         }
         return $keep;
+    }
+
+    /**
+     * Keep only plain relative file paths for the boot-file list.
+     *
+     * @param mixed $files Candidate list.
+     * @return string[]
+     */
+    public static function clean_boot_files( $files ) {
+        $out = array();
+        if ( ! is_array( $files ) ) {
+            return $out;
+        }
+        foreach ( $files as $f ) {
+            $f = ltrim( str_replace( '\\', '/', (string) $f ), '/' );
+            if ( '' === $f || false !== strpos( $f, '..' ) || strlen( $f ) > 200 ) {
+                continue;
+            }
+            $out[ $f ] = $f;
+            if ( count( $out ) >= THRG_PC_Boot::MAX_FILES ) {
+                break;
+            }
+        }
+        return array_values( $out );
     }
 
     /**
@@ -289,6 +323,7 @@ final class THRG_PC_Results {
             'notes'       => $counts['notes'],
             'files_total' => isset( $component['files_total'] ) ? absint( $component['files_total'] ) : 0,
             'findings'    => self::trim_findings( $findings ),
+            'boot_files'  => self::clean_boot_files( isset( $component['boot_files'] ) ? $component['boot_files'] : array() ),
             'scanned_at'  => $now > 0 ? (int) $now : time(),
         );
         update_option( self::OPTION, $all, false );
@@ -426,6 +461,7 @@ final class THRG_PC_Results {
             'warnings'   => $counts['warnings'],
             'skipped'    => $counts['skipped'],
             'notes'      => $counts['notes'],
+            'grade'      => 'breaks' === $verdict ? min( 6, (int) THRG_PC_Grade::component( self::trim_findings( $findings ), array() )['grade'] ) : ( 'warnings' === $verdict ? 6 : 7 ),
             'findings'   => self::trim_findings( $findings ),
             'scanned_at' => time(),
         );

@@ -38,7 +38,7 @@ $nav_review    = array();
 $broken_names  = array();
 $has_fatal_err = false;
 $warn_comps    = 0;
-$bundled_names = array();
+$review_names  = array();
 $has_tech_rows = 0;
 
 foreach ( $rows as $row ) {
@@ -54,19 +54,25 @@ foreach ( $rows as $row ) {
         $clean_comps[] = $row;
     } else {
         $primary_rows[] = $row;
+        $row_inactive   = ! empty( $row['comp_key'] ) && empty( $row['comp_active'] ) && empty( $row['comp_network_active'] ) && empty( $row['comp_parent_theme'] );
         if ( 'Potential weakness' === $row['status'] ) {
             $nav_attention[] = $row;
-            if ( ! empty( $row['comp_name'] ) ) {
-                $broken_names[] = (string) $row['comp_name'];
-            }
-            if ( ! isset( $row['fatal_errors'] ) || (int) $row['fatal_errors'] > 0 ) {
-                $has_fatal_err = true;
+            if ( $row_inactive ) {
+                // An inactive component cannot break requests, so it never triggers the "Hold off" banner.
+                $review_names[] = (string) $row['comp_name'];
+            } else {
+                if ( ! empty( $row['comp_name'] ) ) {
+                    $broken_names[] = (string) $row['comp_name'];
+                }
+                if ( ! isset( $row['fatal_errors'] ) || (int) $row['fatal_errors'] > 0 ) {
+                    $has_fatal_err = true;
+                }
             }
         } else {
             $nav_review[] = $row;
             if ( ! empty( $row['comp_key'] ) ) {
-                if ( ! empty( $row['bundled_only'] ) ) {
-                    $bundled_names[] = (string) $row['comp_name'];
+                if ( isset( $row['grade'] ) && (int) $row['grade'] >= 3 && (int) $row['grade'] <= 5 ) {
+                    $review_names[] = (string) $row['comp_name'];
                 } else {
                     ++$warn_comps;
                 }
@@ -190,24 +196,24 @@ if ( ! empty( $observations['engine_reason'] ) ) {
             $selected_target
         );
     }
-} elseif ( ! empty( $bundled_names ) ) {
+} elseif ( ! empty( $review_names ) ) {
     $verdict_tone  = 'neutral';
-    $shown_bundle  = implode( ', ', array_slice( $bundled_names, 0, 3 ) );
+    $shown_review  = implode( ', ', array_slice( $review_names, 0, 3 ) );
     $verdict_title = sprintf(
         /* translators: 1: target PHP version, 2: count of components, 3: component names */
         _n(
-            'Review before upgrading to PHP %1$s — %2$d component has errors only in a bundled library (%3$s)',
-            'Review before upgrading to PHP %1$s — %2$d components have errors only in bundled libraries (%3$s)',
-            count( $bundled_names ),
+            'Review before upgrading to PHP %1$s — %2$d component needs a look (%3$s)',
+            'Review before upgrading to PHP %1$s — %2$d components need a look (%3$s)',
+            count( $review_names ),
             'thrg-php-checker'
         ),
         $selected_target,
-        count( $bundled_names ),
-        $shown_bundle
+        count( $review_names ),
+        $shown_review
     );
     $verdict_desc = sprintf(
         /* translators: %s: target PHP version */
-        __( 'No unguarded PHP %s errors were found in the plugin or theme code itself. The flagged files are bundled third-party libraries, which often only run for optional features or older environments. Check the listed files, update the plugin if a new version is available, and test before switching PHP versions.', 'thrg-php-checker' ),
+        __( 'None of your active plugins or themes is likely to break on PHP %s. The flagged components are inactive, or their errors sit in fallback code, bundled third-party libraries, or minor behaviour changes. Check the listed files, update where an update exists, and test before switching PHP versions.', 'thrg-php-checker' ),
         $selected_target
     );
 } elseif ( $warn_comps > 0 ) {

@@ -5,7 +5,7 @@ Tags: php, compatibility, php 8.3, php 8.4, upgrade
 Requires at least: 6.4
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 1.2.6
+Stable tag: 1.2.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -107,6 +107,15 @@ PHP Checker automatically prunes uninstalled plugins/themes and outdated compone
 3. Start screen: choose a PHP target version and scan scope.
 
 == Changelog ==
+
+= 1.2.7 =
+* Every plugin and theme now gets a plain-language grade instead of a flat "Incompatible": Breaks on load, Likely to break, Review: fallback code, Review: bundled library, Minor changes, Deprecation warnings, or Compatible.
+* Errors that only sit on fallback paths, such as code that runs only when a PHP feature is missing, are labelled "Review: fallback code" instead of "Likely to break".
+* The red "Hold off" banner now appears only when an active plugin or theme is likely to break. Inactive components and review items get a calmer "Review before upgrading" banner.
+* Cards show "Loads on PHP X on this site" when the server already runs that PHP version and WordPress has not paused the plugin. With the runtime log turned on, this also moves "Likely to break" to "Review: fallback code".
+* The report filters are now "Will likely break" and "Needs a look".
+* The WordPress.org fix check counts a newer version as fixed when only review items remain.
+* Emails and the text report show each component's grade.
 
 = 1.2.6 =
 * Notices from WordPress and other plugins now appear below the PHP Checker header instead of inside it.

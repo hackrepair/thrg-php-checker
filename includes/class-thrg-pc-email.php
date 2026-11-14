@@ -170,15 +170,15 @@ final class THRG_PC_Email {
                 $target,
                 $site,
                 self::plural( $fix, 'item', 'items' ),
-                $look ? sprintf( ', plus %s with deprecation warnings or notes to review', self::plural( $look, 'item', 'items' ) ) : ''
+                $look ? sprintf( ', plus %s worth a look (fallback code, libraries, deprecations)', self::plural( $look, 'item', 'items' ) ) : ''
             );
         }
         if ( $look ) {
             return sprintf(
-                'No fatal PHP %s incompatibilities turned up on %s. %s deprecation warnings or notes worth a look before or after you upgrade.',
+                'Nothing on %2$s is likely to break on PHP %1$s. %3$s worth a look (fallback code, bundled libraries, minor changes or deprecations) before or after you upgrade.',
                 $target,
                 $site,
-                self::plural( $look, 'item has', 'items have' )
+                self::plural( $look, 'item is', 'items are' )
             );
         }
         return sprintf(
@@ -280,6 +280,9 @@ final class THRG_PC_Email {
         $h .= '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #ead9cc;border-left:4px solid ' . $accent . ';border-radius:6px;background:#ffffff;">';
         $h .= '<tr><td style="padding:14px 16px;">';
         $h .= '<div style="font-size:16px;font-weight:700;color:#1d2327;margin:0 0 6px;">' . self::e( $r['title'] ) . '</div>';
+        if ( ! empty( $r['comp_key'] ) && ! empty( $r['grade'] ) && (int) $r['grade'] < 7 ) {
+            $h .= '<div style="font-size:12px;font-weight:700;color:#8a4b00;margin:0 0 6px;">' . self::e( $r['grade_label'] . ( ! empty( $r['evidence_label'] ) ? ' · ' . $r['evidence_label'] : '' ) ) . '</div>';
+        }
         $h .= '<div style="font-size:14px;line-height:1.55;color:#3c434a;margin:0 0 10px;">' . self::e( self::clean( $r['why'] ) ) . '</div>';
         if ( $full && ! empty( $r['evidence'] ) ) {
             $h .= '<div style="background:#faf6f2;border-radius:4px;padding:8px 12px;margin:0 0 10px;font-size:13px;line-height:1.5;color:#50575e;">';
@@ -442,14 +445,18 @@ final class THRG_PC_Email {
         $out .= count( $g['fix'] ) . ' need attention · ' . count( $g['look'] ) . ' to review · ' . count( $g['good'] ) . " no known problems\n";
         foreach ( array(
             'fix'  => 'FIX OR REPLACE BEFORE UPGRADING PHP',
-            'look' => 'WORTH A LOOK (DEPRECATIONS & NOTES)',
+            'look' => 'WORTH A LOOK (FALLBACK CODE, LIBRARIES, DEPRECATIONS)',
         ) as $k => $label ) {
             if ( ! $g[ $k ] ) {
                 continue;
             }
             $out .= "\n" . $label . "\n";
             foreach ( $g[ $k ] as $r ) {
-                $out .= "\n- " . $r['title'] . "\n  " . self::clean( $r['why'] ) . "\n";
+                $out .= "\n- " . $r['title'] . "\n";
+                if ( ! empty( $r['comp_key'] ) && ! empty( $r['grade'] ) && (int) $r['grade'] < 7 ) {
+                    $out .= '  [' . $r['grade_label'] . ( ! empty( $r['evidence_label'] ) ? ' · ' . $r['evidence_label'] : '' ) . "]\n";
+                }
+                $out .= '  ' . self::clean( $r['why'] ) . "\n";
                 foreach ( array_slice( $r['evidence'], 0, 3 ) as $line ) {
                     $out .= '  · ' . self::clean( $line ) . "\n";
                 }

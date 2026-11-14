@@ -2,7 +2,7 @@
 
 Developer notes for contributors. For what the plugin does, see [README.md](README.md "What the plugin does and how to install it").
 
-Current version: **1.2.6** (not yet released; latest tag `v1.2.4`, November 12, 2026; 1.2.5 is in WordPress.org review). See `releases/v1.2.6.md`.
+Current version: **1.2.7** (local prerelease on `prerelease-1.2.7`, not released; latest tag `v1.2.4`, November 12, 2026; 1.2.5 is in WordPress.org review, 1.2.6 is a local prerelease). See `releases/v1.2.7.md`.
 
 ## Scope
 
@@ -10,7 +10,7 @@ An in-process, read-only static PHP 8.1–8.5 compatibility analyzer for install
 
 ## Architecture
 
-- `index.php`: plugin header (`Version: 1.2.6`), constants (`THRG_PHP_CHECKER_VERSION`, `THRG_PHP_CHECKER_FILE`, `THRG_PHP_CHECKER_DIR`), GitHub release updater bootstrap, class includes, and deactivation cleanup for scheduled hooks and transient scan state.
+- `index.php`: plugin header (`Version: 1.2.7`), constants (`THRG_PHP_CHECKER_VERSION`, `THRG_PHP_CHECKER_FILE`, `THRG_PHP_CHECKER_DIR`), GitHub release updater bootstrap, class includes, and deactivation cleanup for scheduled hooks and transient scan state.
 - `includes/class-thrg-php-checker.php`: main controller (`Tools > PHP Checker`), admin request handlers (with shared `require_admin_ajax()` / `require_admin_post()` helpers), and page bootstrap; delegates evaluation, server advisories, and plain-text formatting to:
   - `includes/class-thrg-pc-server-advisory.php`: server PHP EOL & security advisory checks (`PHP_SUPPORT`, `PHP_ADVISORIES`, `PATCH_LIST_AS_OF`).
   - `includes/class-thrg-pc-evaluator.php`: `collect()` and `evaluate()` pipeline with client-first priority ordering (incompatible components first, warning components second, server/update checks third, clean components last).
@@ -89,6 +89,19 @@ The `--wporg` build follows the Stickies WordPress.org edition (`thrg-stickies`,
   ```
 - **Release Packaging (`scripts/build-release.py`):** Builds `dist/thrg-php-checker.X.Y.Z.zip` with normalized `0644` permissions on every entry, verified byte-for-byte against source files, and writes `dist/thrg-php-checker.X.Y.Z.zip.sha256`.
 - **Architecture Refactoring:** See [REFACTOR.md](REFACTOR.md) for the structural breakdown and completed modularization passes.
+
+## Release 1.2.7 — in progress, November 13, 2026
+
+Local prerelease on `prerelease-1.2.7` (cut from `prerelease-1.2.6`); ships after 1.2.6. A seven-grade compatibility scale replaces the flat "Incompatible" (plan: project doc `plan-1.2.7-graded-compatibility-scale.md`). Pieces:
+- `includes/class-thrg-pc-scope.php` (`THRG_PC_Scope`): called from `THRG_PC_Context::mark_guarded()` for each counted finding; records `scope` (file, class-body, conditional, function) and a `reason` when the code is on a fallback path (else of a feature check, branch when a feature is missing, `check || call`, function only called from such branches, legacy resource gate, legacy `mysql_`/`mcrypt_`/`ereg_` branch next to a `mysqli_`/`openssl_`/`preg_` twin). `place_finding()` adds a `name_hint` for legacy-looking file names.
+- `includes/class-thrg-pc-boot.php` (`THRG_PC_Boot`): files certain to load at startup (main plugin file or theme `functions.php`, plus top-level includes with a literal path, one level). Computed in the scanner when a component finishes and saved as `boot_files` with the result.
+- `includes/class-thrg-pc-grade.php` (`THRG_PC_Grade`): `finding_grade()`, `component()`, `label()`, `status()`, `evidence()`. Grade 1 needs a load-time rule (removed function, constant, class, syntax), file or class-body scope, an own-code file in `boot_files` and no fallback reason.
+- Evidence: `THRG_PC_Evaluator::collect()` builds `evidence` per component (active, running PHP at or above target, not paused by WordPress recovery mode; `strong` also needs the runtime log setting on). Strong evidence lowers grade 2 to 3; a legacy file name plus the marker also gives 3. Grade 1 is never lowered. Fatal errors do not reach the runtime log, so recovery-mode pauses stand in for "no fatal error seen".
+- `THRG_PC_Evaluator::component_finding()` computes `grade`, `grade_label`, `grade_reason`, `evidence_label`; the stored verdict is unchanged. Red status only for grades 1-2; grades 3-6 are Review. Cards sort by grade.
+- Views: `view-checker-data.php` banner (Hold off only for active grade 1-2 components; neutral "Review before upgrading" otherwise), `views/report-cards.php` (`data-grade`, evidence pill, filters "Will likely break" / "Needs a look"), `assets/js/checker.js`, `assets/checker.css`. Email and plain-text report show the grade and evidence label.
+- `THRG_PC_Results::save_update()` stores a grade; the WordPress.org fix check reports `warnings_only` when a newer version only has grade 4 or better items.
+- Results saved before 1.2.7 have no scope data and never reach grade 1.
+- Tests: `php tests/run.php` (242 assertions), phpcs clean.
 
 ## Release 1.2.6 — in progress, November 13, 2026
 

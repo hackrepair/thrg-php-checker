@@ -493,6 +493,7 @@ final class THRG_PC_Scanner {
                 throw new InvalidArgumentException( 'Scan job changed while this step was running.' );
             }
             if ( null !== $completed_comp ) {
+                $completed_comp['boot_files'] = THRG_PC_Boot::files( $completed_comp );
                 THRG_PC_Results::save( $completed_comp, $state['target'], $completed_comp['findings'] );
             }
         } while ( microtime( true ) < $deadline && ( $state['current'] || $state['queue'] ) );

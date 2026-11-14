@@ -549,11 +549,13 @@
                 } );
                 filterCards.forEach( function ( card ) {
                     var isComp = '1' === card.getAttribute( 'data-comp' );
-                    var verdict = card.getAttribute( 'data-verdict' ) || '';
                     var ownCount = parseInt( card.getAttribute( 'data-own-issues' ) || '0', 10 );
                     var show = true;
+                    var grade = parseInt( card.getAttribute( 'data-grade' ) || '0', 10 );
                     if ( 'breaks' === mode && isComp ) {
-                        show = 'breaks' === verdict && '1' !== card.getAttribute( 'data-bundled-only' );
+                        show = grade >= 1 && grade <= 2;
+                    } else if ( 'review' === mode && isComp ) {
+                        show = grade >= 3 && grade <= 5;
                     } else if ( 'own' === mode && isComp ) {
                         show = ownCount > 0;
                     }

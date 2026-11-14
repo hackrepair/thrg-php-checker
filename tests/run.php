@@ -493,11 +493,185 @@ assert_same( 'breaks', $graded['bundled-only/bundled-only.php']['verdict'], 'Sto
 assert_true( 0 === strpos( $graded['bundled-only/bundled-only.php']['badge_text'], 'Review: bundled library' ), 'Bundled-only badge must read Review: bundled library' );
 assert_true( empty( $graded['mixed/mixed.php']['bundled_only'] ), 'Errors in the plugin\'s own code must not be flagged bundled_only' );
 assert_same( 'Potential weakness', $graded['mixed/mixed.php']['status'], 'Own-code errors keep the Potential weakness status' );
-assert_true( 0 === strpos( $graded['mixed/mixed.php']['badge_text'], 'Incompatible' ), 'Own-code errors keep the Incompatible badge' );
+assert_true( 0 === strpos( $graded['mixed/mixed.php']['badge_text'], 'Likely to break' ), 'Own-code errors in a function-scope finding read Likely to break' );
+assert_same( 2, $graded['mixed/mixed.php']['grade'], 'Own-code error without load-time evidence is grade 2' );
+assert_same( 4, $graded['bundled-only/bundled-only.php']['grade'], 'Bundled-only errors are grade 4' );
 
 // 3c. Default target PHP version is 8.3 whatever PHP the server runs.
 assert_same( '8.3', THRG_PHP_Checker::default_target(), 'Default target PHP version must be 8.3' );
 assert_true( in_array( THRG_PHP_Checker::default_target(), THRG_PHP_Checker::scan_targets(), true ), 'Default target must be a supported scan target' );
+
+// 3d. Compatibility grade 1-7 (1.2.7).
+$g_ctx  = array( 'boot_files' => array( 'main.php' ), 'marker' => false, 'strong' => false );
+$g_base = array( 'type' => 'error', 'source' => 'PHPCompatibility.FunctionUse.RemovedFunctions.create_functionRemoved', 'file' => 'main.php', 'line' => 3, 'message' => 'x' );
+assert_same( 1, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scope' => 'file' ) ), $g_ctx ), 'File-scope removed function in a boot file is grade 1' );
+assert_same( 1, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scope' => 'class-body', 'source' => 'PHPCompatibility.Constants.RemovedConstants.mcrypt_rijndael_128Removed' ) ), $g_ctx ), 'Class-body removed constant in a boot file is grade 1' );
+assert_same( 2, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scope' => 'file', 'file' => 'other.php' ) ), $g_ctx ), 'File-scope error in a file not known to load on boot is grade 2' );
+assert_same( 2, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scope' => 'function' ) ), $g_ctx ), 'Function-scope error is grade 2' );
+assert_same( 2, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scope' => 'conditional' ) ), $g_ctx ), 'Conditional top-level error is grade 2 without a fallback reason' );
+assert_same( 2, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scope' => 'file' ) ), array() ), 'Without a boot-file list nothing reaches grade 1' );
+assert_same( 2, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scope' => 'file', 'source' => 'PHPCompatibility.FunctionNameRestrictions.RemovedPHP4StyleConstructors.Removed' ) ), $g_ctx ), 'Rules that do not fail at load time never reach grade 1' );
+assert_same( 3, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scope' => 'file', 'reason' => 'fallback_or' ) ), $g_ctx ), 'A fallback reason makes a fatal own-code error grade 3, even at file scope' );
+assert_same( 4, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'file' => 'vendor/lib/a.php' ) ), $g_ctx ), 'Bundled library error is grade 4' );
+assert_same( 5, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'source' => 'PHPCompatibility.IniDirectives.RemovedIniDirectives.safe_modeRemoved' ) ), $g_ctx ), 'Non-fatal rule is grade 5' );
+assert_same( 6, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'type' => 'warning' ) ), $g_ctx ), 'Warning is grade 6' );
+assert_same( 0, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'type' => 'note' ) ), $g_ctx ), 'Notes do not count' );
+assert_same( 2, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scope' => 'function', 'name_hint' => 1 ) ), $g_ctx ), 'A legacy file name alone does not lower the grade' );
+assert_same( 3, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scope' => 'function', 'name_hint' => 1 ) ), array_merge( $g_ctx, array( 'marker' => true ) ) ), 'A legacy file name plus loads-here evidence is grade 3' );
+assert_same( 3, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scope' => 'function' ) ), array_merge( $g_ctx, array( 'marker' => true, 'strong' => true ) ) ), 'Strong evidence lowers grade 2 to 3' );
+assert_same( 1, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scope' => 'file' ) ), array_merge( $g_ctx, array( 'marker' => true, 'strong' => true ) ) ), 'Evidence never lowers grade 1' );
+assert_same( 2, THRG_PC_Grade::finding_grade( array_merge( $g_base, array( 'scope' => 'function' ) ), array_merge( $g_ctx, array( 'marker' => true ) ) ), 'Marker alone (no runtime log) does not lower grade 2' );
+$ev_ok = THRG_PC_Grade::evidence( true, '8.3', '8.3', true, false );
+assert_true( $ev_ok['marker'] && $ev_ok['strong'], 'Active component on a server already at the target PHP has evidence, strong with the runtime log on' );
+$ev_off = THRG_PC_Grade::evidence( true, '8.3', '8.3', false, false );
+assert_true( $ev_off['marker'] && ! $ev_off['strong'], 'Without the runtime log the evidence is a label only' );
+$ev_old = THRG_PC_Grade::evidence( true, '8.1', '8.3', true, false );
+assert_true( ! $ev_old['marker'], 'No evidence when the server runs older PHP than the target' );
+$ev_paused = THRG_PC_Grade::evidence( true, '8.3', '8.3', true, true );
+assert_true( ! $ev_paused['marker'], 'No evidence when WordPress paused the component after a fatal error' );
+$ev_inactive = THRG_PC_Grade::evidence( false, '8.3', '8.3', true, false );
+assert_true( ! $ev_inactive['marker'], 'No evidence for an inactive component' );
+
+// Scope and fallback detection on real scans.
+$sc_dir = sys_get_temp_dir() . '/thrg-pc-scope-' . uniqid();
+mkdir( $sc_dir );
+$sc_cases = array(
+    'load.php'      => "<?php\n\$x = create_function( '\$a', 'return \$a;' );\n",
+    'inner.php'     => "<?php\nfunction run_it() {\n    return create_function( '\$a', 'return \$a;' );\n}\n",
+    'else.php'      => "<?php\nif ( function_exists( 'mysqli_connect' ) ) {\n    \$c = mysqli_connect();\n} else {\n    \$c = mysql_connect();\n}\n",
+    'missing.php'   => "<?php\nif ( ! function_exists( 'mysqli_connect' ) ) {\n    \$c = mysql_connect();\n}\n",
+    'or.php'        => "<?php\nfunction_exists( 'mysqli_connect' ) || mysql_connect();\n",
+    'caller.php'    => "<?php\nfunction old_db() {\n    return mysql_connect();\n}\nif ( ! function_exists( 'mysqli_connect' ) ) {\n    old_db();\n}\n",
+    'callerok.php'  => "<?php\nfunction old_db2() {\n    return mysql_connect();\n}\nold_db2();\n",
+    'legacygate.php' => "<?php\nif ( 'mysql link' == \$type && @mysql_ping( \$h ) ) {\n    return true;\n}\n",
+    'twin.php'      => "<?php\nif ( \$this->use_mysqli ) {\n    \$r = mysqli_query( \$this->dbh, 'SELECT 1' );\n} else {\n    \$r = mysql_query( 'SELECT 1', \$this->dbh );\n}\n",
+    'notwin.php'    => "<?php\nif ( \$flag ) {\n    \$r = something_else();\n} else {\n    \$r = mysql_query( 'SELECT 1' );\n}\n",
+    'classbody.php' => "<?php\nclass Crypto {\n    public \$mode = MCRYPT_RIJNDAEL_128;\n}\n",
+    'legacy-db.php' => "<?php\nfunction old_thing() {\n    return create_function( '\$a', 'return \$a;' );\n}\n",
+);
+$sc_paths = array();
+foreach ( $sc_cases as $sc_name => $sc_src ) {
+    $sc_paths[ $sc_name ] = $sc_dir . '/' . $sc_name;
+    file_put_contents( $sc_paths[ $sc_name ], $sc_src );
+}
+$sc_scan  = THRG_PC_Engine::scan( array_values( $sc_paths ), '8.4', microtime( true ) + 60.0 );
+$sc_first = static function ( $name ) use ( $sc_scan, $sc_paths ) {
+    foreach ( $sc_scan['scanned'][ $sc_paths[ $name ] ] as $row ) {
+        if ( 'error' === $row['type'] ) {
+            return THRG_PC_Context::place_finding( $row, $name );
+        }
+    }
+    return array();
+};
+assert_same( 'file', $sc_first( 'load.php' )['scope'], 'Top-level call has file scope' );
+assert_true( empty( $sc_first( 'load.php' )['reason'] ), 'Top-level call has no fallback reason' );
+assert_same( 'function', $sc_first( 'inner.php' )['scope'], 'Call inside a function has function scope' );
+assert_same( 'conditional', $sc_first( 'else.php' )['scope'], 'Call inside an else branch is conditional' );
+assert_same( 'fallback_else', $sc_first( 'else.php' )['reason'], 'Else branch of function_exists() is a fallback path' );
+assert_same( 'fallback_missing', $sc_first( 'missing.php' )['reason'], 'Branch that runs when a function is missing is a fallback path' );
+assert_same( 'fallback_or', $sc_first( 'or.php' )['reason'], 'Right side of "check || call" is a fallback path' );
+assert_same( 'fallback_caller', $sc_first( 'caller.php' )['reason'], 'Function called only from a fallback branch is fallback code' );
+assert_true( empty( $sc_first( 'callerok.php' )['reason'] ), 'Function also called from ordinary code is not fallback code' );
+assert_same( 'fallback_legacy', $sc_first( 'legacygate.php' )['reason'], 'Call gated by a legacy resource type string is a fallback path' );
+assert_same( 'fallback_twin', $sc_first( 'twin.php' )['reason'], 'Legacy mysql_ call in the else branch next to a mysqli_ branch is a fallback path' );
+assert_true( empty( $sc_first( 'notwin.php' )['reason'] ), 'Else branch without a modern replacement is not marked as fallback' );
+assert_same( 'class-body', $sc_first( 'classbody.php' )['scope'], 'Property default in a class has class-body scope' );
+assert_same( 1, $sc_first( 'legacy-db.php' )['name_hint'], 'A legacy file name sets the name hint' );
+assert_true( empty( $sc_first( 'load.php' )['name_hint'] ), 'An ordinary file name sets no name hint' );
+foreach ( array( 'else.php', 'missing.php', 'or.php', 'caller.php', 'legacygate.php', 'twin.php' ) as $sc_name ) {
+    assert_same( 3, THRG_PC_Grade::finding_grade( $sc_first( $sc_name ), $g_ctx ), $sc_name . ' grades as rarely-run code' );
+}
+assert_same( 2, THRG_PC_Grade::finding_grade( $sc_first( 'callerok.php' ), $g_ctx ), 'Ordinary function call grades as likely to break' );
+foreach ( $sc_paths as $sc_path ) {
+    @unlink( $sc_path );
+}
+@rmdir( $sc_dir );
+
+// Boot files: only literal top-level includes count.
+$boot_dir = sys_get_temp_dir() . '/thrg-pc-boot-' . uniqid();
+mkdir( $boot_dir . '/inc', 0777, true );
+foreach ( array( 'inc/a.php', 'inc/b.php', 'inc/c.php', 'inc/d.php', 'inc/e.php', 'inc/f.php', 'functions.php' ) as $boot_f ) {
+    file_put_contents( $boot_dir . '/' . $boot_f, "<?php\n" );
+}
+file_put_contents(
+    $boot_dir . '/bootdemo.php',
+    "<?php\nrequire_once __DIR__ . '/inc/a.php';\nrequire_once plugin_dir_path( __FILE__ ) . 'inc/b.php';\nif ( \$x ) {\n    require 'inc/c.php';\n}\nrequire_once \$base . '/inc/d.php';\nrequire( 'inc/e.php' );\nif ( \$y ) require 'inc/f.php';\n"
+);
+$boot = THRG_PC_Boot::files( array( 'kind' => 'plugin', 'slug' => 'bootdemo/bootdemo.php', 'dir' => $boot_dir, 'file' => '' ) );
+sort( $boot );
+assert_same( array( 'bootdemo.php', 'inc/a.php', 'inc/b.php', 'inc/e.php' ), $boot, 'Boot files are the main file plus literal top-level includes only' );
+file_put_contents( $boot_dir . '/functions.php', "<?php\nrequire_once get_template_directory() . '/inc/a.php';\nrequire __DIR__ . '/inc/a.php';\n" );
+$boot_theme = THRG_PC_Boot::files( array( 'kind' => 'theme', 'slug' => 'demo', 'dir' => $boot_dir, 'file' => '' ) );
+sort( $boot_theme );
+assert_same( array( 'functions.php', 'inc/a.php' ), $boot_theme, 'A theme starts at functions.php and skips includes it cannot resolve' );
+assert_same( array(), THRG_PC_Boot::files( array( 'kind' => 'plugin', 'slug' => 'nothere/nothere.php', 'dir' => $boot_dir . '/missing', 'file' => '' ) ), 'A missing main file yields no boot files' );
+foreach ( array( 'inc/a.php', 'inc/b.php', 'inc/c.php', 'inc/d.php', 'inc/e.php', 'inc/f.php', 'inc', 'functions.php', 'bootdemo.php' ) as $boot_f ) {
+    $boot_p = $boot_dir . '/' . $boot_f;
+    is_dir( $boot_p ) ? @rmdir( $boot_p ) : @unlink( $boot_p );
+}
+@rmdir( $boot_dir );
+
+// Evaluator: grade 1 from boot files, evidence lowers 2 to 3 and adds the label.
+THRG_PC_Results::save( array( 'kind' => 'plugin', 'slug' => 'loadfail/loadfail.php', 'name' => 'Load Fail', 'version' => '1.0.0', 'files_total' => 1, 'boot_files' => array( 'main.php' ) ), '8.3', array( array_merge( $g_base, array( 'scope' => 'file', 'origin' => 'own' ) ) ) );
+THRG_PC_Results::save( array( 'kind' => 'plugin', 'slug' => 'inner/inner.php', 'name' => 'Inner', 'version' => '1.0.0', 'files_total' => 1 ), '8.3', array( array_merge( $g_base, array( 'scope' => 'function', 'origin' => 'own' ) ) ) );
+$gr_installed = array(
+    array( 'kind' => 'plugin', 'slug' => 'loadfail/loadfail.php', 'name' => 'Load Fail', 'version' => '1.0.0', 'active' => true, 'network_active' => false, 'parent_theme' => false ),
+    array( 'kind' => 'plugin', 'slug' => 'inner/inner.php', 'name' => 'Inner', 'version' => '1.0.0', 'active' => true, 'network_active' => false, 'parent_theme' => false ),
+);
+$gr_input = array(
+    'now'             => strtotime( '2026-05-01 UTC' ),
+    'php_version'     => '8.3.10',
+    'running_php'     => '8.3',
+    'target'          => '8.3',
+    'engine_reason'   => '',
+    'components'      => $gr_installed,
+    'results'         => THRG_PC_Results::for_target( '8.3', $gr_installed ),
+    'prescan_enabled' => false,
+    'update_items'    => array(),
+);
+$gr_map = static function ( array $rows ) {
+    $out = array();
+    foreach ( $rows as $row ) {
+        if ( ! empty( $row['comp_slug'] ) ) {
+            $out[ $row['comp_slug'] ] = $row;
+        }
+    }
+    return $out;
+};
+$gr_rows = $gr_map( THRG_PHP_Checker::evaluate( $gr_input ) );
+assert_same( 1, $gr_rows['loadfail/loadfail.php']['grade'], 'Boot-file error is grade 1 in the report row' );
+assert_true( 0 === strpos( $gr_rows['loadfail/loadfail.php']['badge_text'], 'Breaks on PHP 8.3' ), 'Grade 1 badge reads Breaks on PHP 8.3' );
+assert_same( 'Potential weakness', $gr_rows['loadfail/loadfail.php']['status'], 'Grade 1 is red' );
+assert_same( 2, $gr_rows['inner/inner.php']['grade'], 'Function-scope error is grade 2 in the report row' );
+assert_same( '', $gr_rows['inner/inner.php']['evidence_label'], 'No evidence label without evidence input' );
+$gr_input['evidence'] = array(
+    'plugin:inner/inner.php'       => array( 'marker' => true, 'strong' => true ),
+    'plugin:loadfail/loadfail.php' => array( 'marker' => true, 'strong' => true ),
+);
+$gr_rows_ev = $gr_map( THRG_PHP_Checker::evaluate( $gr_input ) );
+assert_same( 3, $gr_rows_ev['inner/inner.php']['grade'], 'Strong evidence lowers the grade-2 card to grade 3' );
+assert_same( 'Review', $gr_rows_ev['inner/inner.php']['status'], 'Grade 3 uses the amber Review status' );
+assert_same( 'Loads on PHP 8.3 on this site', $gr_rows_ev['inner/inner.php']['evidence_label'], 'Evidence label names the PHP version' );
+assert_same( 1, $gr_rows_ev['loadfail/loadfail.php']['grade'], 'Evidence never lowers a grade-1 card' );
+$gr_order = array_values(
+    array_filter(
+        THRG_PHP_Checker::evaluate( $gr_input ),
+        static function ( $row ) {
+            return ! empty( $row['comp_slug'] );
+        }
+    )
+);
+assert_same( 'loadfail/loadfail.php', $gr_order[0]['comp_slug'], 'Worst grade is listed first' );
+$gr_plain = THRG_PHP_Checker::plain_text( THRG_PHP_Checker::evaluate( $gr_input ), 'example.com', '2026-05-01 00:00:00 UTC', '1.2.7', '8.3' );
+assert_true( false !== strpos( $gr_plain, 'Grade: Breaks on load' ), 'Plain-text report includes the grade' );
+
+// Update pre-scan: a newer version with only review items counts as the fatal errors being fixed.
+THRG_PC_Results::save( array( 'kind' => 'plugin', 'slug' => 'upd/upd.php', 'name' => 'Upd', 'version' => '1.0.0', 'files_total' => 1 ), '8.3', array( array_merge( $g_base, array( 'scope' => 'function', 'origin' => 'own' ) ) ) );
+THRG_PC_Results::save_update( 'plugin', 'upd', '1.1.0', '8.3', array( array_merge( $g_base, array( 'file' => 'vendor/lib/a.php', 'origin' => 'bundled' ) ) ) );
+$upd_comp = array( array( 'kind' => 'plugin', 'slug' => 'upd/upd.php', 'name' => 'Upd', 'version' => '1.0.0', 'active' => true, 'network_active' => false, 'parent_theme' => false, 'update_version' => '1.1.0' ) );
+$upd_rows = THRG_PHP_Checker::evaluate( array_merge( $gr_input, array( 'components' => $upd_comp, 'results' => THRG_PC_Results::for_target( '8.3', $upd_comp ), 'evidence' => array() ) ) );
+assert_same( 'warnings_only', $upd_rows[0]['wporg_fix_status'], 'Newer version with only review items is reported as fatal errors fixed' );
+assert_same( 4, THRG_PC_Results::get_update( 'plugin', 'upd', '1.1.0', '8.3' )['grade'], 'Update pre-scan results store their grade' );
 
 // 4. History & target-aware diffing.
 THRG_PC_History::clear();

@@ -24,7 +24,8 @@ defined( 'ABSPATH' ) || exit;
                     <div class="thrg-pc-section-bar__actions">
                         <div class="thrg-pc-filter-group" role="group" aria-label="<?php esc_attr_e( 'Filter findings', 'thrg-php-checker' ); ?>">
                             <button type="button" class="button button-small thrg-pc-filter-btn is-active" data-filter="all" aria-pressed="true"><?php esc_html_e( 'All', 'thrg-php-checker' ); ?></button>
-                            <button type="button" class="button button-small thrg-pc-filter-btn" data-filter="breaks" aria-pressed="false"><?php esc_html_e( 'Incompatible only', 'thrg-php-checker' ); ?></button>
+                            <button type="button" class="button button-small thrg-pc-filter-btn" data-filter="breaks" aria-pressed="false"><?php esc_html_e( 'Will likely break', 'thrg-php-checker' ); ?></button>
+                            <button type="button" class="button button-small thrg-pc-filter-btn" data-filter="review" aria-pressed="false"><?php esc_html_e( 'Needs a look', 'thrg-php-checker' ); ?></button>
                             <button type="button" class="button button-small thrg-pc-filter-btn" data-filter="own" aria-pressed="false"><?php esc_html_e( 'Plugin / theme code only', 'thrg-php-checker' ); ?></button>
                         </div>
                         <button type="button" id="thrg-pc-toggle-all-details" class="button button-small button-link" data-expanded="0">
@@ -46,13 +47,16 @@ defined( 'ABSPATH' ) || exit;
                 $card_extra_cls  = ( $is_comp_card ? ' thrg-card--comp' : '' ) . ( $is_inactive ? ' thrg-card--inactive' : '' );
                 $row_verdict     = isset( $row['verdict'] ) ? (string) $row['verdict'] : '';
                 ?>
-                <article id="<?php echo esc_attr( $row['id'] ); ?>" class="thrg-card <?php echo esc_attr( $status_class( $row['status'] ) . $card_extra_cls ); ?>" data-comp="<?php echo $is_comp_card ? '1' : '0'; ?>" data-verdict="<?php echo esc_attr( $row_verdict ); ?>" data-own-issues="<?php echo (int) $own_count; ?>" data-bundled-only="<?php echo ! empty( $row['bundled_only'] ) ? '1' : '0'; ?>">
+                <article id="<?php echo esc_attr( $row['id'] ); ?>" class="thrg-card <?php echo esc_attr( $status_class( $row['status'] ) . $card_extra_cls ); ?>" data-comp="<?php echo $is_comp_card ? '1' : '0'; ?>" data-verdict="<?php echo esc_attr( $row_verdict ); ?>" data-own-issues="<?php echo (int) $own_count; ?>" data-grade="<?php echo isset( $row['grade'] ) ? (int) $row['grade'] : 0; ?>">
                     <header class="thrg-card-header">
                         <div class="thrg-card-meta">
                             <span class="thrg-area-badge"><?php echo esc_html( $row['area'] ); ?></span>
                             <span class="thrg-status-pill <?php echo esc_attr( $status_class( $row['status'] ) ); ?>">
                                 <?php echo esc_html( $badge_label( $row ) ); ?>
                             </span>
+                            <?php if ( $is_comp_card && ! empty( $row['evidence_label'] ) ) : ?>
+                                <span class="thrg-pc-origin-badge thrg-pc-origin-badge--evidence"><?php echo esc_html( $row['evidence_label'] ); ?></span>
+                            <?php endif; ?>
                             <?php if ( $is_comp_card && $own_count > 0 ) : ?>
                                 <span class="thrg-pc-origin-badge thrg-pc-origin-badge--own">
                                     <?php

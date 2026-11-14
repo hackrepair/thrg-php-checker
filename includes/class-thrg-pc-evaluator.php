@@ -35,7 +35,24 @@ final class THRG_PC_Evaluator {
             );
         }
 
+        $settings    = THRG_PHP_Checker::settings();
+        $paused_plug = function_exists( 'wp_paused_plugins' ) ? (array) wp_paused_plugins()->get_all() : array();
+        $paused_thm  = function_exists( 'wp_paused_themes' ) ? (array) wp_paused_themes()->get_all() : array();
+        $evidence    = array();
+        foreach ( $comps as $c ) {
+            if ( empty( $c['kind'] ) || empty( $c['slug'] ) ) {
+                continue;
+            }
+            $slug   = (string) $c['slug'];
+            $short  = 'theme' === $c['kind'] ? $slug : ( '.' === dirname( $slug ) ? basename( $slug, '.php' ) : dirname( $slug ) );
+            $paused = 'theme' === $c['kind'] ? isset( $paused_thm[ $short ] ) : isset( $paused_plug[ $short ] );
+            $active = ! empty( $c['active'] ) || ! empty( $c['network_active'] ) || ! empty( $c['parent_theme'] ) || 'mu-plugin' === $c['kind'];
+
+            $evidence[ THRG_PC_Results::key( $c['kind'], $slug ) ] = THRG_PC_Grade::evidence( $active, THRG_PHP_Checker::running_php(), $target, ! empty( $settings['runtime_log'] ), $paused );
+        }
+
         return array(
+            'evidence'        => $evidence,
             'php_version'     => PHP_VERSION,
             'running_php'     => THRG_PHP_Checker::running_php(),
             'target'          => $target,
@@ -344,7 +361,9 @@ final class THRG_PC_Evaluator {
         $comp_clean    = array();
 
         foreach ( $results as $r ) {
-            $card = self::component_finding( $r, $target, $mig_link );
+            $ev_key = THRG_PC_Results::key( isset( $r['kind'] ) ? $r['kind'] : 'plugin', isset( $r['slug'] ) ? $r['slug'] : '' );
+            $ev     = isset( $o['evidence'][ $ev_key ] ) && is_array( $o['evidence'][ $ev_key ] ) ? $o['evidence'][ $ev_key ] : array();
+            $card   = self::component_finding( $r, $target, $mig_link, $ev );
             if ( 'breaks' === $card['verdict'] ) {
                 $comp_breaks[] = $card;
             } elseif ( 'ok' === $card['verdict'] ) {
@@ -353,6 +372,14 @@ final class THRG_PC_Evaluator {
                 $comp_warnings[] = $card;
             }
         }
+
+        // Worst grade first within the red group; the earlier verdict/active/name order breaks ties.
+        usort(
+            $comp_breaks,
+            static function ( $a, $b ) {
+                return (int) $a['grade'] <=> (int) $b['grade'];
+            }
+        );
 
         // 5. Assemble findings in client-first priority order:
         //    a) Overview callout only when 0 components are scanned or engine is unavailable.
@@ -402,7 +429,7 @@ final class THRG_PC_Evaluator {
      * @param string $mig_link Migration manual link key.
      * @return array
      */
-    private static function component_finding( array $r, $target, $mig_link ) {
+    private static function component_finding( array $r, $target, $mig_link, array $evidence = array() ) {
         $kind       = isset( $r['kind'] ) ? (string) $r['kind'] : 'plugin';
         $slug       = isset( $r['slug'] ) ? (string) $r['slug'] : '';
         $name       = isset( $r['name'] ) ? (string) $r['name'] : $slug;
@@ -480,19 +507,39 @@ final class THRG_PC_Evaluator {
             }
         }
 
-        // Errors that sit only inside bundled libraries are shown as "Review: bundled library"
-        // rather than "Incompatible": the plugin's own code is clean, and the library path may never run.
-        $bundled_only = 'breaks' === $verdict && $errors > 0 && 0 === $own_errors;
-        if ( $bundled_only ) {
-            $status = 'Review';
+        // Compatibility grade 1-7: how likely the findings are to break a site (see THRG_PC_Grade).
+        $evidence  = array_merge(
+            array(
+                'marker'     => false,
+                'strong'     => false,
+                'boot_files' => isset( $r['boot_files'] ) && is_array( $r['boot_files'] ) ? $r['boot_files'] : array(),
+            ),
+            $evidence
+        );
+        $graded    = THRG_PC_Grade::component( $items, $evidence );
+        $grade     = (int) $graded['grade'];
+        $grade_why = '';
+        if ( 'breaks' === $verdict && $grade > 6 ) {
+            $grade = 2;
+        } elseif ( 'warnings' === $verdict ) {
+            $grade = 6;
+        } elseif ( 'breaks' !== $verdict ) {
+            $grade = 7;
         }
+        $bundled_only = 4 === $grade;
+        if ( 'breaks' === $verdict ) {
+            $status = THRG_PC_Grade::status( $grade );
+        }
+        if ( 3 === $grade && ! empty( $graded['reasons'] ) ) {
+            $reason_keys = array_keys( $graded['reasons'] );
+            $grade_why   = THRG_PC_Scope::reason_text( $reason_keys[0] );
+        }
+        $evidence_label = ! empty( $evidence['marker'] ) && in_array( $verdict, array( 'breaks', 'warnings' ), true )
+            ? sprintf( 'Loads on PHP %s on this site', (string) $target )
+            : '';
 
         if ( 'breaks' === $verdict ) {
-            if ( $bundled_only ) {
-                $err_prefix = 'Review: bundled library';
-            } else {
-                $err_prefix = 0 === $fatal_errors ? 'Incompatible (non-fatal)' : 'Incompatible';
-            }
+            $err_prefix = 1 === $grade ? sprintf( 'Breaks on PHP %s', (string) $target ) : THRG_PC_Grade::label( $grade );
             $badge_text = sprintf( '%s · %d %s', $err_prefix, $errors, 1 === $errors ? 'error' : 'errors' );
             if ( $warnings > 0 ) {
                 $badge_text .= sprintf( ', %d %s', $warnings, 1 === $warnings ? 'warning' : 'warnings' );
@@ -515,17 +562,20 @@ final class THRG_PC_Evaluator {
         }
 
         if ( 'breaks' === $verdict ) {
-            if ( $bundled_only ) {
-                $meaning = sprintf(
-                    '%1$s (%2$s, v%3$s) has no unguarded PHP %5$s errors in its own code. %4$d error(s) were found only inside bundled third-party libraries. Those paths often run only for optional features or older environments, so this is a review item rather than a confirmed incompatibility.',
+            $kind_word = 'theme' === $kind ? 'theme' : 'plugin';
+            if ( 1 === $grade ) {
+                $meaning      = sprintf(
+                    '%1$s (%2$s, v%3$s) has %4$d error(s) in code that runs as soon as it loads. On PHP %5$s, WordPress can hit a fatal error the moment this %6$s is loaded, which can show a white screen or deactivate it.',
                     $name,
                     strtolower( $state_label ),
                     $version,
                     $errors,
-                    $target
+                    $target,
+                    $kind_word
                 );
-            } elseif ( $fatal_errors > 0 ) {
-                $meaning = sprintf(
+                $next_default = sprintf( 'Do not switch to PHP %1$s while %2$s is active. Check for an updated release, contact the developer with the file and line numbers below, or replace this %3$s first.', $target, $name, $kind_word );
+            } elseif ( 2 === $grade ) {
+                $meaning      = sprintf(
                     '%1$s (%2$s, v%3$s) contains %4$d unguarded PHP %5$s error(s). If those code paths execute on PHP %5$s, PHP can throw a fatal error or halt the request.',
                     $name,
                     strtolower( $state_label ),
@@ -533,26 +583,47 @@ final class THRG_PC_Evaluator {
                     $errors,
                     $target
                 );
-            } else {
-                $meaning = sprintf(
-                    '%1$s (%2$s, v%3$s) contains %4$d unguarded PHP %5$s compatibility error(s) (removed INI directives or behavioral changes). These will not throw a fatal crash on PHP %5$s, though affected code paths may behave differently.',
+                $next_default = sprintf( 'Check for an updated release of %1$s, contact the developer with the file and line numbers below, or replace this %2$s before upgrading the server to PHP %3$s.', $name, $kind_word, $target );
+            } elseif ( 3 === $grade ) {
+                $meaning      = sprintf(
+                    '%1$s (%2$s, v%3$s) has no error that runs when it loads. %4$d fatal-error finding(s) sit on fallback paths (%5$s), which modern servers seldom take. This is a review item rather than a confirmed incompatibility.',
+                    $name,
+                    strtolower( $state_label ),
+                    $version,
+                    (int) $graded['counts'][3],
+                    '' !== $grade_why ? $grade_why : 'fallback code'
+                );
+                $next_default = sprintf( 'Look at the fallback file(s) listed below. If the features that use them are off, no action is needed. Otherwise ask the developer to update them, and test %1$s on PHP %2$s before relying on it.', $name, $target );
+            } elseif ( 4 === $grade ) {
+                $meaning      = sprintf(
+                    '%1$s (%2$s, v%3$s) has no unguarded PHP %5$s errors in its own code. %4$d error(s) were found only inside bundled third-party libraries. Those paths often run only for optional features or older environments, so this is a review item rather than a confirmed incompatibility.',
                     $name,
                     strtolower( $state_label ),
                     $version,
                     $errors,
                     $target
                 );
+                $next_default = sprintf( 'Look at the bundled library file(s) listed below. If the plugin features that use them are off, or the code is guarded for older PHP, no action is needed. Otherwise ask the developer to update the bundled library, and test the plugin on PHP %s before relying on it.', $target );
+            } else {
+                $meaning      = sprintf(
+                    '%1$s (%2$s, v%3$s) contains %4$d PHP %5$s compatibility error(s) (removed INI directives or behavioral changes). These will not throw a fatal crash on PHP %5$s, though affected code paths may behave differently.',
+                    $name,
+                    strtolower( $state_label ),
+                    $version,
+                    $errors,
+                    $target
+                );
+                $next_default = sprintf( 'Review the listed settings or behaviour changes in %1$s and test the affected features on PHP %2$s.', $name, $target );
             }
-            if ( $bundled_only ) {
-                $next = '' !== $update_ver
-                    ? sprintf( 'Version %1$s is available for %2$s — update first and click Rescan, since bundled libraries are usually refreshed in new releases.', $update_ver, $name )
-                    : sprintf( 'Look at the bundled library file(s) listed below. If the plugin\'s features that use them are off, or the code is guarded for older PHP, no action is needed. Otherwise ask the developer to update the bundled library, and test the plugin on PHP %s before relying on it.', $target );
-            } elseif ( '' !== $update_ver ) {
+            if ( '' !== $evidence_label ) {
+                $meaning .= sprintf( ' This server already runs PHP %1$s and this %2$s is active here, so it loads on PHP %1$s on this site; other sites may use different features.', $target, $kind_word );
+            }
+            if ( '' !== $update_ver ) {
                 $next = sprintf(
                     'Version %1$s is available for %2$s — update the %3$s first and click Rescan on this card to check whether the author already resolved the PHP %4$s incompatibility.',
                     $update_ver,
                     $name,
-                    'theme' === $kind ? 'theme' : 'plugin',
+                    $kind_word,
                     $target
                 );
             } elseif ( ! $active ) {
@@ -562,12 +633,7 @@ final class THRG_PC_Evaluator {
                     $target
                 );
             } else {
-                $next = sprintf(
-                    'Check for an updated release of %1$s, contact the developer with the file and line numbers below, or replace this %2$s before upgrading the server to PHP %3$s.',
-                    $name,
-                    'theme' === $kind ? 'theme' : 'plugin',
-                    $target
-                );
+                $next = $next_default;
             }
         } elseif ( 'warnings' === $verdict ) {
             $meaning = sprintf(
@@ -637,6 +703,15 @@ final class THRG_PC_Evaluator {
                             $check_ver,
                             $target,
                             (int) $upd_res['warnings'],
+                            $name
+                        );
+                    } elseif ( 'breaks' === $verdict && $grade <= 3 && 'breaks' === $upd_res['verdict'] && isset( $upd_res['grade'] ) && (int) $upd_res['grade'] >= 4 ) {
+                        $wporg_fix_status = 'warnings_only';
+                        $wporg_fix_label  = sprintf( 'Only review items left in v%s', $check_ver );
+                        $next             = sprintf(
+                            'Good news: v%1$s on WordPress.org has nothing likely to break on PHP %2$s. What remains sits in bundled libraries or minor behaviour changes, which are review items. Update %3$s before upgrading PHP.',
+                            $check_ver,
+                            $target,
                             $name
                         );
                     } elseif ( 'breaks' === $upd_res['verdict'] ) {
@@ -790,6 +865,10 @@ final class THRG_PC_Evaluator {
             'fatal_errors'        => $fatal_errors,
             'own_errors'          => $own_errors,
             'bundled_only'        => $bundled_only,
+            'grade'               => $grade,
+            'grade_label'         => 7 === $grade ? 'Compatible' : THRG_PC_Grade::label( $grade ),
+            'grade_reason'        => $grade_why,
+            'evidence_label'      => $evidence_label,
             'warnings'            => $warnings,
             'skipped'             => $skipped,
             'notes'               => $notes,

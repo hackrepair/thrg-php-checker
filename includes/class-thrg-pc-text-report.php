@@ -93,6 +93,9 @@ final class THRG_PC_Text_Report {
 
         foreach ( $rows as $r ) {
             $lines[] = sprintf( '[%s] %s — %s', $r['status'], $r['area'], $r['label'] );
+            if ( ! empty( $r['comp_key'] ) && ! empty( $r['grade'] ) && (int) $r['grade'] < 7 ) {
+                $lines[] = 'Grade: ' . $r['grade_label'] . ( ! empty( $r['evidence_label'] ) ? ' (' . $r['evidence_label'] . ')' : '' );
+            }
             $lines[] = 'Current value: ' . self::strip_links( $r['current'] );
             $lines[] = 'What this means: ' . self::strip_links( $r['meaning'] );
             $lines[] = 'Suggested next steps: ' . self::strip_links( $r['next_steps'] );
