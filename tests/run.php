@@ -495,6 +495,10 @@ assert_true( empty( $graded['mixed/mixed.php']['bundled_only'] ), 'Errors in the
 assert_same( 'Potential weakness', $graded['mixed/mixed.php']['status'], 'Own-code errors keep the Potential weakness status' );
 assert_true( 0 === strpos( $graded['mixed/mixed.php']['badge_text'], 'Incompatible' ), 'Own-code errors keep the Incompatible badge' );
 
+// 3c. Default target PHP version is 8.3 whatever PHP the server runs.
+assert_same( '8.3', THRG_PHP_Checker::default_target(), 'Default target PHP version must be 8.3' );
+assert_true( in_array( THRG_PHP_Checker::default_target(), THRG_PHP_Checker::scan_targets(), true ), 'Default target must be a supported scan target' );
+
 // 4. History & target-aware diffing.
 THRG_PC_History::clear();
 $id1    = THRG_PC_History::add( $eval_rows, '8.4', 'example.com', '1.0.0', 1, 'admin', 1700000000 );

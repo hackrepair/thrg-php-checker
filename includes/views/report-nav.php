@@ -95,7 +95,7 @@ defined( 'ABSPATH' ) || exit;
                     </li>
                     <li class="thrg-nav-item-with-tip">
                         <a href="#pc-schedule" class="thrg-nav-link" data-open-details="pc-schedule-details"><span class="thrg-nav-text"><?php esc_html_e( 'Scheduled Readiness Email', 'thrg-php-checker' ); ?></span></a>
-                        <button type="button" class="thrg-nav-tip" aria-label="<?php esc_attr_e( 'About Scheduled Readiness Email', 'thrg-php-checker' ); ?>" data-tip="<?php esc_attr_e( 'Set up an optional weekly or monthly background scan that emails administrators when an update or the next PHP version has compatibility problems.', 'thrg-php-checker' ); ?>">?</button>
+                        <button type="button" class="thrg-nav-tip" aria-label="<?php esc_attr_e( 'About Scheduled Readiness Email', 'thrg-php-checker' ); ?>" data-tip="<?php esc_attr_e( 'Set up an optional weekly or monthly background scan that emails administrators when an update or your target PHP version has compatibility problems.', 'thrg-php-checker' ); ?>">?</button>
                     </li>
                     <li class="thrg-nav-item-with-tip">
                         <a href="#pc-runtime-log" class="thrg-nav-link" data-open-details="pc-runtime-details">

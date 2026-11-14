@@ -95,7 +95,7 @@ defined( 'ABSPATH' ) || exit;
                     <h2 class="thrg-card-title"><?php esc_html_e( 'Weekly or Monthly PHP Readiness & Update Alert Email', 'thrg-php-checker' ); ?></h2>
                 </header>
                 <p class="thrg-pc-section-desc">
-                    <?php esc_html_e( 'Run a weekly or monthly rescan against the next PHP version and pending updates, with an email alert when an offered update or the next PHP version has known compatibility problems.', 'thrg-php-checker' ); ?>
+                    <?php esc_html_e( 'Run a weekly or monthly rescan against your target PHP version and pending updates, with an email alert when an offered update or the target PHP version has known compatibility problems.', 'thrg-php-checker' ); ?>
                 </p>
 
                 <details id="pc-schedule-details" class="thrg-pc-tech-details" <?php echo ( $sched_ok || ! empty( $schedule['enabled'] ) ) ? 'open' : ''; ?>>
@@ -155,7 +155,7 @@ defined( 'ABSPATH' ) || exit;
                                         <?php
                                         printf(
                                             /* translators: %s: default recommended target */
-                                            esc_html__( 'Recommended next PHP (currently PHP %s)', 'thrg-php-checker' ),
+                                            esc_html__( 'Recommended PHP (currently PHP %s)', 'thrg-php-checker' ),
                                             esc_html( $default_target )
                                         );
                                         ?>
@@ -205,7 +205,7 @@ defined( 'ABSPATH' ) || exit;
                         <p>
                             <label>
                                 <input type="checkbox" name="only_issues" value="1" <?php checked( ! empty( $schedule['only_issues'] ) ); ?> />
-                                <?php esc_html_e( 'Only send the email alert when an offered update or the next PHP version has errors or warnings', 'thrg-php-checker' ); ?>
+                                <?php esc_html_e( 'Only send the email alert when an offered update or the target PHP version has errors or warnings', 'thrg-php-checker' ); ?>
                             </label>
                         </p>
 

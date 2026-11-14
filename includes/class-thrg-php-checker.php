@@ -322,17 +322,16 @@ final class THRG_PHP_Checker {
     }
 
     /**
-     * Default target PHP version: the next minor version above the server's running PHP, or highest target.
+     * Default target PHP version: PHP 8.3, the widely supported version most hosts offer today.
+     *
+     * Falls back to the highest supported target if 8.3 is ever removed from the list.
      *
      * @return string
      */
     public static function default_target() {
-        $running = self::running_php();
         $targets = self::scan_targets();
-        foreach ( $targets as $target ) {
-            if ( version_compare( $target, $running, '>' ) ) {
-                return $target;
-            }
+        if ( in_array( '8.3', $targets, true ) ) {
+            return '8.3';
         }
         return (string) end( $targets );
     }

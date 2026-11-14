@@ -51,7 +51,7 @@ The branded HTML email fills the available width and includes a plain-text alter
 
 ## Scheduled PHP readiness email
 
-Under **Tools → PHP Checker**, open **Scheduled Readiness Email** and expand the schedule and recipients settings. Choose **Weekly** (the default, with a day of the week) or **Monthly**. Tick **Send a monthly PHP compatibility report email**, choose your target PHP version (or **Recommended next PHP**), pick a day of the month from 1 to 28 (around 8:00 AM site time), choose whether to send every month or **Only send the monthly email when errors or warnings are found**, and select **All site administrators** or specific administrators.
+Under **Tools → PHP Checker**, open **Scheduled Readiness Email** and expand the schedule and recipients settings. Choose **Weekly** (the default, with a day of the week) or **Monthly**. Tick **Send a monthly PHP compatibility report email**, choose your target PHP version (or **Recommended PHP**, which is PHP 8.3), pick a day of the month from 1 to 28 (around 8:00 AM site time), choose whether to send every month or **Only send the monthly email when errors or warnings are found**, and select **All site administrators** or specific administrators.
 
 - Off by default; nothing is scheduled until an administrator enables and saves it.
 - Uses WordPress's own scheduler with a single queued event (`thrg_pc_scheduled_report`), a 10-minute run lock, and automatic schedule healing on `admin_init`.
