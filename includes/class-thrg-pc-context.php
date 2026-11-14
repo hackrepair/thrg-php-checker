@@ -161,6 +161,10 @@ final class THRG_PC_Context {
             $removed            = self::removed_finding( $finding );
             $ctx['missing']     = $removed ? array( self::full_name( (string) $tokens[ $ptr ]['content'] ) ) : array();
             $ctx['missing_ext'] = $removed && isset( $extensions[ $key ] ) ? $extensions[ $key ] : array();
+            if ( $removed && ! $ctx['missing_ext'] && $ctx['missing'] && preg_match( '/^\\\\?(mcrypt|mysql|ereg)_/i', $ctx['missing'][0], $ext_match ) ) {
+                // A removed mcrypt_*/mysql_*/ereg_* symbol means the whole extension is gone on this target.
+                $ctx['missing_ext'] = array( strtolower( $ext_match[1] ) );
+            }
             if ( null === $ctx['dead_vars'] && '' !== $target ) {
                 $ctx['dead_vars'] = self::collect_dead_branch_vars( $tokens, $ctx );
             }
@@ -641,7 +645,17 @@ final class THRG_PC_Context {
             return in_array( $name, $ctx['missing_ext'], true ) ? false : null;
         }
         if ( in_array( $call, array( 'function_exists', 'is_callable', 'class_exists', 'interface_exists', 'trait_exists', 'enum_exists', 'defined' ), true ) ) {
-            return in_array( $name, $ctx['missing'], true ) ? false : null;
+            if ( in_array( $name, $ctx['missing'], true ) ) {
+                return false;
+            }
+            if ( in_array( $call, array( 'function_exists', 'is_callable', 'defined' ), true ) ) {
+                foreach ( $ctx['missing_ext'] as $gone_ext ) {
+                    if ( in_array( $gone_ext, array( 'mcrypt', 'mysql', 'ereg' ), true ) && 0 === strpos( strtolower( ltrim( $name, '\\' ) ), $gone_ext . '_' ) ) {
+                        return false;
+                    }
+                }
+            }
+            return null;
         }
         return null;
     }

@@ -553,7 +553,7 @@
                     var ownCount = parseInt( card.getAttribute( 'data-own-issues' ) || '0', 10 );
                     var show = true;
                     if ( 'breaks' === mode && isComp ) {
-                        show = 'breaks' === verdict;
+                        show = 'breaks' === verdict && '1' !== card.getAttribute( 'data-bundled-only' );
                     } else if ( 'own' === mode && isComp ) {
                         show = ownCount > 0;
                     }

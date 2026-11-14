@@ -463,14 +463,36 @@ final class THRG_PC_Evaluator {
         }
 
         $fatal_errors = 0;
+        $own_errors   = 0;
         foreach ( $items as $f ) {
-            if ( isset( $f['type'] ) && 'error' === $f['type'] && THRG_PC_Results::is_fatal_rule( isset( $f['source'] ) ? $f['source'] : '' ) ) {
+            if ( ! isset( $f['type'] ) || 'error' !== $f['type'] ) {
+                continue;
+            }
+            if ( THRG_PC_Results::is_fatal_rule( isset( $f['source'] ) ? $f['source'] : '' ) ) {
                 ++$fatal_errors;
+            }
+            $f_file = isset( $f['file'] ) ? (string) $f['file'] : '';
+            $f_orig = '' !== $f_file
+                ? THRG_PC_Results::file_origin( $f_file )
+                : ( isset( $f['origin'] ) && 'bundled' === $f['origin'] ? 'bundled' : 'own' );
+            if ( 'bundled' !== $f_orig ) {
+                ++$own_errors;
             }
         }
 
+        // Errors that sit only inside bundled libraries are shown as "Review: bundled library"
+        // rather than "Incompatible": the plugin's own code is clean, and the library path may never run.
+        $bundled_only = 'breaks' === $verdict && $errors > 0 && 0 === $own_errors;
+        if ( $bundled_only ) {
+            $status = 'Review';
+        }
+
         if ( 'breaks' === $verdict ) {
-            $err_prefix = 0 === $fatal_errors ? 'Incompatible (non-fatal)' : 'Incompatible';
+            if ( $bundled_only ) {
+                $err_prefix = 'Review: bundled library';
+            } else {
+                $err_prefix = 0 === $fatal_errors ? 'Incompatible (non-fatal)' : 'Incompatible';
+            }
             $badge_text = sprintf( '%s · %d %s', $err_prefix, $errors, 1 === $errors ? 'error' : 'errors' );
             if ( $warnings > 0 ) {
                 $badge_text .= sprintf( ', %d %s', $warnings, 1 === $warnings ? 'warning' : 'warnings' );
@@ -493,7 +515,16 @@ final class THRG_PC_Evaluator {
         }
 
         if ( 'breaks' === $verdict ) {
-            if ( $fatal_errors > 0 ) {
+            if ( $bundled_only ) {
+                $meaning = sprintf(
+                    '%1$s (%2$s, v%3$s) has no unguarded PHP %5$s errors in its own code. %4$d error(s) were found only inside bundled third-party libraries. Those paths often run only for optional features or older environments, so this is a review item rather than a confirmed incompatibility.',
+                    $name,
+                    strtolower( $state_label ),
+                    $version,
+                    $errors,
+                    $target
+                );
+            } elseif ( $fatal_errors > 0 ) {
                 $meaning = sprintf(
                     '%1$s (%2$s, v%3$s) contains %4$d unguarded PHP %5$s error(s). If those code paths execute on PHP %5$s, PHP can throw a fatal error or halt the request.',
                     $name,
@@ -512,7 +543,11 @@ final class THRG_PC_Evaluator {
                     $target
                 );
             }
-            if ( '' !== $update_ver ) {
+            if ( $bundled_only ) {
+                $next = '' !== $update_ver
+                    ? sprintf( 'Version %1$s is available for %2$s — update first and click Rescan, since bundled libraries are usually refreshed in new releases.', $update_ver, $name )
+                    : sprintf( 'Look at the bundled library file(s) listed below. If the plugin\'s features that use them are off, or the code is guarded for older PHP, no action is needed. Otherwise ask the developer to update the bundled library, and test the plugin on PHP %s before relying on it.', $target );
+            } elseif ( '' !== $update_ver ) {
                 $next = sprintf(
                     'Version %1$s is available for %2$s — update the %3$s first and click Rescan on this card to check whether the author already resolved the PHP %4$s incompatibility.',
                     $update_ver,
@@ -753,6 +788,8 @@ final class THRG_PC_Evaluator {
             'verdict'             => $verdict,
             'errors'              => $errors,
             'fatal_errors'        => $fatal_errors,
+            'own_errors'          => $own_errors,
+            'bundled_only'        => $bundled_only,
             'warnings'            => $warnings,
             'skipped'             => $skipped,
             'notes'               => $notes,

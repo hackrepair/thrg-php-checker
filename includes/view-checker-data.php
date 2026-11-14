@@ -38,6 +38,7 @@ $nav_review    = array();
 $broken_names  = array();
 $has_fatal_err = false;
 $warn_comps    = 0;
+$bundled_names = array();
 $has_tech_rows = 0;
 
 foreach ( $rows as $row ) {
@@ -64,7 +65,11 @@ foreach ( $rows as $row ) {
         } else {
             $nav_review[] = $row;
             if ( ! empty( $row['comp_key'] ) ) {
-                ++$warn_comps;
+                if ( ! empty( $row['bundled_only'] ) ) {
+                    $bundled_names[] = (string) $row['comp_name'];
+                } else {
+                    ++$warn_comps;
+                }
             }
         }
         if ( ! empty( $row['findings'] ) && is_array( $row['findings'] ) ) {
@@ -185,6 +190,26 @@ if ( ! empty( $observations['engine_reason'] ) ) {
             $selected_target
         );
     }
+} elseif ( ! empty( $bundled_names ) ) {
+    $verdict_tone  = 'neutral';
+    $shown_bundle  = implode( ', ', array_slice( $bundled_names, 0, 3 ) );
+    $verdict_title = sprintf(
+        /* translators: 1: target PHP version, 2: count of components, 3: component names */
+        _n(
+            'Review before upgrading to PHP %1$s — %2$d component has errors only in a bundled library (%3$s)',
+            'Review before upgrading to PHP %1$s — %2$d components have errors only in bundled libraries (%3$s)',
+            count( $bundled_names ),
+            'thrg-php-checker'
+        ),
+        $selected_target,
+        count( $bundled_names ),
+        $shown_bundle
+    );
+    $verdict_desc = sprintf(
+        /* translators: %s: target PHP version */
+        __( 'No unguarded PHP %s errors were found in the plugin or theme code itself. The flagged files are bundled third-party libraries, which often only run for optional features or older environments. Check the listed files, update the plugin if a new version is available, and test before switching PHP versions.', 'thrg-php-checker' ),
+        $selected_target
+    );
 } elseif ( $warn_comps > 0 ) {
     $verdict_tone  = 'ok';
     $verdict_title = sprintf(

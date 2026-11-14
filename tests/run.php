@@ -215,6 +215,9 @@ $guard_cases = array(
     'reachable_or'=> "<?php\nPHP_VERSION_ID < 80000 || create_function( '\$a', 'return \$a;' );\n",
     'namespace'   => "<?php\nnamespace Demo;\nif ( function_exists( 'create_function' ) ) {\n    \\create_function( '\$a', 'return \$a;' );\n}\n",
     'early_exit'  => "<?php\nfunction legacy_only() {\n    if ( PHP_VERSION_ID >= 80000 ) { return; }\n    create_function( '\$a', 'return \$a;' );\n}\n",
+    'ext_const'   => "<?php\nif ( function_exists( 'mcrypt_encrypt' ) ) {\n    \$m = MCRYPT_RIJNDAEL_128;\n}\n",
+    'ext_loaded'  => "<?php\nif ( extension_loaded( 'mcrypt' ) ) {\n    \$k = mcrypt_get_key_size( MCRYPT_RIJNDAEL_128, MCRYPT_MODE_CBC );\n}\n",
+    'ext_open'    => "<?php\n\$m = MCRYPT_RIJNDAEL_128;\n",
     'wrong_exit'  => "<?php\nfunction modern_only() {\n    if ( PHP_VERSION_ID < 80000 ) { return; }\n    create_function( '\$a', 'return \$a;' );\n}\n",
 );
 $guard_paths = array();
@@ -229,6 +232,13 @@ foreach ( array( 'nested', 'short_and', 'short_or', 'namespace', 'early_exit' ) 
     assert_same( 0, $counts['errors'], $name . ' must not report a removed function as reachable on PHP 8.4' );
     assert_true( $counts['notes'] > 0, $name . ' must retain a guarded note' );
 }
+foreach ( array( 'ext_const', 'ext_loaded' ) as $name ) {
+    $counts = THRG_PC_Results::count( $guard_scan['scanned'][ $guard_paths[ $name ] ] );
+    assert_same( 0, $counts['errors'], $name . ': removed mcrypt symbols guarded by function_exists/extension_loaded must not be errors on PHP 8.4' );
+    assert_true( $counts['notes'] > 0, $name . ' must retain a guarded note' );
+}
+$open_counts = THRG_PC_Results::count( $guard_scan['scanned'][ $guard_paths['ext_open'] ] );
+assert_true( $open_counts['errors'] > 0, 'Unguarded removed mcrypt constant must remain an error on PHP 8.4' );
 $reachable_counts = THRG_PC_Results::count( $guard_scan['scanned'][ $guard_paths['reachable_or'] ] );
 assert_true( $reachable_counts['errors'] > 0, 'OR fallback reachable on PHP 8.4 must remain an error' );
 $wrong_exit_counts = THRG_PC_Results::count( $guard_scan['scanned'][ $guard_paths['wrong_exit'] ] );
@@ -432,6 +442,58 @@ assert_same( 'php-version', $eval_rows[1]['id'], 'Non-EOL server lifecycle check
 $plain_out = THRG_PHP_Checker::plain_text( $eval_rows, 'example.com', '2026-05-01 00:00:00 UTC', '1.0.0', '8.4' );
 assert_true( false !== strpos( $plain_out, 'PHP 8.4 | plugin code' ), 'Plain-text report must include target PHP version and origin (plugin code vs bundled dependency)' );
 assert_true( false !== strpos( $plain_out, '[Rule: ' . $unguarded_findings[0]['source'] . ']' ), 'Plain-text report must include the triggered rule identifier' );
+
+// 3b. Graded presentation: errors only in bundled libraries are "Review", not "Incompatible".
+$bundle_err = array(
+    'type'    => 'error',
+    'line'    => 12,
+    'column'  => 5,
+    'message' => 'Function mcrypt_encrypt() is removed since PHP 7.2.',
+    'source'  => 'PHPCompatibility.FunctionUse.RemovedFunctions.mcrypt_encryptRemoved',
+);
+THRG_PC_Results::save(
+    array( 'kind' => 'plugin', 'slug' => 'bundled-only/bundled-only.php', 'name' => 'Bundled Only', 'version' => '1.0.0', 'files_total' => 3 ),
+    '8.3',
+    array( array_merge( $bundle_err, array( 'file' => 'vendor/lib/Crypt.php', 'origin' => 'bundled' ) ) )
+);
+THRG_PC_Results::save(
+    array( 'kind' => 'plugin', 'slug' => 'mixed/mixed.php', 'name' => 'Mixed', 'version' => '1.0.0', 'files_total' => 3 ),
+    '8.3',
+    array(
+        array_merge( $bundle_err, array( 'file' => 'vendor/lib/Crypt.php', 'origin' => 'bundled' ) ),
+        array_merge( $bundle_err, array( 'file' => 'includes/main.php', 'origin' => 'own' ) ),
+    )
+);
+$graded_installed = array(
+    array( 'kind' => 'plugin', 'slug' => 'bundled-only/bundled-only.php', 'name' => 'Bundled Only', 'version' => '1.0.0', 'active' => true, 'network_active' => false, 'parent_theme' => false ),
+    array( 'kind' => 'plugin', 'slug' => 'mixed/mixed.php', 'name' => 'Mixed', 'version' => '1.0.0', 'active' => true, 'network_active' => false, 'parent_theme' => false ),
+);
+$graded_rows = THRG_PHP_Checker::evaluate(
+    array(
+        'now'             => strtotime( '2026-05-01 UTC' ),
+        'php_version'     => '8.3.10',
+        'running_php'     => '8.3',
+        'target'          => '8.3',
+        'engine_reason'   => '',
+        'components'      => $graded_installed,
+        'results'         => THRG_PC_Results::for_target( '8.3', $graded_installed ),
+        'prescan_enabled' => false,
+        'update_items'    => array(),
+    )
+);
+$graded = array();
+foreach ( $graded_rows as $graded_row ) {
+    if ( ! empty( $graded_row['comp_slug'] ) ) {
+        $graded[ $graded_row['comp_slug'] ] = $graded_row;
+    }
+}
+assert_true( ! empty( $graded['bundled-only/bundled-only.php']['bundled_only'] ), 'Errors only in bundled code must be flagged bundled_only' );
+assert_same( 'Review', $graded['bundled-only/bundled-only.php']['status'], 'Bundled-only errors must use the Review status, not Potential weakness' );
+assert_same( 'breaks', $graded['bundled-only/bundled-only.php']['verdict'], 'Stored verdict stays breaks so filters and update checks keep working' );
+assert_true( 0 === strpos( $graded['bundled-only/bundled-only.php']['badge_text'], 'Review: bundled library' ), 'Bundled-only badge must read Review: bundled library' );
+assert_true( empty( $graded['mixed/mixed.php']['bundled_only'] ), 'Errors in the plugin\'s own code must not be flagged bundled_only' );
+assert_same( 'Potential weakness', $graded['mixed/mixed.php']['status'], 'Own-code errors keep the Potential weakness status' );
+assert_true( 0 === strpos( $graded['mixed/mixed.php']['badge_text'], 'Incompatible' ), 'Own-code errors keep the Incompatible badge' );
 
 // 4. History & target-aware diffing.
 THRG_PC_History::clear();

@@ -103,6 +103,8 @@ PHP Checker automatically prunes uninstalled plugins/themes and outdated compone
 * Notices from WordPress and other plugins now appear below the PHP Checker header instead of inside it.
 * Notices from other plugins and WordPress are tucked away on the PHP Checker screen, with a link to show them. PHP Checker's own messages always stay visible.
 * Old-style (PHP 4) constructors are now flagged as errors when you scan for PHP 8.0 or higher, where PHP no longer treats them as constructors. Previously they showed up only on PHP 7.x scans.
+* Components whose only errors sit inside bundled third-party libraries are now labelled "Review: bundled library" instead of "Incompatible", and no longer trigger the red "Hold off" banner. Errors in the plugin's or theme's own code still show as Incompatible.
+* Removed mcrypt, mysql and ereg functions and constants guarded by function_exists() or extension_loaded() checks are now treated as guarded notes, not errors.
 
 = 1.2.5 =
 * WordPress.org package checks now accept only HTTPS downloads from downloads.wordpress.org.

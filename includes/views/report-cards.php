@@ -46,7 +46,7 @@ defined( 'ABSPATH' ) || exit;
                 $card_extra_cls  = ( $is_comp_card ? ' thrg-card--comp' : '' ) . ( $is_inactive ? ' thrg-card--inactive' : '' );
                 $row_verdict     = isset( $row['verdict'] ) ? (string) $row['verdict'] : '';
                 ?>
-                <article id="<?php echo esc_attr( $row['id'] ); ?>" class="thrg-card <?php echo esc_attr( $status_class( $row['status'] ) . $card_extra_cls ); ?>" data-comp="<?php echo $is_comp_card ? '1' : '0'; ?>" data-verdict="<?php echo esc_attr( $row_verdict ); ?>" data-own-issues="<?php echo (int) $own_count; ?>">
+                <article id="<?php echo esc_attr( $row['id'] ); ?>" class="thrg-card <?php echo esc_attr( $status_class( $row['status'] ) . $card_extra_cls ); ?>" data-comp="<?php echo $is_comp_card ? '1' : '0'; ?>" data-verdict="<?php echo esc_attr( $row_verdict ); ?>" data-own-issues="<?php echo (int) $own_count; ?>" data-bundled-only="<?php echo ! empty( $row['bundled_only'] ) ? '1' : '0'; ?>">
                     <header class="thrg-card-header">
                         <div class="thrg-card-meta">
                             <span class="thrg-area-badge"><?php echo esc_html( $row['area'] ); ?></span>
