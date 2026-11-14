@@ -861,6 +861,7 @@ final class THRG_PC_Evaluator {
             'verdict'                => $verdict,
             'errors'                 => $errors,
             'fatal_errors'           => $fatal_errors,
+            'startup_errors'         => isset( $graded['counts'][1] ) ? (int) $graded['counts'][1] : 0,
             'unknown_errors'         => $unknown_errors,
             'classification'         => $graded,
             'own_errors'             => $own_errors,

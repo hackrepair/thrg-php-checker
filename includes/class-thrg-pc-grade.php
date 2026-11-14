@@ -247,9 +247,9 @@ final class THRG_PC_Grade {
     public static function label( $grade ) {
         switch ( (int) $grade ) {
             case 1:
-                return 'Potential startup incompatibility';
+                return 'Likely to fail on load';
             case 2:
-                return 'Potential fatal error';
+                return 'May fail when used';
             case 3:
                 return 'Review: fallback code';
             case 4:

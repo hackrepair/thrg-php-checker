@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
                     <span class="thrg-pc-section-bar__title">
                         <?php
                         if ( ! empty( $broken_names ) && $has_fatal_err ) {
-                            esc_html_e( 'Sorted by urgency: Fatal incompatibilities first, deprecation warnings second', 'thrg-php-checker' );
+                            esc_html_e( 'Sorted by urgency: Likely load failures first, then code that may fail when used, then deprecation warnings', 'thrg-php-checker' );
                         } elseif ( ! empty( $broken_names ) ) {
                             esc_html_e( 'Sorted by urgency: Compatibility errors first, deprecation warnings second', 'thrg-php-checker' );
                         } else {

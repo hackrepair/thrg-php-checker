@@ -39,6 +39,7 @@ $nav_server    = array();
 $nav_review    = array();
 $broken_names  = array();
 $has_fatal_err = false;
+$load_names    = array();
 $warn_comps    = 0;
 $review_names  = array();
 $has_tech_rows = 0;
@@ -81,6 +82,9 @@ foreach ( $rows as $row ) {
                 }
                 if ( ! isset( $row['fatal_errors'] ) || (int) $row['fatal_errors'] > 0 ) {
                     $has_fatal_err = true;
+                }
+                if ( ! empty( $row['startup_errors'] ) && ! empty( $row['comp_name'] ) ) {
+                    $load_names[] = (string) $row['comp_name'];
                 }
             }
         } else {
@@ -189,12 +193,31 @@ if ( ! empty( $observations['engine_reason'] ) ) {
 } elseif ( ! empty( $broken_names ) ) {
     $verdict_tone = 'weakness';
     $shown_names  = implode( ', ', array_slice( $broken_names, 0, 3 ) );
-    if ( $has_fatal_err ) {
+    if ( $load_names ) {
         $verdict_title = sprintf(
-            /* translators: 1: target PHP version, 2: count of incompatible components, 3: component names */
+            /* translators: 1: target PHP version, 2: count of components, 3: component names */
             _n(
-                'Hold off on upgrading to PHP %1$s — %2$d component is likely to break (%3$s)',
-                'Hold off on upgrading to PHP %1$s — %2$d components are likely to break (%3$s)',
+                'Hold off on upgrading to PHP %1$s — %2$d component is likely to fail on load (%3$s)',
+                'Hold off on upgrading to PHP %1$s — %2$d components are likely to fail on load (%3$s)',
+                count( $load_names ),
+                'thrg-php-checker'
+            ),
+            $selected_target,
+            count( $load_names ),
+            implode( ', ', array_slice( $load_names, 0, 3 ) )
+        );
+        $verdict_desc = sprintf(
+            /* translators: %s: target PHP version */
+            __( 'These active components run code when they load that PHP %s rejects. The scan found the code in files that appear to load at startup, so the plugin or the whole site is likely to stop working. Update, replace, or deactivate them before switching PHP versions in your hosting panel.', 'thrg-php-checker' ),
+            $selected_target
+        );
+    } elseif ( $has_fatal_err ) {
+        $verdict_tone  = 'neutral';
+        $verdict_title = sprintf(
+            /* translators: 1: target PHP version, 2: count of components, 3: component names */
+            _n(
+                'Review before upgrading to PHP %1$s — %2$d component contains code that may fail when used (%3$s)',
+                'Review before upgrading to PHP %1$s — %2$d components contain code that may fail when used (%3$s)',
                 count( $broken_names ),
                 'thrg-php-checker'
             ),
@@ -204,7 +227,7 @@ if ( ! empty( $observations['engine_reason'] ) ) {
         );
         $verdict_desc = sprintf(
             /* translators: %s: target PHP version */
-            __( 'The red item(s) at the top of the report below contain code that is likely to cause a fatal error on PHP %s. Update, replace, or deactivate them before switching PHP versions in your hosting panel.', 'thrg-php-checker' ),
+            __( 'These components contain PHP %s errors that cause a fatal error if the affected code runs. The scan did not find a failure in code that loads at startup, but it cannot tell which features your site uses. Update or replace them, or test those features, before switching PHP versions.', 'thrg-php-checker' ),
             $selected_target
         );
     } else {

@@ -568,10 +568,10 @@ foreach ( $graded_rows as $graded_row ) {
 assert_true( ! empty( $graded['bundled-only/bundled-only.php']['bundled_only'] ), 'Errors only in bundled code must be flagged bundled_only' );
 assert_same( 'Potential weakness', $graded['bundled-only/bundled-only.php']['status'], 'Bundled fatal errors retain fatal priority' );
 assert_same( 'breaks', $graded['bundled-only/bundled-only.php']['verdict'], 'Stored verdict stays breaks so filters and update checks keep working' );
-assert_true( 0 === strpos( $graded['bundled-only/bundled-only.php']['badge_text'], 'Potential fatal error' ), 'Bundled fatal badge reflects impact' );
+assert_true( 0 === strpos( $graded['bundled-only/bundled-only.php']['badge_text'], 'May fail when used' ), 'Bundled fatal badge reflects impact' );
 assert_true( empty( $graded['mixed/mixed.php']['bundled_only'] ), 'Errors in the plugin\'s own code must not be flagged bundled_only' );
 assert_same( 'Potential weakness', $graded['mixed/mixed.php']['status'], 'Own-code errors keep the Potential weakness status' );
-assert_true( 0 === strpos( $graded['mixed/mixed.php']['badge_text'], 'Potential fatal error' ), 'Function-scope fatal findings use cautious wording' );
+assert_true( 0 === strpos( $graded['mixed/mixed.php']['badge_text'], 'May fail when used' ), 'Function-scope fatal findings use cautious wording' );
 assert_same( 2, $graded['mixed/mixed.php']['grade'], 'Own-code error without load-time evidence is grade 2' );
 assert_same( 2, $graded['bundled-only/bundled-only.php']['grade'], 'Bundled fatal findings are grade 2' );
 
@@ -801,7 +801,7 @@ assert_same( 'Compatibility error: impact unknown', $unknown_card['grade_label']
 assert_same( 'Potential weakness', $unknown_card['status'], 'Unknown error remains prominent in every status consumer' );
 
 assert_same( 1, $gr_rows['loadfail/loadfail.php']['grade'], 'Boot-file error is grade 1 in the report row' );
-assert_true( 0 === strpos( $gr_rows['loadfail/loadfail.php']['badge_text'], 'Potential startup incompatibility' ), 'Grade 1 badge reads Breaks on PHP 8.3' );
+assert_true( 0 === strpos( $gr_rows['loadfail/loadfail.php']['badge_text'], 'Likely to fail on load' ), 'Grade 1 badge says the component is likely to fail on load' );
 assert_same( 'Potential weakness', $gr_rows['loadfail/loadfail.php']['status'], 'Grade 1 is red' );
 assert_same( 2, $gr_rows['inner/inner.php']['grade'], 'Function-scope error is grade 2 in the report row' );
 assert_same( '', $gr_rows['inner/inner.php']['evidence_label'], 'No evidence label without evidence input' );
@@ -824,7 +824,7 @@ $gr_order = array_values(
 );
 assert_same( 'loadfail/loadfail.php', $gr_order[0]['comp_slug'], 'Worst grade is listed first' );
 $gr_plain = THRG_PHP_Checker::plain_text( THRG_PHP_Checker::evaluate( $gr_input ), 'example.com', '2026-05-01 00:00:00 UTC', '1.2.7', '8.3' );
-assert_true( false !== strpos( $gr_plain, 'Grade: Potential startup incompatibility' ), 'Plain-text report includes the grade' );
+assert_true( false !== strpos( $gr_plain, 'Grade: Likely to fail on load' ), 'Plain-text report includes the grade' );
 
 // Update pre-scan: a newer version with only review items counts as the fatal errors being fixed.
 THRG_PC_Results::save( array( 'kind' => 'plugin', 'slug' => 'upd/upd.php', 'name' => 'Upd', 'version' => '1.0.0', 'files_total' => 1 ), '8.3', array( array_merge( $g_base, array( 'scope' => 'function', 'origin' => 'own' ) ) ) );
@@ -1366,5 +1366,16 @@ $has_overview   = static function ( $rows ) {
 };
 assert_true( $has_overview( $scope_all ), 'All-components scope reports an unscanned inactive plugin as incomplete' );
 assert_true( ! $has_overview( $scope_active ), 'Active-only scope is complete when every active component is scanned' );
+
+// Load-time versus in-use tiers.
+assert_same( 'Likely to fail on load', THRG_PC_Grade::label( 1 ), 'Grade 1 is the load-time tier' );
+assert_same( 'May fail when used', THRG_PC_Grade::label( 2 ), 'Grade 2 is the in-use tier' );
+assert_true( $gr_rows['loadfail/loadfail.php']['startup_errors'] > 0, 'A parse failure in a startup file counts as a load-time error' );
+assert_same( 0, $graded['mixed/mixed.php']['startup_errors'], 'Errors inside functions are not load-time errors' );
+assert_same( 0, $graded['bundled-only/bundled-only.php']['startup_errors'], 'Bundled library errors are not load-time errors' );
+$view_src = file_get_contents( dirname( __DIR__ ) . '/includes/view-checker-data.php' );
+assert_true( (bool) preg_match( '/if \( \$load_names \) \{\s+\$verdict_title = sprintf\([^;]+Hold off on upgrading/s', $view_src ), 'Only load-time errors produce the Hold off banner' );
+assert_true( (bool) preg_match( '/elseif \( \$has_fatal_err \) \{\s+\$verdict_tone  = \'neutral\'/', $view_src ), 'Fatal-mapped errors that load safely get the calmer banner' );
+assert_true( false === strpos( $view_src, 'is likely to break' ), 'Banner no longer calls in-use fatal errors likely to break' );
 
 echo "OK ({$assertions} assertions passed)\n";
