@@ -172,8 +172,9 @@
 
     /* Wide enough for the longest option so the count is never cut off. */
     .thrg-pc-toolbar__field select#thrg-pc-scope {
+        width: max-content;
         min-width: 26rem;
-        max-width: none;
+        max-width: 100%;
     }
 }
 

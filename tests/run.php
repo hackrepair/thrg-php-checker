@@ -1378,4 +1378,15 @@ assert_true( (bool) preg_match( '/if \( \$load_names \) \{\s+\$verdict_title = s
 assert_true( (bool) preg_match( '/elseif \( \$has_fatal_err \) \{\s+\$verdict_tone  = \'neutral\'/', $view_src ), 'Fatal-mapped errors that load safely get the calmer banner' );
 assert_true( false === strpos( $view_src, 'is likely to break' ), 'Banner no longer calls in-use fatal errors likely to break' );
 
+// Partial scans report how many components are scanned.
+$partial_rows = THRG_PHP_Checker::evaluate( array_merge( $scope_base, array( 'scope' => 'all' ) ) );
+$partial_overview = null;
+foreach ( $partial_rows as $r ) {
+    if ( isset( $r['id'] ) && 'scan-overview' === $r['id'] ) {
+        $partial_overview = $r;
+    }
+}
+assert_true( null !== $partial_overview, 'Partial scan produces the overview row' );
+assert_same( '1/2', $partial_overview['nav_hint'], 'Sidebar hint shows scanned and total counts on a partial scan' );
+assert_same( '1 of 2 scanned', $partial_overview['badge_text'], 'Badge shows scanned and total counts on a partial scan' );
 echo "OK ({$assertions} assertions passed)\n";
