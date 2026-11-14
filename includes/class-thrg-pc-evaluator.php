@@ -573,6 +573,9 @@ final class THRG_PC_Evaluator {
         if ( 'breaks' === $verdict ) {
             $err_prefix = $unknown_errors && ! $fatal_errors ? 'Compatibility error: impact unknown' : THRG_PC_Grade::label( $grade );
             $badge_text = sprintf( '%s · %d %s', $err_prefix, $errors, 1 === $errors ? 'error' : 'errors' );
+            if ( $fatal_errors > 0 && $errors > $fatal_errors ) {
+                $badge_text .= sprintf( ' (%d mapped as fatal)', $fatal_errors );
+            }
             if ( $warnings > 0 ) {
                 $badge_text .= sprintf( ', %d %s', $warnings, 1 === $warnings ? 'warning' : 'warnings' );
             }

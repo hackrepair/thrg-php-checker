@@ -9,7 +9,7 @@ Stable tag: 1.2.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Your friendly WordPress PHP compatibility checker. Tests plugins and themes for PHP 8.1–8.5, filters out false alarms, and puts real blockers first.
+Your friendly WordPress PHP compatibility checker. Tests plugins and themes for PHP 8.1–8.5, puts likely blockers first, and shows how complete each scan is.
 
 == Description ==
 
@@ -44,7 +44,7 @@ See External services below for the few requests PHP Checker makes, and when.
 
 = What it is not =
 
-Static analysis parses PHP source tokens without executing your site's code. While version-guard filtering removes common false alarms, static analysis cannot replace testing critical workflows (like WooCommerce checkout or membership forms) on a staging server before switching PHP versions in production. If you want a deeper look or hands-on help with a tricky PHP upgrade, [The Hack Repair Guy](https://hackrepair.com/ "The Hack Repair Guy: WordPress security and hack repair") can help.
+Static analysis parses PHP source tokens without executing your site's code. While version-guard handling downgrades common backward-compatibility code to notes, static analysis cannot replace testing critical workflows (like WooCommerce checkout or membership forms) on a staging server before switching PHP versions in production. If you want a deeper look or hands-on help with a tricky PHP upgrade, [The Hack Repair Guy](https://hackrepair.com/ "The Hack Repair Guy: WordPress security and hack repair") can help.
 
 = Credits =
 
@@ -112,32 +112,15 @@ PHP Checker automatically prunes uninstalled plugins/themes and outdated compone
 * Separate compatibility impact, execution evidence, origin and scan coverage. Logging settings, filenames, fallback hints and bundled origin cannot lower fatal impact.
 * Keep unmapped errors prominent without labeling their impact as proven fatal. Startup-file discovery remains a hint.
 * Preserve complete aggregate counts before bounding displayed findings, retain coverage-gap reasons, and request refreshed evidence when older results lack required checks.
-* Mark syntax the host cannot validate as incomplete coverage; do not execute scanned code or infer a target-PHP fatal error from the host parser alone.
+* Mark syntax the host cannot validate as incomplete coverage when the server runs at least the target PHP; do not execute scanned code or infer a target-PHP fatal error from the host parser alone. Servers older than the target skip this check.
 * Ignore source PHPCS suppression comments during compatibility scans and handle empty files normally.
 * Align report downloads, email alternatives, history comparisons and update assessments with the same evidence limits. Older snapshots keep their recorded grading rules.
 * Bind the GitHub update download to the exact versioned asset even when another ZIP appears first. Keep the required release asset and latest stable release strategy.
 * Refresh completed single-component rescans on the same page, preserve plugin-owned notices, and align component summary counts.
+* Rescans now queue results saved by older versions, and "active plugins only" scans no longer report the unscanned inactive plugins as incomplete.
+* Old-style (PHP 4) constructors are flagged when you scan for PHP 8.0 or higher, PHP 8.3 is the default target, and scans stop a step early when memory runs low so large plugins scan reliably under a 128 MB limit.
+* Notices from WordPress and other plugins appear below the PHP Checker header and can be shown or hidden.
 * Synchronize version metadata and validate it during package builds.
-
-= 1.2.7 =
-* Historical local prerelease behavior below is superseded by the 1.2.8 confidence rules.
-* Every plugin and theme now gets a plain-language grade instead of a flat "Incompatible": Breaks on load, Likely to break, Review: fallback code, Review: bundled library, Minor changes, Deprecation warnings, or Compatible.
-* Errors that only sit on fallback paths, such as code that runs only when a PHP feature is missing, are labelled "Review: fallback code" instead of "Likely to break".
-* The red "Hold off" banner now appears only when an active plugin or theme is likely to break. Inactive components and review items get a calmer "Review before upgrading" banner.
-* Cards show "Loads on PHP X on this site" when the server already runs that PHP version and WordPress has not paused the plugin. With the runtime log turned on, this also moves "Likely to break" to "Review: fallback code".
-* The report filters are now "Will likely break" and "Needs a look".
-* The WordPress.org fix check counts a newer version as fixed when only review items remain.
-* Emails and the text report show each component's grade.
-* Changes that only alter how code runs, such as the PHP 7.0 variable syntax change, count as "Minor changes" and no longer trigger the red "Hold off" banner. The summary tiles and the quick-switch buttons use the same grade wording, and the server's end-of-life row is no longer counted as a component.
-* Scans now ask WordPress for its admin memory limit and stop a step early when memory runs low, so large plugins such as WooCommerce scan reliably on hosts with a 128 MB PHP limit.
-
-= 1.2.6 =
-* Notices from WordPress and other plugins now appear below the PHP Checker header instead of inside it.
-* Notices from other plugins and WordPress are tucked away on the PHP Checker screen, with a link to show them. PHP Checker's own messages always stay visible.
-* Old-style (PHP 4) constructors are now flagged as errors when you scan for PHP 8.0 or higher, where PHP no longer treats them as constructors. Previously they showed up only on PHP 7.x scans.
-* PHP 8.3 is now the default target PHP version, instead of the next version above your server's PHP.
-* Components whose only errors sit inside bundled third-party libraries are now labelled "Review: bundled library" instead of "Incompatible", and no longer trigger the red "Hold off" banner. Errors in the plugin's or theme's own code still show as Incompatible.
-* Removed mcrypt, mysql and ereg functions and constants guarded by function_exists() or extension_loaded() checks are now treated as guarded notes, not errors.
 
 = 1.2.5 =
 * WordPress.org package checks now accept only HTTPS downloads from downloads.wordpress.org.

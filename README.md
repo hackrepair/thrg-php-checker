@@ -4,7 +4,7 @@
 
 <h1 align="center">The Hack Repair Guy's PHP Checker</h1>
 
-Your friendly WordPress PHP compatibility checker. Tests your plugins, must-use plugins, themes, and pending updates against PHP 8.1 through 8.5, filters out version-guarded false alarms, and keeps a history of every report — all in my voice, Jim Walker, The Hack Repair Guy.
+Your friendly WordPress PHP compatibility checker. Tests your plugins, must-use plugins, themes, and pending updates against PHP 8.1 through 8.5, downgrades version-guarded code to notes, and keeps a history of every report — all in my voice, Jim Walker, The Hack Repair Guy.
 
 Upgrading PHP is one of the easiest ways to make WordPress faster and safer, right up until an older plugin throws a fatal error and leaves you with a white screen. PHP Checker helps you find that plugin before you switch. PHP Checker runs entirely inside WordPress without `exec()`, automatically filters out guarded fallback code, and prioritizes potential fatal errors and unknown-impact findings for review.
 
