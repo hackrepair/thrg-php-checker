@@ -568,10 +568,10 @@ foreach ( $graded_rows as $graded_row ) {
 assert_true( ! empty( $graded['bundled-only/bundled-only.php']['bundled_only'] ), 'Errors only in bundled code must be flagged bundled_only' );
 assert_same( 'Potential weakness', $graded['bundled-only/bundled-only.php']['status'], 'Bundled fatal errors retain fatal priority' );
 assert_same( 'breaks', $graded['bundled-only/bundled-only.php']['verdict'], 'Stored verdict stays breaks so filters and update checks keep working' );
-assert_true( 0 === strpos( $graded['bundled-only/bundled-only.php']['badge_text'], 'May fail when used' ), 'Bundled fatal badge reflects impact' );
+assert_true( 0 === strpos( $graded['bundled-only/bundled-only.php']['badge_text'], 'May break parts of your site' ), 'Bundled fatal badge reflects impact' );
 assert_true( empty( $graded['mixed/mixed.php']['bundled_only'] ), 'Errors in the plugin\'s own code must not be flagged bundled_only' );
 assert_same( 'Potential weakness', $graded['mixed/mixed.php']['status'], 'Own-code errors keep the Potential weakness status' );
-assert_true( 0 === strpos( $graded['mixed/mixed.php']['badge_text'], 'May fail when used' ), 'Function-scope fatal findings use cautious wording' );
+assert_true( 0 === strpos( $graded['mixed/mixed.php']['badge_text'], 'May break parts of your site' ), 'Function-scope fatal findings use cautious wording' );
 assert_same( 2, $graded['mixed/mixed.php']['grade'], 'Own-code error without load-time evidence is grade 2' );
 assert_same( 2, $graded['bundled-only/bundled-only.php']['grade'], 'Bundled fatal findings are grade 2' );
 
@@ -797,11 +797,11 @@ $unknown_rows = $gr_map( THRG_PHP_Checker::evaluate( $unknown_input ) );
 $unknown_card = reset( $unknown_rows );
 assert_same( 1, $unknown_card['unknown_errors'], 'Evaluator retains unknown-impact count' );
 assert_same( 0, $unknown_card['fatal_errors'], 'Evaluator does not invent a fatal rule diagnosis' );
-assert_same( 'Compatibility error: impact unknown', $unknown_card['grade_label'], 'Unknown impact is visible in the report wording' );
+assert_same( 'Needs checking', $unknown_card['grade_label'], 'Unknown impact is visible in the report wording' );
 assert_same( 'Potential weakness', $unknown_card['status'], 'Unknown error remains prominent in every status consumer' );
 
 assert_same( 1, $gr_rows['loadfail/loadfail.php']['grade'], 'Boot-file error is grade 1 in the report row' );
-assert_true( 0 === strpos( $gr_rows['loadfail/loadfail.php']['badge_text'], 'Likely to fail on load' ), 'Grade 1 badge says the component is likely to fail on load' );
+assert_true( 0 === strpos( $gr_rows['loadfail/loadfail.php']['badge_text'], 'Likely to break your site' ), 'Grade 1 badge says the component is likely to fail on load' );
 assert_same( 'Potential weakness', $gr_rows['loadfail/loadfail.php']['status'], 'Grade 1 is red' );
 assert_same( 2, $gr_rows['inner/inner.php']['grade'], 'Function-scope error is grade 2 in the report row' );
 assert_same( '', $gr_rows['inner/inner.php']['evidence_label'], 'No evidence label without evidence input' );
@@ -824,7 +824,7 @@ $gr_order = array_values(
 );
 assert_same( 'loadfail/loadfail.php', $gr_order[0]['comp_slug'], 'Worst grade is listed first' );
 $gr_plain = THRG_PHP_Checker::plain_text( THRG_PHP_Checker::evaluate( $gr_input ), 'example.com', '2026-05-01 00:00:00 UTC', '1.2.7', '8.3' );
-assert_true( false !== strpos( $gr_plain, 'Grade: Likely to fail on load' ), 'Plain-text report includes the grade' );
+assert_true( false !== strpos( $gr_plain, 'Grade: Likely to break your site' ), 'Plain-text report includes the grade' );
 
 // Update pre-scan: a newer version with only review items counts as the fatal errors being fixed.
 THRG_PC_Results::save( array( 'kind' => 'plugin', 'slug' => 'upd/upd.php', 'name' => 'Upd', 'version' => '1.0.0', 'files_total' => 1 ), '8.3', array( array_merge( $g_base, array( 'scope' => 'function', 'origin' => 'own' ) ) ) );
@@ -1257,25 +1257,25 @@ $stage4_stale = array_merge( $unknown_card, array( 'coverage' => 'stale' ) );
 $stage4_partial = array_merge( $unknown_card, array( 'coverage' => 'partial', 'status' => 'Review', 'unknown_errors' => 0 ) );
 $stage4_rows = array( $stage4_stale, $stage4_partial );
 $stage4_export = THRG_PC_Text_Report::plain_text( $stage4_rows, 'fixture.test', '2026-11-14', '1.2.7', '8.3' );
-assert_true( false !== strpos( $stage4_export, 'Errors with unmapped runtime impact: 1' ), 'Export exposes unknown impact explicitly' );
-assert_true( false !== strpos( $stage4_export, 'Scan coverage: Stale:' ), 'Export preserves stale evidence' );
+assert_true( false !== strpos( $stage4_export, 'Problems the scan cannot judge: 1' ), 'Export exposes unknown impact explicitly' );
+assert_true( false !== strpos( $stage4_export, 'Scan coverage: Out of date:' ), 'Export preserves stale evidence' );
 assert_true( false !== strpos( $stage4_export, 'Scan coverage: Incomplete:' ), 'Export preserves skipped-file coverage' );
 $stage4_change = THRG_PC_History::change( array( 'classification_version' => 4, 'target' => '8.3', 'rows' => array( $stage4_stale ), 'issues' => array() ), array( 'classification_version' => 4, 'target' => '8.3', 'rows' => array( $unknown_card ), 'issues' => array( 'old-issue' ) ) );
 assert_same( 'incomplete_evidence', $stage4_change['reason'], 'Incomplete evidence blocks misleading resolved counts' );
 assert_same( 0, $stage4_change['resolved'], 'Incomplete report cannot resolve an older issue' );
-assert_true( false !== strpos( THRG_PC_Email::change_line( array( 'first' => true, 'reason' => 'rules_changed' ) ), 'Grading rules changed' ), 'Emails explain rule changes instead of claiming a first scan' );
+assert_true( false !== strpos( THRG_PC_Email::change_line( array( 'first' => true, 'reason' => 'rules_changed' ) ), 'scoring rules changed' ), 'Emails explain rule changes instead of claiming a first scan' );
 assert_true( THRG_PC_Schedule::worth_sending( $stage4_rows, true ), 'Issue-only schedules retain unknown and incomplete results' );
 $stage4_args = array( 'rows' => $stage4_rows, 'site' => 'fixture.test', 'target' => '8.3', 'when' => '2026-11-14', 'change' => $stage4_change, 'older_when' => '', 'note' => '<script>fixture</script>', 'sender' => 'Fixture Sender', 'recipient' => 'Local Reviewer', 'view_url' => '', 'scheduled' => true );
 $stage4_html = THRG_PC_Email::html( $stage4_args );
 $stage4_text = THRG_PC_Email::text( $stage4_args );
 foreach ( array( $stage4_html, $stage4_text ) as $rendered_mail ) {
-    assert_true( false !== strpos( $rendered_mail, 'Errors with unmapped runtime impact: 1' ), 'Both email alternatives expose unknown impact' );
-    assert_true( false !== strpos( $rendered_mail, 'Scan coverage: Stale:' ), 'Both email alternatives preserve stale coverage' );
-    assert_true( false !== strpos( $rendered_mail, 'Evidence is incomplete' ), 'Both email alternatives withhold misleading comparisons' );
+    assert_true( false !== strpos( $rendered_mail, 'Problems the scan cannot judge: 1' ), 'Both email alternatives expose unknown impact' );
+    assert_true( false !== strpos( $rendered_mail, 'Scan coverage: Out of date:' ), 'Both email alternatives preserve stale coverage' );
+    assert_true( false !== strpos( $rendered_mail, 'incomplete or out of date' ), 'Both email alternatives withhold misleading comparisons' );
     assert_true( false === strpos( $rendered_mail, 'Nothing on fixture.test is likely to break' ), 'Email narrative makes no unsupported execution claim' );
 }
 assert_true( false === strpos( $stage4_html, '<script>fixture</script>' ), 'Email details and notes retain HTML escaping' );
-assert_true( false !== strpos( THRG_PC_Email::subject( $stage4_rows, 'fixture.test', '8.3' ), 'scan evidence needs review' ), 'Email subject cannot imply clearance with stale evidence' );
+assert_true( false !== strpos( THRG_PC_Email::subject( $stage4_rows, 'fixture.test', '8.3' ), 'some results need a refresh' ), 'Email subject cannot imply clearance with stale evidence' );
 $stage4_update_cases = array(
     'pending' => array( 'target' => '8.3', 'verdict' => 'partial', 'skipped' => 1, 'errors' => 0, 'warnings' => 0, 'findings' => array() ),
     'needs_review' => array( 'target' => '8.3', 'verdict' => 'breaks', 'errors' => 1, 'warnings' => 0, 'findings' => array( $unknown_finding ) ),
@@ -1295,10 +1295,10 @@ $stage4_sent = THRG_PC_Email::send( $stage4_entry, null, array( 991 ), 'Local ca
 assert_same( 1, $stage4_sent['sent'], 'Scheduled sender builds one captured message for the selected fixture administrator' );
 $stage4_capture = end( $GLOBALS['thrg_test_captured_mail'] );
 assert_same( 'reviewer@fixture.test', $stage4_capture['to'], 'Captured message uses only the fixture recipient' );
-assert_true( false !== strpos( $stage4_capture['html'], 'Scan coverage: Stale:' ), 'Actual sender HTML includes current evidence limits' );
-assert_true( false !== strpos( $stage4_capture['text'], 'Errors with unmapped runtime impact: 1' ), 'Actual sender sets its plain-text alternative with the same classification' );
+assert_true( false !== strpos( $stage4_capture['html'], 'Scan coverage: Out of date:' ), 'Actual sender HTML includes current evidence limits' );
+assert_true( false !== strpos( $stage4_capture['text'], 'Problems the scan cannot judge: 1' ), 'Actual sender sets its plain-text alternative with the same classification' );
 assert_same( array(), $GLOBALS['thrg_test_mail_hooks'], 'Sender removes its per-message mailer callback after capture' );
-assert_true( false !== strpos( $stage4_capture['subject'], 'Scheduled PHP 8.3 Check: scan evidence needs review' ), 'Scheduled subject identifies evidence limits and applies to weekly or monthly runs' );
+assert_true( false !== strpos( $stage4_capture['subject'], 'Scheduled PHP 8.3 Check: some results need a refresh' ), 'Scheduled subject identifies evidence limits and applies to weekly or monthly runs' );
 
 $stage4_server_row = array_merge( $unknown_card, array( 'id' => 'php-version', 'comp_key' => '', 'status' => 'Review' ) );
 $stage4_with_server = array_merge( $stage4_rows, array( $stage4_server_row ) );
@@ -1315,10 +1315,10 @@ assert_true( false !== strpos( THRG_PC_Email::change_line( $stage4_comparable ),
 
 $stage4_mixed_update = array( 'target' => '8.3', 'verdict' => 'breaks', 'errors' => 2, 'warnings' => 0, 'skipped' => 1, 'findings' => array( $confidence_fatal, $unknown_finding ) );
 assert_same( 'still_fails', THRG_PC_Results::update_assessment( $stage4_mixed_update ), 'Known fatal potential stays prominent alongside unknown impact and incomplete coverage' );
-assert_true( false !== strpos( THRG_PC_Prescan::summarize_wporg_fix( $stage4_mixed_update, '2.0.0', '8.3' )['message'], 'incomplete or stale' ), 'Update guidance retains the coverage caveat alongside fatal potential' );
+assert_true( false !== strpos( THRG_PC_Prescan::summarize_wporg_fix( $stage4_mixed_update, '2.0.0', '8.3' )['message'], 'incomplete or out of date' ), 'Update guidance retains the coverage caveat alongside fatal potential' );
 
 $stage4_legacy_mail = THRG_PC_Text_Report::evidence_notice( array( array( 'comp_key' => 'legacy', 'status' => 'No issue observed' ) ) );
-assert_true( false !== strpos( $stage4_legacy_mail, 'earlier grading rules' ), 'Legacy snapshot caveats carry into exported and emailed reports' );
+assert_true( false !== strpos( $stage4_legacy_mail, 'earlier version' ), 'Legacy snapshot caveats carry into exported and emailed reports' );
 
 $handler_sources = array(
     'includes/class-thrg-php-checker.php'    => array( 'ajax_scan_start', 'ajax_scan_step', 'ajax_scan_stop', 'ajax_prescan_now', 'ajax_check_wporg_fix', 'handle_start_post', 'handle_save_settings', 'handle_delete_report', 'handle_clear_history', 'handle_toggle_history', 'handle_email_report' ),
@@ -1368,15 +1368,15 @@ assert_true( $has_overview( $scope_all ), 'All-components scope reports an unsca
 assert_true( ! $has_overview( $scope_active ), 'Active-only scope is complete when every active component is scanned' );
 
 // Load-time versus in-use tiers.
-assert_same( 'Likely to fail on load', THRG_PC_Grade::label( 1 ), 'Grade 1 is the load-time tier' );
-assert_same( 'May fail when used', THRG_PC_Grade::label( 2 ), 'Grade 2 is the in-use tier' );
+assert_same( 'Likely to break your site', THRG_PC_Grade::label( 1 ), 'Grade 1 is the load-time tier' );
+assert_same( 'May break parts of your site', THRG_PC_Grade::label( 2 ), 'Grade 2 is the in-use tier' );
 assert_true( $gr_rows['loadfail/loadfail.php']['startup_errors'] > 0, 'A parse failure in a startup file counts as a load-time error' );
 assert_same( 0, $graded['mixed/mixed.php']['startup_errors'], 'Errors inside functions are not load-time errors' );
 assert_same( 0, $graded['bundled-only/bundled-only.php']['startup_errors'], 'Bundled library errors are not load-time errors' );
 $view_src = file_get_contents( dirname( __DIR__ ) . '/includes/view-checker-data.php' );
 assert_true( (bool) preg_match( '/if \( \$load_names \) \{\s+\$verdict_title = sprintf\([^;]+Hold off on upgrading/s', $view_src ), 'Only load-time errors produce the Hold off banner' );
 assert_true( (bool) preg_match( '/elseif \( \$has_fatal_err \) \{\s+\$verdict_tone  = \'neutral\'/', $view_src ), 'Fatal-mapped errors that load safely get the calmer banner' );
-assert_true( false === strpos( $view_src, 'is likely to break' ), 'Banner no longer calls in-use fatal errors likely to break' );
+assert_true( false === strpos( $view_src, 'may fail when used' ), 'Banner wording is plain language, not audit wording' );
 
 // Partial scans report how many components are scanned.
 $partial_rows = THRG_PHP_Checker::evaluate( array_merge( $scope_base, array( 'scope' => 'all' ) ) );

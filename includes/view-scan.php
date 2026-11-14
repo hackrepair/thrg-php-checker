@@ -168,12 +168,12 @@ defined( 'ABSPATH' ) || exit;
     <section class="thrg-summary" aria-label="<?php esc_attr_e( 'Compatibility Summary', 'thrg-php-checker' ); ?>">
         <div class="thrg-summary-tile thrg-summary-tile--weakness">
             <span class="thrg-summary-count"><?php echo (int) $counts['attention']; ?></span>
-            <span class="thrg-summary-label"><?php esc_html_e( 'Compatibility errors', 'thrg-php-checker' ); ?></span>
+            <span class="thrg-summary-label"><?php esc_html_e( 'Problems found', 'thrg-php-checker' ); ?></span>
             <span class="thrg-summary-sub">
                 <?php
                 printf(
                     /* translators: %s: target PHP version */
-                    esc_html__( 'Components requiring error review for PHP %s', 'thrg-php-checker' ),
+                    esc_html__( 'Plugins and themes with problems on PHP %s', 'thrg-php-checker' ),
                     esc_html( $selected_target )
                 );
                 if ( ! empty( $counts['server'] ) ) {
@@ -184,12 +184,12 @@ defined( 'ABSPATH' ) || exit;
         </div>
         <div class="thrg-summary-tile thrg-summary-tile--review">
             <span class="thrg-summary-count"><?php echo (int) $counts['review']; ?></span>
-            <span class="thrg-summary-label"><?php esc_html_e( 'Review', 'thrg-php-checker' ); ?></span>
+            <span class="thrg-summary-label"><?php esc_html_e( 'Worth a look', 'thrg-php-checker' ); ?></span>
             <span class="thrg-summary-sub">
                 <?php
                 printf(
                     /* translators: %s: target PHP version */
-                    esc_html__( 'Behavior changes, deprecations or incomplete scans for PHP %s', 'thrg-php-checker' ),
+                    esc_html__( 'Small changes, old features or unfinished checks on PHP %s', 'thrg-php-checker' ),
                     esc_html( $selected_target )
                 );
                 ?>
@@ -202,7 +202,7 @@ defined( 'ABSPATH' ) || exit;
                 <?php
                 printf(
                     /* translators: %s: target PHP version */
-                    esc_html__( '0 errors or warnings on PHP %s', 'thrg-php-checker' ),
+                    esc_html__( 'Nothing found on PHP %s', 'thrg-php-checker' ),
                     esc_html( $selected_target )
                 );
                 ?>
@@ -219,7 +219,7 @@ defined( 'ABSPATH' ) || exit;
                 );
                 ?>
             </span>
-            <span class="thrg-summary-sub"><?php esc_html_e( 'Plugins, mu-plugins & themes', 'thrg-php-checker' ); ?></span>
+            <span class="thrg-summary-sub"><?php esc_html_e( 'Plugins and themes', 'thrg-php-checker' ); ?></span>
         </div>
     </section>
 

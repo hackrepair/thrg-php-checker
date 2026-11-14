@@ -247,9 +247,9 @@ final class THRG_PC_Grade {
     public static function label( $grade ) {
         switch ( (int) $grade ) {
             case 1:
-                return 'Likely to fail on load';
+                return 'Likely to break your site';
             case 2:
-                return 'May fail when used';
+                return 'May break parts of your site';
             case 3:
                 return 'Review: fallback code';
             case 4:
@@ -257,7 +257,7 @@ final class THRG_PC_Grade {
             case 5:
                 return 'Minor changes';
             case 6:
-                return 'Deprecation warnings';
+                return 'Warnings (old features)';
         }
         return 'No issues detected';
     }

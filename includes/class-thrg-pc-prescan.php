@@ -929,20 +929,20 @@ final class THRG_PC_Prescan {
         $status         = THRG_PC_Results::update_assessment( $existing );
         $messages       = array(
             /* translators: 1: update version, 2: target PHP version */
-            'pending'       => __( 'v%1$s on WordPress.org has incomplete or stale scan evidence for PHP %2$s. A fix cannot be established from this result.', 'thrg-php-checker' ),
+            'pending'       => __( 'The scan of v%1$s on WordPress.org is incomplete or out of date for PHP %2$s, so we cannot tell yet whether it fixes the problems.', 'thrg-php-checker' ),
             /* translators: 1: update version, 2: target PHP version */
-            'needs_review'  => __( 'v%1$s on WordPress.org contains errors with unmapped impact for PHP %2$s. Review the rules and test the affected features.', 'thrg-php-checker' ),
+            'needs_review'  => __( 'v%1$s on WordPress.org has problems the scan cannot judge for PHP %2$s. Test the features it provides before you upgrade.', 'thrg-php-checker' ),
             /* translators: 1: update version, 2: target PHP version */
-            'still_fails'   => __( 'v%1$s on WordPress.org still contains known rules with fatal potential for PHP %2$s. Do not rely on updating alone.', 'thrg-php-checker' ),
+            'still_fails'   => __( 'v%1$s on WordPress.org still has serious problems for PHP %2$s. Updating alone will not fix them.', 'thrg-php-checker' ),
             /* translators: 1: update version, 2: target PHP version */
-            'warnings_only' => __( 'v%1$s on WordPress.org has behavior changes or warnings for PHP %2$s, with no mapped fatal findings or unknown-impact errors. Review and test before upgrading.', 'thrg-php-checker' ),
+            'warnings_only' => __( 'v%1$s on WordPress.org has small changes or warnings for PHP %2$s, but nothing serious. Test before you upgrade.', 'thrg-php-checker' ),
             /* translators: 1: update version, 2: target PHP version */
-            'fixed'         => __( 'No counted issues were detected in the complete scan of v%1$s on WordPress.org for PHP %2$s. Test important features before upgrading.', 'thrg-php-checker' ),
+            'fixed'         => __( 'The full scan of v%1$s on WordPress.org found no problems for PHP %2$s. Test important features before you upgrade.', 'thrg-php-checker' ),
         );
         // phpcs:ignore WordPress.WP.I18n.MissingTranslatorsComment -- Formats above use 1: update version, 2: target PHP version.
         $msg = sprintf( $messages[ $status ], $remote_version, $target );
         if ( 'still_fails' === $status && 'complete' !== $classification['coverage'] ) {
-            $msg .= ' ' . __( 'Scan evidence is also incomplete or stale; refresh it for a complete assessment.', 'thrg-php-checker' );
+            $msg .= ' ' . __( 'The scan is also incomplete or out of date; refresh it for a complete answer.', 'thrg-php-checker' );
         }
 
         return self::wporg_result(

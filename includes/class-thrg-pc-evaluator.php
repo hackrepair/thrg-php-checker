@@ -510,13 +510,13 @@ final class THRG_PC_Evaluator {
             $counts[] = sprintf( '%d %s', $warnings, 1 === $warnings ? 'warning' : 'warnings' );
         }
         if ( $skipped > 0 ) {
-            $counts[] = sprintf( '%d %s not fully analyzed', $skipped, 1 === $skipped ? 'file' : 'files' );
+            $counts[] = sprintf( '%d %s could not be checked', $skipped, 1 === $skipped ? 'file' : 'files' );
         }
         if ( ! $counts ) {
             $counts[] = '0 errors, 0 warnings';
         }
         if ( $notes > 0 ) {
-            $counts[] = sprintf( '%d guarded/polyfill %s filtered', $notes, 1 === $notes ? 'note' : 'notes' );
+            $counts[] = sprintf( '%d skipped (PHP version already checked)', $notes );
         }
 
         $fatal_errors = 0;
@@ -571,20 +571,20 @@ final class THRG_PC_Evaluator {
             : '';
 
         if ( 'breaks' === $verdict ) {
-            $err_prefix = $unknown_errors && ! $fatal_errors ? 'Compatibility error: impact unknown' : THRG_PC_Grade::label( $grade );
+            $err_prefix = $unknown_errors && ! $fatal_errors ? 'Needs checking' : THRG_PC_Grade::label( $grade );
             $badge_text = sprintf( '%s · %d %s', $err_prefix, $errors, 1 === $errors ? 'error' : 'errors' );
             if ( $fatal_errors > 0 && $errors > $fatal_errors ) {
-                $badge_text .= sprintf( ' (%d mapped as fatal)', $fatal_errors );
+                $badge_text .= sprintf( ' (%d serious)', $fatal_errors );
             }
             if ( $warnings > 0 ) {
                 $badge_text .= sprintf( ', %d %s', $warnings, 1 === $warnings ? 'warning' : 'warnings' );
             }
             $nav_hint = sprintf( '%d %s', $errors, 1 === $errors ? 'error' : 'errors' );
         } elseif ( 'warnings' === $verdict ) {
-            $badge_text = sprintf( '%d deprecation %s', $warnings, 1 === $warnings ? 'warning' : 'warnings' );
+            $badge_text = sprintf( '%d %s (old features)', $warnings, 1 === $warnings ? 'warning' : 'warnings' );
             $nav_hint   = sprintf( '%d warn', $warnings );
         } elseif ( 'partial' === $verdict ) {
-            $badge_text = sprintf( '%d %s not fully analyzed', $skipped, 1 === $skipped ? 'file' : 'files' );
+            $badge_text = sprintf( '%d %s could not be checked', $skipped, 1 === $skipped ? 'file' : 'files' );
             $nav_hint   = 'Partial';
         } else {
             $badge_text = 'No issues detected';
@@ -600,7 +600,7 @@ final class THRG_PC_Evaluator {
             $kind_word = 'theme' === $kind ? 'theme' : 'plugin';
             if ( 1 === $grade ) {
                 $meaning      = sprintf(
-                    '%1$s (%2$s, v%3$s) has %4$d potential fatal error(s) in a file identified as part of startup. Static include discovery does not prove every operation executes. Test this %6$s on PHP %5$s before relying on it.',
+                    '%1$s (%2$s, v%3$s) has %4$d problem(s) in code that runs as soon as it loads, and PHP %5$s no longer accepts that code. This %6$s is likely to stop working, or to take your site down. The scan cannot be completely sure, so test it on PHP %5$s before relying on it.',
                     $name,
                     strtolower( $state_label ),
                     $version,
@@ -608,37 +608,37 @@ final class THRG_PC_Evaluator {
                     $target,
                     $kind_word
                 );
-                $next_default = sprintf( 'Do not switch to PHP %1$s while %2$s is active. Check for an updated release, contact the developer with the file and line numbers below, or replace this %3$s first.', $target, $name, $kind_word );
+                $next_default = sprintf( 'Do not switch to PHP %1$s while %2$s is active. Check for an update, ask the author for a fix (the file and line numbers below tell them where to look), or replace this %3$s first.', $target, $name, $kind_word );
             } elseif ( 2 === $grade && $unknown_errors && ! $fatal_errors ) {
-                $meaning      = sprintf( '%s has scanner errors whose runtime impact is not mapped. Their priority is retained until the listed rules and affected features are reviewed.', $name );
-                $next_default = sprintf( 'Review the listed rules and test %s on PHP %s before upgrading. Unknown impact does not establish compatibility.', $name, $target );
+                $meaning      = sprintf( '%s has problems the scan cannot judge on its own, so it stays near the top of the list until someone has checked them.', $name );
+                $next_default = sprintf( 'Test %1$s on PHP %2$s before you upgrade, or ask its author whether it supports PHP %2$s. Not knowing the effect does not mean it is safe.', $name, $target );
             } elseif ( 2 === $grade ) {
                 $meaning      = sprintf(
-                    '%1$s (%2$s, v%3$s) contains %4$d unguarded PHP %5$s error(s). If those code paths execute on PHP %5$s, PHP can throw a fatal error or halt the request.',
+                    '%1$s (%2$s, v%3$s) contains %4$d spot(s) that PHP %5$s no longer supports. If your site uses the features that rely on them, you will get an error and part of your site may stop working. The scan did not find anything that stops it from loading.',
                     $name,
                     strtolower( $state_label ),
                     $version,
                     $errors,
                     $target
                 );
-                $next_default = sprintf( 'Check for an updated release of %1$s, contact the developer with the file and line numbers below, or replace this %2$s before upgrading the server to PHP %3$s.', $name, $kind_word, $target );
+                $next_default = sprintf( 'Check for an update to %1$s, ask its author for a fix (the file and line numbers below tell them where to look), or replace this %2$s before you upgrade to PHP %3$s.', $name, $kind_word, $target );
             } else {
                 $meaning      = sprintf(
-                    '%1$s (%2$s, v%3$s) contains %4$d PHP %5$s compatibility error(s) (removed INI directives or behavioral changes). These will not throw a fatal crash on PHP %5$s, though affected code paths may behave differently.',
+                    '%1$s (%2$s, v%3$s) has %4$d change(s) in how PHP %5$s works. Your site should keep running, but some features may behave differently.',
                     $name,
                     strtolower( $state_label ),
                     $version,
                     $errors,
                     $target
                 );
-                $next_default = sprintf( 'Review the listed settings or behaviour changes in %1$s and test the affected features on PHP %2$s.', $name, $target );
+                $next_default = sprintf( 'Test the features %1$s provides on PHP %2$s.', $name, $target );
             }
             if ( '' !== $evidence_label ) {
-                $meaning .= sprintf( ' This %2$s is active here. Activation does not establish that the affected feature was exercised for the PHP %1$s target.', $target, $kind_word );
+                $meaning .= sprintf( ' This %2$s is active on your site. That does not prove its features have been tested on PHP %1$s.', $target, $kind_word );
             }
             if ( '' !== $update_ver ) {
                 $next = sprintf(
-                    'Version %1$s is available for %2$s — update the %3$s first and click Rescan on this card to check whether the author already resolved the PHP %4$s incompatibility.',
+                    'Version %1$s of %2$s is available. Update the %3$s, then click Rescan on this card to see whether the author has fixed the PHP %4$s problems.',
                     $update_ver,
                     $name,
                     $kind_word,
@@ -646,7 +646,7 @@ final class THRG_PC_Evaluator {
                 );
             } elseif ( ! $active ) {
                 $next = sprintf(
-                    '%1$s is currently inactive, so it cannot break front-end requests unless activated. Delete it if unused, or update/replace it before activating on PHP %2$s.',
+                    '%1$s is not active, so it cannot break your site unless you turn it on. Delete it if you do not use it, or update or replace it before you activate it on PHP %2$s.',
                     $name,
                     $target
                 );
@@ -655,7 +655,7 @@ final class THRG_PC_Evaluator {
             }
         } elseif ( 'warnings' === $verdict ) {
             $meaning = sprintf(
-                '%1$s (%2$s, v%3$s) reported 0 fatal errors and %4$d deprecation warning(s) on PHP %5$s. Deprecated features continue to work in PHP %5$s (they will not crash your site today), though they may log E_DEPRECATED notices.',
+                '%1$s (%2$s, v%3$s) has %4$d warning(s) on PHP %5$s. These are old features that still work today, but PHP plans to remove them in the future and they may show warning messages.',
                 $name,
                 strtolower( $state_label ),
                 $version,
@@ -663,18 +663,18 @@ final class THRG_PC_Evaluator {
                 $target
             );
             $next    = '' !== $update_ver
-                ? sprintf( 'Update %1$s to version %2$s and click Rescan, or keep WP_DEBUG_DISPLAY off on live sites while the author updates deprecated calls.', $name, $update_ver )
-                : sprintf( 'Test %2$s on PHP %1$s before upgrading; keep it updated as future releases address these deprecations.', $target, $name );
+                ? sprintf( 'Update %1$s to version %2$s and click Rescan.', $name, $update_ver )
+                : sprintf( 'Test %2$s on PHP %1$s before you upgrade, and keep it updated so the author can fix these warnings.', $target, $name );
         } elseif ( 'partial' === $verdict ) {
             $meaning = sprintf(
-                '%1$s had 0 errors or warnings in the analyzed code, but %2$d PHP file check(s) could not finish. Review the recorded reasons before relying on this result.',
+                '%1$s had no problems in the files that were checked, but %2$d file(s) could not be checked. Treat this result as incomplete.',
                 $name,
                 $skipped
             );
-            $next    = 'Review the per-file reasons below. Validate syntax with the appropriate PHP runtime or inspect files that exceed the scan limits.';
+            $next    = 'See the reasons below. Very large files are skipped; ask your developer to check them, or test this plugin on the new PHP version.';
         } else {
             $meaning = sprintf(
-                'No unguarded PHP %1$s errors or deprecation warnings were detected across %2$s (%3$s, v%4$s).',
+                'No problems were found for PHP %1$s in %2$s (%3$s, v%4$s).',
                 $target,
                 $name,
                 strtolower( $state_label ),
@@ -682,7 +682,7 @@ final class THRG_PC_Evaluator {
             );
             if ( $notes > 0 ) {
                 $meaning .= sprintf(
-                    ' %d finding(s) inside runtime version guards or polyfill fallbacks were excluded by static guard analysis for this target and retained as informational notes.',
+                    ' %d item(s) were left out because the plugin checks the PHP version first, so they do not apply to your site.',
                     $notes
                 );
             }
@@ -690,10 +690,10 @@ final class THRG_PC_Evaluator {
         }
 
         if ( $unknown_errors && $fatal_errors ) {
-            $meaning .= sprintf( ' %d additional scanner error(s) have unmapped runtime impact and also need review.', $unknown_errors );
+            $meaning .= sprintf( ' %d more problem(s) cannot be judged by the scan and also need a look.', $unknown_errors );
         }
         if ( 'stale' === $graded['coverage'] ) {
-            $meaning .= ' Some stored findings are no longer available for classification. Run a new scan to refresh the evidence.';
+            $meaning .= ' Some saved results are out of date. Run a new scan to refresh them.';
         }
 
         $wporg_fix_status = '';
@@ -869,7 +869,7 @@ final class THRG_PC_Evaluator {
             'grade'                  => $grade,
             'classification_version' => THRG_PC_Grade::CLASSIFICATION_VERSION,
             'coverage'               => $graded['coverage'],
-            'grade_label'            => 'partial' === $verdict ? 'Scan incomplete' : ( $unknown_errors && ! $fatal_errors ? 'Compatibility error: impact unknown' : THRG_PC_Grade::label( $grade ) ),
+            'grade_label'            => 'partial' === $verdict ? 'Scan incomplete' : ( $unknown_errors && ! $fatal_errors ? 'Needs checking' : THRG_PC_Grade::label( $grade ) ),
             'grade_reason'           => $grade_why,
             'evidence_label'         => $evidence_label,
             'warnings'               => $warnings,

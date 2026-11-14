@@ -13,9 +13,9 @@ defined( 'ABSPATH' ) || exit;
                     <span class="thrg-pc-section-bar__title">
                         <?php
                         if ( ! empty( $broken_names ) && $has_fatal_err ) {
-                            esc_html_e( 'Sorted by urgency: Likely load failures first, then code that may fail when used, then deprecation warnings', 'thrg-php-checker' );
+                            esc_html_e( 'Most urgent first: likely to break your site, then may break parts of it, then warnings', 'thrg-php-checker' );
                         } elseif ( ! empty( $broken_names ) ) {
-                            esc_html_e( 'Sorted by urgency: Compatibility errors first, deprecation warnings second', 'thrg-php-checker' );
+                            esc_html_e( 'Most urgent first: problems, then warnings', 'thrg-php-checker' );
                         } else {
                             esc_html_e( 'Findings sorted by urgency: Active plugins & theme first', 'thrg-php-checker' );
                         }
@@ -24,8 +24,8 @@ defined( 'ABSPATH' ) || exit;
                     <div class="thrg-pc-section-bar__actions">
                         <div class="thrg-pc-filter-group" role="group" aria-label="<?php esc_attr_e( 'Filter findings', 'thrg-php-checker' ); ?>">
                             <button type="button" class="button button-small thrg-pc-filter-btn is-active" data-filter="all" aria-pressed="true"><?php esc_html_e( 'All', 'thrg-php-checker' ); ?></button>
-                            <button type="button" class="button button-small thrg-pc-filter-btn" data-filter="breaks" aria-pressed="false"><?php esc_html_e( 'Compatibility errors', 'thrg-php-checker' ); ?></button>
-                            <button type="button" class="button button-small thrg-pc-filter-btn" data-filter="review" aria-pressed="false"><?php esc_html_e( 'Needs a look', 'thrg-php-checker' ); ?></button>
+                            <button type="button" class="button button-small thrg-pc-filter-btn" data-filter="breaks" aria-pressed="false"><?php esc_html_e( 'Problems', 'thrg-php-checker' ); ?></button>
+                            <button type="button" class="button button-small thrg-pc-filter-btn" data-filter="review" aria-pressed="false"><?php esc_html_e( 'Worth a look', 'thrg-php-checker' ); ?></button>
                             <button type="button" class="button button-small thrg-pc-filter-btn" data-filter="own" aria-pressed="false"><?php esc_html_e( 'Plugin / theme code only', 'thrg-php-checker' ); ?></button>
                         </div>
                         <button type="button" id="thrg-pc-toggle-all-details" class="button button-small button-link" data-expanded="0">

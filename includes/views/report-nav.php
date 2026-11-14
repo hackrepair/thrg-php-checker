@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
                         <?php
                         printf(
                             /* translators: %d: count of components likely to break */
-                            esc_html__( 'Compatibility Errors (%d)', 'thrg-php-checker' ),
+                            esc_html__( 'Problems found (%d)', 'thrg-php-checker' ),
                             count( $nav_attention )
                         );
                         ?>
@@ -62,7 +62,7 @@ defined( 'ABSPATH' ) || exit;
                         <?php
                         printf(
                             /* translators: %d: count of review items */
-                            esc_html__( 'Review (%d)', 'thrg-php-checker' ),
+                            esc_html__( 'Worth a look (%d)', 'thrg-php-checker' ),
                             count( $nav_review )
                         );
                         ?>

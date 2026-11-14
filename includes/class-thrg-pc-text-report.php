@@ -79,22 +79,21 @@ final class THRG_PC_Text_Report {
         $labels   = array(
             'complete'    => 'Complete for this component',
             'partial'     => 'Incomplete: some file checks could not finish',
-            'stale'       => 'Stale: retained evidence is incomplete; rescan this component',
+            'stale'       => 'Out of date: rescan this plugin or theme',
             'not_scanned' => 'Not scanned',
-            'unknown'     => 'Not recorded; do not infer complete coverage',
+            'unknown'     => 'Not recorded; treat as incomplete',
         );
         $lines    = array(
-            'Classification rules: ' . ( isset( $row['classification_version'] ) ? (string) $row['classification_version'] : 'earlier version (not recorded)' ),
             'Scan coverage: ' . ( isset( $labels[ $coverage ] ) ? $labels[ $coverage ] : $labels['unknown'] ),
         );
         if ( isset( $row['classification_version'] ) && THRG_PC_Grade::CLASSIFICATION_VERSION !== (int) $row['classification_version'] ) {
-            $lines[] = 'Saved snapshot uses earlier grading rules; run a new scan for current classifications.';
+            $lines[] = 'This saved result was graded by an earlier version; run a new scan for current grades.';
         }
         if ( isset( $row['fatal_errors'] ) ) {
-            $lines[] = 'Known rules with fatal potential: ' . (int) $row['fatal_errors'];
+            $lines[] = 'Serious problems: ' . (int) $row['fatal_errors'];
         }
         if ( isset( $row['unknown_errors'] ) ) {
-            $lines[] = 'Errors with unmapped runtime impact: ' . (int) $row['unknown_errors'];
+            $lines[] = 'Problems the scan cannot judge: ' . (int) $row['unknown_errors'];
         }
         return $lines;
     }
@@ -109,13 +108,13 @@ final class THRG_PC_Text_Report {
         $health = THRG_PC_Grade::report_health( $rows );
         $parts  = array();
         if ( $health['legacy'] ) {
-            $parts[] = 'This report includes saved results from earlier grading rules. Their recorded classifications have been preserved.';
+            $parts[] = 'This report includes results saved by an earlier version of the scanner; their original grades are kept.';
         }
         if ( $health['incomplete'] ) {
-            $parts[] = 'Coverage is incomplete, stale or unrecorded. Complete or refresh the scan before relying on this report.';
+            $parts[] = 'Some checks are incomplete or out of date. Finish or refresh the scan before relying on this report.';
         }
         if ( $health['unknown'] ) {
-            $parts[] = sprintf( '%d scanner error(s) have unmapped runtime impact and require review.', $health['unknown'] );
+            $parts[] = sprintf( '%d problem(s) cannot be judged by the scan and need a closer look.', $health['unknown'] );
         }
         return implode( ' ', $parts );
     }

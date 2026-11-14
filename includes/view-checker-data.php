@@ -197,8 +197,8 @@ if ( ! empty( $observations['engine_reason'] ) ) {
         $verdict_title = sprintf(
             /* translators: 1: target PHP version, 2: count of components, 3: component names */
             _n(
-                'Hold off on upgrading to PHP %1$s — %2$d component is likely to fail on load (%3$s)',
-                'Hold off on upgrading to PHP %1$s — %2$d components are likely to fail on load (%3$s)',
+                'Hold off on upgrading to PHP %1$s — %2$d plugin or theme is likely to break your site (%3$s)',
+                'Hold off on upgrading to PHP %1$s — %2$d plugins or themes are likely to break your site (%3$s)',
                 count( $load_names ),
                 'thrg-php-checker'
             ),
@@ -208,7 +208,7 @@ if ( ! empty( $observations['engine_reason'] ) ) {
         );
         $verdict_desc = sprintf(
             /* translators: %s: target PHP version */
-            __( 'These active components run code when they load that PHP %s rejects. The scan found the code in files that appear to load at startup, so the plugin or the whole site is likely to stop working. Update, replace, or deactivate them before switching PHP versions in your hosting panel.', 'thrg-php-checker' ),
+            __( 'These active plugins or themes run code as soon as WordPress loads, and PHP %s no longer accepts that code. Your site, or part of it, is likely to stop working. Update, replace or deactivate them before you switch PHP versions in your hosting panel.', 'thrg-php-checker' ),
             $selected_target
         );
     } elseif ( $has_fatal_err ) {
@@ -216,8 +216,8 @@ if ( ! empty( $observations['engine_reason'] ) ) {
         $verdict_title = sprintf(
             /* translators: 1: target PHP version, 2: count of components, 3: component names */
             _n(
-                'Review before upgrading to PHP %1$s — %2$d component contains code that may fail when used (%3$s)',
-                'Review before upgrading to PHP %1$s — %2$d components contain code that may fail when used (%3$s)',
+                'Check before upgrading to PHP %1$s — %2$d plugin or theme may break parts of your site (%3$s)',
+                'Check before upgrading to PHP %1$s — %2$d plugins or themes may break parts of your site (%3$s)',
                 count( $broken_names ),
                 'thrg-php-checker'
             ),
@@ -227,15 +227,15 @@ if ( ! empty( $observations['engine_reason'] ) ) {
         );
         $verdict_desc = sprintf(
             /* translators: %s: target PHP version */
-            __( 'These components contain PHP %s errors that cause a fatal error if the affected code runs. The scan did not find a failure in code that loads at startup, but it cannot tell which features your site uses. Update or replace them, or test those features, before switching PHP versions.', 'thrg-php-checker' ),
+            __( 'These contain code that PHP %s no longer supports. Nothing was found that stops your site from loading, but the scan cannot tell which features you use. Update or replace them, or test the features they provide, before you switch PHP versions.', 'thrg-php-checker' ),
             $selected_target
         );
     } else {
         $verdict_title = sprintf(
             /* translators: 1: target PHP version, 2: count of components with compatibility errors, 3: component names */
             _n(
-                'Review before upgrading to PHP %1$s — %2$d component has compatibility errors requiring review (%3$s)',
-                'Review before upgrading to PHP %1$s — %2$d components have compatibility errors requiring review (%3$s)',
+                'Check before upgrading to PHP %1$s — %2$d plugin or theme needs checking (%3$s)',
+                'Check before upgrading to PHP %1$s — %2$d plugins or themes need checking (%3$s)',
                 count( $broken_names ),
                 'thrg-php-checker'
             ),
@@ -245,26 +245,26 @@ if ( ! empty( $observations['engine_reason'] ) ) {
         );
         $verdict_desc = sprintf(
             /* translators: %s: target PHP version */
-            __( 'The listed PHP %s compatibility errors include rules whose impact needs review. Check the rule details and test the affected features before switching PHP versions.', 'thrg-php-checker' ),
+            __( 'These have problems the scan cannot judge on its own. Test the features they provide, or ask their authors about PHP %s support, before you switch PHP versions.', 'thrg-php-checker' ),
             $selected_target
         );
     }
 } elseif ( ! $viewed_entry && $stale_scan > 0 ) {
     $verdict_tone  = 'neutral';
-    $verdict_title = __( 'Stored scan evidence needs a refresh', 'thrg-php-checker' );
-    $verdict_desc  = __( 'Some older results lack evidence required by the current scanner. Rescan the affected components to refresh their classification summaries. Existing findings remain visible.', 'thrg-php-checker' );
+    $verdict_title = __( 'Some saved results are out of date', 'thrg-php-checker' );
+    $verdict_desc  = __( 'Some results were saved by an older version of the scanner. Rescan those plugins and themes to refresh them. The earlier findings are still shown.', 'thrg-php-checker' );
 } elseif ( ! $viewed_entry && ( $partial_scan > 0 || $scanned_now < $total_comps ) ) {
     $verdict_tone  = 'neutral';
     $verdict_title = __( 'Compatibility scan incomplete', 'thrg-php-checker' );
-    $verdict_desc  = __( 'Some components have not been scanned or contain skipped files. Review the available findings and complete the scan before relying on the results.', 'thrg-php-checker' );
+    $verdict_desc  = __( 'Some plugins or themes have not been scanned, or had files that could not be checked. Look at what was found, then finish the scan before relying on the results.', 'thrg-php-checker' );
 } elseif ( ! empty( $review_names ) ) {
     $verdict_tone  = 'neutral';
     $shown_review  = implode( ', ', array_slice( $review_names, 0, 3 ) );
     $verdict_title = sprintf(
         /* translators: 1: target PHP version, 2: count of components, 3: component names */
         _n(
-            'Review before upgrading to PHP %1$s — %2$d component needs a look (%3$s)',
-            'Review before upgrading to PHP %1$s — %2$d components need a look (%3$s)',
+            'Check before upgrading to PHP %1$s — %2$d plugin or theme is worth a look (%3$s)',
+            'Check before upgrading to PHP %1$s — %2$d plugins or themes are worth a look (%3$s)',
             count( $review_names ),
             'thrg-php-checker'
         ),
@@ -274,7 +274,7 @@ if ( ! empty( $observations['engine_reason'] ) ) {
     );
     $verdict_desc = sprintf(
         /* translators: %s: target PHP version */
-        __( 'Review the flagged components before upgrading to PHP %s. Inactive components may fail if activated, and behavior changes need testing. Static analysis does not exercise your site workflows.', 'thrg-php-checker' ),
+        __( 'Look over the flagged plugins and themes before you upgrade to PHP %s. Inactive ones may break your site if you turn them on, and small changes need testing. This scan reads the code; it does not try out your site.', 'thrg-php-checker' ),
         $selected_target
     );
 } elseif ( $warn_comps > 0 ) {

@@ -150,7 +150,7 @@ final class THRG_PC_Email {
 
         $health = THRG_PC_Grade::report_health( $rows );
         if ( $health['incomplete'] || $health['legacy'] ) {
-            $s = $prefix . ': scan evidence needs review';
+            $s = $prefix . ': some results need a refresh';
         } elseif ( $fix ) {
             $s = sprintf( '%s: %s %s attention', $prefix, self::plural( $fix, 'issue', 'issues' ), 1 === $fix ? 'needs' : 'need' );
             if ( $new ) {
@@ -195,9 +195,9 @@ final class THRG_PC_Email {
     public static function change_line( $change, $older_when = '' ) {
         if ( is_array( $change ) && isset( $change['reason'] ) ) {
             $messages = array(
-                'rules_changed'       => 'Grading rules changed since the previous report; changes are not counted as fixes.',
+                'rules_changed'       => 'The scoring rules changed since the previous report, so differences are not counted as fixes.',
                 'target_changed'      => 'These reports use different PHP targets and cannot be compared.',
-                'incomplete_evidence' => 'Evidence is incomplete or uses earlier grading rules; no resolved count is inferred.',
+                'incomplete_evidence' => 'Some results are incomplete or out of date, so no count of fixed items is shown.',
             );
             if ( isset( $messages[ $change['reason'] ] ) ) {
                 return $messages[ $change['reason'] ];
