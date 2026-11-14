@@ -65,7 +65,7 @@ PHP Checker has no account, license server, analytics or advertising requests. T
 1. In WordPress, open Plugins > Add New, search for "The Hack Repair Guy's PHP Checker" and choose Install Now. You can also upload the `thrg-php-checker` folder to `wp-content/plugins/`.
 2. Activate The Hack Repair Guy's PHP Checker.
 3. Open Tools > PHP Checker, select your target PHP version (PHP 8.3 is selected by default), and click Scan.
-4. Review the plain-English Readiness Verdict banner at the top and any red "Action Needed" plugin cards first.
+4. Review the plain-English Readiness Verdict banner at the top and any red "Likely to break" plugin cards first.
 5. Optional: open Share, Download, Print, or Email This Report to send a copy to your developer or other administrators, or set up the Scheduled Readiness Email.
 
 == Support ==

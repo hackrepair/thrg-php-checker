@@ -15,8 +15,8 @@ defined( 'ABSPATH' ) || exit;
                     <h2 class="thrg-nav-heading thrg-nav-heading--weakness">
                         <?php
                         printf(
-                            /* translators: %d: count of action-needed items */
-                            esc_html__( 'Action Needed (%d)', 'thrg-php-checker' ),
+                            /* translators: %d: count of components likely to break */
+                            esc_html__( 'Likely to Break (%d)', 'thrg-php-checker' ),
                             count( $nav_attention )
                         );
                         ?>
@@ -37,13 +37,32 @@ defined( 'ABSPATH' ) || exit;
                 </div>
             <?php endif; ?>
 
+            <?php if ( ! empty( $nav_server ) ) : ?>
+                <div class="thrg-nav-group">
+                    <h2 class="thrg-nav-heading thrg-nav-heading--weakness"><?php esc_html_e( 'Server', 'thrg-php-checker' ); ?></h2>
+                    <ul class="thrg-nav-list">
+                        <?php foreach ( $nav_server as $row ) : ?>
+                            <li>
+                                <a href="#<?php echo esc_attr( $row['id'] ); ?>" class="thrg-nav-link">
+                                    <span class="thrg-nav-dot thrg-status-weakness"></span>
+                                    <span class="thrg-nav-text"><?php echo esc_html( $row['label'] ); ?></span>
+                                    <?php if ( ! empty( $row['nav_hint'] ) ) : ?>
+                                        <span class="thrg-nav-badge thrg-nav-badge--weakness"><?php echo esc_html( $row['nav_hint'] ); ?></span>
+                                    <?php endif; ?>
+                                </a>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            <?php endif; ?>
+
             <?php if ( ! empty( $nav_review ) ) : ?>
                 <div class="thrg-nav-group thrg-nav-group--review">
                     <h2 class="thrg-nav-heading">
                         <?php
                         printf(
                             /* translators: %d: count of review items */
-                            esc_html__( 'Warnings & Review (%d)', 'thrg-php-checker' ),
+                            esc_html__( 'Review (%d)', 'thrg-php-checker' ),
                             count( $nav_review )
                         );
                         ?>

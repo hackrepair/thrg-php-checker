@@ -35,6 +35,7 @@ $counts        = array(
 $primary_rows  = array();
 $clean_comps   = array();
 $nav_attention = array();
+$nav_server    = array();
 $nav_review    = array();
 $broken_names  = array();
 $has_fatal_err = false;
@@ -61,7 +62,12 @@ foreach ( $rows as $row ) {
         $primary_rows[] = $row;
         $row_inactive   = ! empty( $row['comp_key'] ) && empty( $row['comp_active'] ) && empty( $row['comp_network_active'] ) && empty( $row['comp_parent_theme'] );
         if ( 'Potential weakness' === $row['status'] ) {
-            $nav_attention[] = $row;
+            if ( empty( $row['comp_key'] ) ) {
+                // The server lifecycle row sits in its own group, not among the components.
+                $nav_server[] = $row;
+            } else {
+                $nav_attention[] = $row;
+            }
             if ( $row_inactive ) {
                 // An inactive component cannot break requests, so it never triggers the "Hold off" banner.
                 $review_names[] = (string) $row['comp_name'];
