@@ -153,6 +153,9 @@ function wp_date( $format, $timestamp = null ) {
 require_once dirname( __DIR__ ) . '/index.php';
 
 $assertions = 0;
+// The scan engine stops a slice early near the memory limit; give the test run room so fixtures scan in one slice.
+ini_set( 'memory_limit', '512M' );
+
 function assert_true( $condition, $message ) {
     global $assertions;
     ++$assertions;
@@ -195,8 +198,30 @@ file_put_contents(
     "<?php\nif ( ! function_exists( 'str_contains' ) ) {\n    function str_contains( \$haystack, \$needle ) {\n        return '' === \$needle || false !== strpos( \$haystack, \$needle );\n    }\n}\n"
 );
 
-$scan_out = THRG_PC_Engine::scan( array( $unguarded_file, $guarded_file, $polyfill_file ), '8.4', microtime( true ) + 30.0 );
-assert_same( array(), $scan_out['remaining'], 'All fixture files should be scanned in one slice' );
+// A slice may stop early under memory pressure, so keep scanning slices until nothing remains. Every slice must make progress.
+$scan_out = array(
+    'scanned'   => array(),
+    'remaining' => array( $unguarded_file, $guarded_file, $polyfill_file ),
+);
+$slices   = 0;
+while ( $scan_out['remaining'] && $slices < 10 ) {
+    ++$slices;
+    $slice = THRG_PC_Engine::scan( $scan_out['remaining'], '8.4', microtime( true ) + 30.0 );
+    assert_true( count( $slice['scanned'] ) >= 1, 'Every scan slice scans at least one file' );
+    $scan_out['scanned']   += $slice['scanned'];
+    $scan_out['remaining']  = $slice['remaining'];
+}
+assert_same( array(), $scan_out['remaining'], 'All fixture files should be scanned across slices' );
+
+// Memory guard: pressure only when usage is near the limit; unlimited memory never reports pressure.
+assert_same( false, THRG_PC_Engine::memory_pressure(), 'No memory pressure with plenty of headroom' );
+ini_set( 'memory_limit', (string) ( (int) ceil( memory_get_usage( true ) / 1048576 ) + 2 ) . 'M' );
+$tight_pressure = THRG_PC_Engine::memory_pressure();
+ini_set( 'memory_limit', '-1' );
+$open_pressure = THRG_PC_Engine::memory_pressure();
+ini_set( 'memory_limit', '512M' );
+assert_same( true, $tight_pressure, 'Memory pressure is reported close to the limit' );
+assert_same( false, $open_pressure, 'An unlimited memory limit never reports pressure' );
 
 $unguarded_findings = $scan_out['scanned'][ $unguarded_file ];
 $unguarded_counts   = THRG_PC_Results::count( $unguarded_findings );

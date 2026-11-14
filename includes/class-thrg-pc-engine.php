@@ -175,10 +175,14 @@ final class THRG_PC_Engine {
         if ( ! $paths ) {
             return $out;
         }
+        // AJAX and cron requests run at the host's base memory limit; ask WordPress for its admin limit like wp-admin pages do.
+        if ( function_exists( 'wp_raise_memory_limit' ) ) {
+            wp_raise_memory_limit( 'admin' );
+        }
         self::quiet_start();
         try {
             list( $ruleset, $config ) = self::ruleset( $test_version );
-            while ( $out['remaining'] && ( ! $out['scanned'] || microtime( true ) < $deadline ) ) {
+            while ( $out['remaining'] && ( ! $out['scanned'] || ( microtime( true ) < $deadline && ! self::memory_pressure() ) ) ) {
                 $path = array_shift( $out['remaining'] );
                 if ( is_callable( $read ) ) {
                     $content = call_user_func( $read, $path, self::MAX_BYTES + 1 );
@@ -206,6 +210,39 @@ final class THRG_PC_Engine {
             restore_error_handler();
         }
         return $out;
+    }
+
+    /**
+     * Whether this request is close to its PHP memory limit.
+     *
+     * A scan step stops early when this is true, and the next step starts in a fresh request with
+     * its memory freed. A step always scans at least one file, so progress never stalls.
+     *
+     * @return bool
+     */
+    public static function memory_pressure() {
+        $limit = (string) ini_get( 'memory_limit' );
+        if ( '' === $limit || '-1' === $limit ) {
+            return false;
+        }
+        $bytes = (int) $limit;
+        switch ( strtoupper( substr( $limit, -1 ) ) ) {
+            case 'G':
+                $bytes *= 1024;
+                // Fall through.
+            case 'M':
+                $bytes *= 1024;
+                // Fall through.
+            case 'K':
+                $bytes *= 1024;
+        }
+        if ( $bytes <= 0 ) {
+            return false;
+        }
+        if ( memory_get_usage( true ) > $bytes * 0.5 ) {
+            gc_collect_cycles();
+        }
+        return memory_get_usage( true ) > $bytes * 0.7;
     }
 
     /**
