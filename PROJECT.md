@@ -2,7 +2,7 @@
 
 Developer notes for contributors. For what the plugin does, see [README.md](README.md "What the plugin does and how to install it").
 
-Current candidate: **1.2.8**, local branch `release/1.2.8`, unpublished. Latest published GitHub release remains 1.2.4. The grading work originated on local `prerelease-1.2.7`; see `releases/v1.2.8.md` for current behavior.
+Current pre-release: **1.2.8-prerelease**, branch `release/1.2.8`, not tagged or published. `main` holds the 1.2.5 version submitted to WordPress.org. The grading work originated on local `prerelease-1.2.7`; see `releases/v1.2.8.md` for current behavior.
 
 ## Scope
 
@@ -10,7 +10,7 @@ An in-process, read-only static PHP 8.1–8.5 compatibility analyzer for install
 
 ## Architecture
 
-- `index.php`: plugin header (`Version: 1.2.8`), constants (`THRG_PHP_CHECKER_VERSION`, `THRG_PHP_CHECKER_FILE`, `THRG_PHP_CHECKER_DIR`), GitHub release updater bootstrap, class includes, and deactivation cleanup for scheduled hooks and transient scan state.
+- `index.php`: plugin header (`Version: 1.2.8-prerelease`), constants (`THRG_PHP_CHECKER_VERSION`, `THRG_PHP_CHECKER_FILE`, `THRG_PHP_CHECKER_DIR`), class includes, and deactivation cleanup for scheduled hooks and transient scan state.
 - `includes/class-thrg-php-checker.php`: main controller (`Tools > PHP Checker`), admin request handlers (with shared `require_admin_ajax()` / `require_admin_post()` helpers), and page bootstrap; delegates evaluation, server advisories, and plain-text formatting to:
   - `includes/class-thrg-pc-server-advisory.php`: server PHP EOL & security advisory checks (`PHP_SUPPORT`, `PHP_ADVISORIES`, `PATCH_LIST_AS_OF`).
   - `includes/class-thrg-pc-evaluator.php`: `collect()` and `evaluate()` pipeline with client-first priority ordering (incompatible components first, warning components second, server/update checks third, clean components last).
@@ -27,8 +27,6 @@ An in-process, read-only static PHP 8.1–8.5 compatibility analyzer for install
 - `includes/class-thrg-pc-email.php`: emails a saved PHP compatibility report to selected site administrators following the THRG Email Standard (`[domain] [PHP Checker] (Scheduled )PHP X.Y Check: ...`). Full-width branded HTML + plain-text `AltBody`, CRLF-safe `Reply-To`, server-side administrator lookup, and 60-second per-user rate limit.
 - `includes/class-thrg-pc-schedule.php`: opt-in weekly or monthly PHP readiness & update-alert email scheduler (`thrg_pc_schedule`, `thrg_pc_schedule_log`, single event `thrg_pc_scheduled_report`, 10-minute lock, `heal()` on `admin_init`).
 - `includes/view-checker.php`, `includes/view-checker-data.php`, `includes/view-{header,scan,report,footer}.php`, `includes/views/{report-nav,report-cards,finding-row,report-clean,report-share-schedule,report-tools}.php`, `assets/checker.css`, `assets/js/checker.js`: the admin interface, featuring the THRG 2026 heart branding, target PHP switcher, plain-English Readiness Verdict banner, summary tiles, urgency-grouped left navigation, streamlined finding cards with collapsible technical code drawers, **Check if fixed on WP.org** buttons, runtime deprecation log grouped by plugin, and single-component rescan buttons.
-- `includes/class-thrg-pc-updater.php`, `includes/class-thrg-pc-update-notices.php`, `plugin-update-checker/`: GitHub release updater and native View Details parser.
-- `includes/companion-plugins.php`: adds the **Other THRG Plugins** tab to View Details.
 - `uninstall.php`: removes all `thrg_pc_*` options, the tracked `thrg_pc_mail_*` and `thrg_pc_wporg_*` transients, and scheduled hooks on plugin deletion.
 
 ## WordPress.org edition
@@ -46,21 +44,20 @@ Submitted November 12, 2026 and awaiting review; slug `thrg-php-checker` assigne
 | Translations | `https://translate.wordpress.org/projects/wp-plugins/thrg-php-checker/` |
 | Contributors | `hackrepair, tvcnet` (same as Stickies) |
 
-### Two builds from one source tree
+### One build
 
 ```sh
-python3 scripts/build-release.py            # GitHub build: dist/thrg-php-checker.X.Y.Z.zip
-python3 scripts/build-release.py --wporg    # WordPress.org build: dist/thrg-php-checker.X.Y.Z.wporg.zip
+python3 scripts/build-release.py    # dist/thrg-php-checker.X.Y.Z.wporg.zip (--wporg is accepted and ignored)
 ```
 
-The `--wporg` build follows the Stickies WordPress.org edition (`thrg-stickies`, branch `wporg`):
+The plugin is built for WordPress.org only. The GitHub updater, the bundled Plugin Update Checker and the View details companion tab were added in error and removed from 1.2.8. The build follows the Stickies WordPress.org edition:
 
-- **Main file named after the slug.** `index.php` is shipped as `thrg-php-checker.php`. The GitHub build keeps `index.php` so installed copies keep updating; a site that switches from the GitHub copy to the WordPress.org copy sees a different plugin file and must reactivate.
-- **No `Plugin URI` or `Update URI`**, no `THRG_PC_Updater`, `THRG_PC_Update_Notices` or `plugin-update-checker/`, and no `external_updates` or `thrg_pc_github_limit` cleanup in `uninstall.php`.
-- **No View details override or companion tab** (`includes/companion-plugins.php`, `assets/brand/thrg-details.css`, `assets/css/thrg_pc-plugin-details.css`) in the first submission; add it back in the first update after approval, as Stickies plans.
+- **Main file named after the slug.** `index.php` is shipped as `thrg-php-checker.php`. A copy installed from an earlier GitHub ZIP uses `index.php`, so switching to this package changes the plugin file and requires reactivation.
+- **No `Plugin URI` or `Update URI`**, no updater and no bundled update library. The build fails if any of them appear.
+- **No View details override or companion tab.** The code was removed in 1.2.8; it can be rebuilt after approval if wanted.
 - **Support goes to the WordPress.org forum**: the in-plugin support link points to the notional `https://wordpress.org/support/plugin/thrg-php-checker/` in both editions (no build swap); confirm the URL after approval. The Support panel also asks for a review at `https://wordpress.org/support/plugin/thrg-php-checker/reviews/#new-post` (also notional).
-- **Readme from `readme-wporg.txt`**, shipped as `readme.txt`: contributors `hackrepair, tvcnet`, a `Donate link`, an External services section, no updater credit, no GitHub support or security-reporting lines, installation through Plugins > Add New. The build stops if the two readmes disagree on `Stable tag` or changelog headings. Keep everything else in the two readmes in step by hand.
-- **Store graphics stay out of the ZIP.** `.wordpress-org/` holds `banner-772x250.png`, `banner-1544x500.png`, `icon-128x128.png` and `icon-256x256.png` for the SVN `/assets/` folder; the GitHub build keeps its own copies under `assets/`. Both banners were redrawn on November 12, 2026: the earlier ones said "Site Inspector" and carried the hackrepair.com text, which the Stickies review also removed. Three screenshots (`screenshot-1.png` to `screenshot-3.png`, listed in `== Screenshots ==` in `readme-wporg.txt`) were taken on November 12, 2026 on a clean WordPress with only Akismet, Classic Editor and Yoast SEO, with no client plugin names.
+- **One readme.** `readme.txt` is the WordPress.org readme: contributors `hackrepair, tvcnet`, a `Donate link`, an External services section, no GitHub support or security-reporting lines, installation through Plugins > Add New. The build stops if its `Stable tag` or changelog does not match the plugin version.
+- **Store graphics stay out of the ZIP.** `.wordpress-org/` holds `banner-772x250.png`, `banner-1544x500.png`, `icon-128x128.png` and `icon-256x256.png` for the SVN `/assets/` folder. Both banners were redrawn on November 12, 2026: the earlier ones said "Site Inspector" and carried the hackrepair.com text, which the Stickies review also removed. Three screenshots (`screenshot-1.png` to `screenshot-3.png`, listed in `== Screenshots ==` in `readme.txt`) were taken on November 12, 2026 on a clean WordPress with only Akismet, Classic Editor and Yoast SEO, with no client plugin names.
 - `THRG_PC_Results::file_origin()` still recognises other plugins' bundled update libraries as bundled dependencies, but builds the directory name with `implode()` because Plugin Check 2.2.0 flags the literal string `plugin-update-checker` as a bundled updater (`plugin_updater_detected`).
 
 ### Before submitting
