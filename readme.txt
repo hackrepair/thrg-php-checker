@@ -1,13 +1,13 @@
 === The Hack Repair Guy's PHP Checker ===
-Contributors: hackrepair
+Contributors: hackrepair, tvcnet
+Donate link: https://hackrepair.com/donations/buy-jim-a-coffee
 Tags: php, compatibility, php 8.3, php 8.4, upgrade
 Requires at least: 6.4
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 1.2.8
+Stable tag: 1.2.8-prerelease
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
-Support link: https://github.com/hackrepair/thrg-php-checker/discussions
 
 Your friendly WordPress PHP compatibility checker. Tests plugins and themes for PHP 8.1–8.5 and puts likely blockers first.
 
@@ -34,13 +34,13 @@ Open **Tools > PHP Checker**, pick your target PHP version (**8.1, 8.2, 8.3, 8.4
 
 **Optional scheduled PHP readiness email.** Off by default. Choose weekly (with a day of the week) or monthly (day 1 to 28) to automatically email site administrators a PHP readiness report, or only when errors or warnings are found.
 
-**More tools from The Hack Repair Guy.** The plugin's View Details window includes an Other THRG Plugins guide to companion security and maintenance tools.
-
 = Privacy =
 
 Static scans inspect local PHP source files on your server in 5-second AJAX steps without executing plugin/theme code or sending source code or report contents to any outside service. Optional Update Pre-Scan (off by default) downloads pending update zip packages from their configured update URLs to a temporary file, inspects PHP entries in memory, and deletes the temporary file immediately.
 
-Scan results and report history stay in your site's database and automatically prune uninstalled plugins/themes. Reports leave your site only when an administrator copies, downloads, prints, or emails them, or enables the monthly email. Plugin update checks for PHP Checker itself contact GitHub independently of scans.
+Scan results and report history stay in your site's database and automatically prune uninstalled plugins/themes. Reports leave your site only when an administrator copies, downloads, prints, or emails them, or enables the monthly email.
+
+See External services below for the few requests PHP Checker makes, and when.
 
 = What it is not =
 
@@ -48,13 +48,21 @@ Static analysis parses PHP source tokens without executing your site's code. Whi
 
 = Credits =
 
-Static analysis uses [PHP_CodeSniffer](https://github.com/PHPCSStandards/PHP_CodeSniffer) (BSD-3-Clause), [PHPCSUtils](https://github.com/PHPCSStandards/PHPCSUtils) (LGPL-3.0-or-later), [PHPCompatibility](https://github.com/PHPCompatibility/PHPCompatibility) (LGPL-3.0-or-later), and [PHPCompatibilityWP](https://github.com/PHPCompatibility/PHPCompatibilityWP) (LGPL-3.0-or-later).
+Static analysis uses [PHP_CodeSniffer](https://github.com/PHPCSStandards/PHP_CodeSniffer) 4.0.4 (BSD-3-Clause), [PHPCSUtils](https://github.com/PHPCSStandards/PHPCSUtils) 1.2.3 (LGPL-3.0-or-later), [PHPCompatibility](https://github.com/PHPCompatibility/PHPCompatibility) (development snapshot, commit a0fd248812fd, LGPL-3.0-or-later), [PHPCompatibilityWP](https://github.com/PHPCompatibility/PHPCompatibilityWP) 3.0.0-alpha2 (LGPL-3.0-or-later) and [PHPCompatibilityParagonie](https://github.com/PHPCompatibility/PHPCompatibilityParagonie) 2.0.0-alpha2 (LGPL-3.0-or-later). They are bundled in `vendor/thrg-scan-engine/` as runtime code, loaded only when an administrator runs a scan; unused tools and tests are removed and each folder keeps its license.
 
-Update checks use [Plugin Update Checker](https://github.com/YahnisElsts/plugin-update-checker "Plugin Update Checker on GitHub") by Jānis Elsts (MIT license), included unmodified.
+== External services ==
+
+PHP Checker contacts outside services only when an administrator asks it to. Opening the report or running a normal scan sends nothing.
+
+**WordPress.org plugin directory** (`api.wordpress.org` and `downloads.wordpress.org`). Used when you click **Check if fixed on WP.org** on a plugin card. PHP Checker asks the WordPress.org Plugin Information API about that plugin's slug, then downloads the newer release ZIP from `downloads.wordpress.org` to a temporary file, scans it in memory and deletes it. Only the plugin slug is sent; as with any WordPress request, your site address appears in the standard WordPress user-agent header. Lookups are cached for 12 hours. Service: https://wordpress.org/ - Privacy policy: https://wordpress.org/about/privacy/
+
+**Update packages from plugin and theme vendors** (optional Update Pre-Scan, off by default). When you turn it on, PHP Checker downloads the update packages that WordPress already lists as available, from the update address each plugin or theme vendor provides, so it can scan them before you install. Nothing beyond the ordinary download request is sent, and the package is deleted right after the scan. These servers belong to the vendors, so their own terms and privacy policies apply.
+
+PHP Checker has no account, license server, analytics or advertising requests. The PHP support dates and security advisories it shows are built into the plugin and need no request.
 
 == Installation ==
 
-1. In WordPress, open Plugins > Add New > Upload Plugin and select the plugin ZIP. You can also upload the `thrg-php-checker` folder to `wp-content/plugins/`.
+1. In WordPress, open Plugins > Add New, search for "The Hack Repair Guy's PHP Checker" and choose Install Now. You can also upload the `thrg-php-checker` folder to `wp-content/plugins/`.
 2. Activate The Hack Repair Guy's PHP Checker.
 3. Open Tools > PHP Checker, select your target PHP version (PHP 8.3 is selected by default), and click Scan.
 4. Review the plain-English Readiness Verdict banner at the top and the "Compatibility errors" findings first.
@@ -62,13 +70,8 @@ Update checks use [Plugin Update Checker](https://github.com/YahnisElsts/plugin-
 
 == Support ==
 
-For questions, ideas and community support, visit GitHub Discussions:
-https://github.com/hackrepair/thrg-php-checker/discussions
-
-Report reproducible bugs through Issues:
-https://github.com/hackrepair/thrg-php-checker/issues
-
-Report security concerns privately to Jim Walker at jim@hackrepair.com. Do not include credentials or sensitive site information in public posts.
+Hi, I'm Jim, the author. Questions, ideas, or stuck on something? I'd love to hear from you and I'm happy to help. Visit the plugin's support forum on WordPress.org:
+https://wordpress.org/support/plugin/thrg-php-checker/
 
 == Frequently Asked Questions ==
 
@@ -97,9 +100,15 @@ No. Scanning runs only when an administrator starts it (or turns on the schedule
 
 PHP Checker automatically prunes uninstalled plugins/themes and outdated component versions whenever results are loaded. Uninstalling PHP Checker itself removes all of its options and scheduled hooks cleanly.
 
+== Screenshots ==
+
+1. Scan results: pass/warn/fail summary for the chosen PHP version, with per-component findings.
+2. Export, scheduled monitoring, runtime deprecation log, saved reports and scanner settings.
+3. Start screen: choose a PHP target version and scan scope.
+
 == Changelog ==
 
-= 1.2.8 =
+= 1.2.8-prerelease =
 * Separate compatibility impact, execution evidence, origin and scan coverage. Logging settings, filenames, fallback hints and bundled origin cannot lower fatal impact.
 * Keep unmapped errors prominent without labeling their impact as proven fatal. Components with code that appears to run when the plugin loads are labelled "Likely to fail on load" and trigger the red "Hold off" banner. Fatal-mapped errors inside functions, classes or bundled libraries are labelled "May fail when used" and get a calmer review banner.
 * Preserve complete aggregate counts before bounding displayed findings, retain coverage-gap reasons, and request refreshed evidence when older results lack required checks.
@@ -118,7 +127,7 @@ PHP Checker automatically prunes uninstalled plugins/themes and outdated compone
 * Cached WordPress.org lookups are removed when the plugin is deleted.
 * The scheduled email intro no longer says "monthly" for weekly emails.
 * Reorganized report and evaluation code into smaller classes. Nothing changes in the report you see.
-* Added a WordPress.org edition of the plugin, built from the same source, and new store banners.
+* New store banners.
 * Friendlier contact and support wording, a help request linking to HackGuard in place of the upgrade-service line, and the Plugin Detective recommendation removed for now.
 
 = 1.2.4 =
@@ -170,4 +179,3 @@ PHP Checker automatically prunes uninstalled plugins/themes and outdated compone
 * Resumable 5-second AJAX batch scanner with file-level progress, single-component rescanning, and automatic orphan pruning.
 * Server PHP lifecycle, EOL countdown, and PHP2Shell (CVE-2026-109618 / CVE-2026-109619) security patch checks.
 * Optional in-memory Pending Update Pre-Scan, bounded 25-report local history with target-aware diffs, branded administrator report emails, and opt-in monthly PHP readiness email schedule.
-* Companion plugins guide in native WordPress View Details and GitHub release updater.

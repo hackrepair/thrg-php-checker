@@ -1,100 +1,48 @@
 #!/usr/bin/env python3
-"""Build a plugin release ZIP (GitHub release by default, or --wporg for WordPress.org submission).
+"""Build the WordPress.org plugin ZIP. The plugin is built for WordPress.org only; there is no GitHub edition.
 
-The WordPress.org build follows the Stickies WordPress.org edition:
-- main file named after the slug (thrg-php-checker.php) instead of index.php
+- the main file ships under the slug (thrg-php-checker.php) instead of index.php
 - no Plugin URI / Update URI, no updater, no bundled update library
-- no View details override or companion tab
-- readme.txt comes from readme-wporg.txt
 - store graphics stay out of the ZIP (they live in .wordpress-org/ for the SVN assets folder)
+- a version with a suffix, such as 1.2.8-prerelease, builds a test ZIP that must not be uploaded to WordPress.org
 """
 from pathlib import Path
 import argparse, fnmatch, hashlib, re, zipfile
 
 p = argparse.ArgumentParser()
 p.add_argument( '--output', type=Path )
-p.add_argument( '--wporg', action='store_true', help='Build a WordPress.org-compliant ZIP without updater code, Update URI or Plugin URI.' )
+p.add_argument( '--wporg', action='store_true', help='Accepted for compatibility; the build always produces the WordPress.org package.' )
 a = p.parse_args()
+a.wporg = True
 
 root    = Path( __file__ ).resolve().parents[1]
 main    = next( f for f in root.glob( '*.php' ) if re.search( r'Plugin Name:', f.read_text() ) )
 slug    = main.stem if main.stem != 'index' else root.name
-version = re.search( r'Version:\s*([0-9.]+)', main.read_text() ).group( 1 )
+version = re.search( r'Version:\s*([0-9][0-9A-Za-z.\-]*)', main.read_text() ).group( 1 )
 global_version = re.search( r"const\s+THRG_PHP_CHECKER_VERSION\s*=\s*'([^']+)'", main.read_text() ).group( 1 )
 controller_version = re.search( r"const\s+VERSION\s*=\s*'([^']+)'", ( root / 'includes/class-thrg-php-checker.php' ).read_text() ).group( 1 )
 assert global_version == controller_version == version, 'Plugin header, global version and controller fallback version must agree'
 
-# The two readmes must agree on version and changelog headings before anything is built.
-def readme_info( path: Path ):
-    text   = path.read_text( encoding='utf-8' )
-    stable = re.search( r'^Stable tag:\s*(\S+)', text, flags=re.MULTILINE ).group( 1 )
-    log    = text.split( '== Changelog ==', 1 )[1]
-    return stable, re.findall( r'^= ([^=\n]+?) =\s*$', log, flags=re.MULTILINE )
+# The readme must agree with the plugin version before anything is built.
+readme_text_src = ( root / 'readme.txt' ).read_text( encoding='utf-8' )
+readme_stable   = re.search( r'^Stable tag:\s*(\S+)', readme_text_src, flags=re.MULTILINE ).group( 1 )
+assert readme_stable == version, f'readme.txt Stable tag {readme_stable} does not match Version {version}'
+assert f'= {version} =' in readme_text_src.split( '== Changelog ==', 1 )[1], f'readme.txt changelog has no entry for {version}'
 
-github_stable, github_log = readme_info( root / 'readme.txt' )
-wporg_stable, wporg_log   = readme_info( root / 'readme-wporg.txt' )
-assert github_stable == version, f'readme.txt Stable tag {github_stable} does not match Version {version}'
-assert wporg_stable == version, f'readme-wporg.txt Stable tag {wporg_stable} does not match Version {version}'
-assert github_log == wporg_log, 'readme.txt and readme-wporg.txt changelog headings differ'
-
-default_name = f'{slug}.{version}.wporg.zip' if a.wporg else f'{slug}.{version}.zip'
+default_name = f'{slug}.{version}.wporg.zip'
 output       = a.output or ( root / 'dist' / default_name )
 output.parent.mkdir( parents=True, exist_ok=True )
 
 excluded = { '.git', '.github', '.review', 'tests', 'scripts', 'dist', 'releases', 'node_modules', 'docs', '.wordpress-org', 'review-work' }
-excluded_files = { '.DS_Store', '.gitignore', '.editorconfig', '.distignore', 'phpcs.xml.dist', 'README.md', 'PROJECT.md', 'PROJECT_UPDATES.md', 'SECURITY.md', 'REFACTOR.md', 'readme-wporg.txt' }
-excluded_paths = []
-if a.wporg:
-    excluded.add( 'plugin-update-checker' )
-    excluded_files.update( { 'class-thrg-pc-updater.php', 'class-thrg-pc-update-notices.php', 'companion-plugins.php' } )
-    excluded_paths = [
-        'assets/banner-*.png',
-        'assets/icon-*.png',
-        'assets/brand/thrg-details.css',
-        'assets/css/thrg_pc-plugin-details.css',
-    ]
+excluded_files = { '.DS_Store', '.gitignore', '.editorconfig', '.distignore', 'phpcs.xml.dist', 'README.md', 'PROJECT.md', 'PROJECT_UPDATES.md', 'SECURITY.md', 'REFACTOR.md' }
+excluded_paths = [
+    'assets/banner-*.png',
+    'assets/icon-*.png',
+]
 
 patterns = []
 if ( root / '.distignore' ).exists():
     patterns = [ s.strip().lstrip( '/' ) for s in ( root / '.distignore' ).read_text().splitlines() if s.strip() and not s.startswith( '#' ) ]
-
-def replace_once( text: str, old: str, new: str, label: str ) -> str:
-    assert old in text, f'wporg transform: {label} not found'
-    return text.replace( old, new, 1 )
-
-def transform_wporg( rel_str: str, raw: bytes ) -> bytes:
-    if not a.wporg:
-        return raw
-    if rel_str == 'index.php':
-        text = raw.decode( 'utf-8' )
-        text = re.sub( r'^\s*\*\s*Plugin URI:.*\n', '', text, flags=re.MULTILINE )
-        text = re.sub( r'^\s*\*\s*Update URI:.*\n', '', text, flags=re.MULTILINE )
-        text = re.sub(
-            r'/\*\s*\n\s*\* GitHub release updates\..*?if\s*\(\s*!\s*defined\(\s*\'THRG_PC_SKIP_UPDATER\'\s*\)\s*\)\s*\{\n.*?\n\}\n\n',
-            '',
-            text,
-            flags=re.DOTALL,
-        )
-        text = replace_once( text, "require_once __DIR__ . '/includes/companion-plugins.php';\n", '', 'companion require' )
-        return text.encode( 'utf-8' )
-    if rel_str == 'includes/class-thrg-pc-engine.php':
-        text = raw.decode( 'utf-8' )
-        text = re.sub(
-            r'        if\s*\(\s*\'plugin-update-checker\'\s*===\s*\$lower\s*&&\s*is_file\(\s*\$root\s*\.\s*\'/includes/class-thrg-php-checker\.php\'\s*\)\s*\)\s*\{\n            return true;\n        \}\n',
-            '',
-            text,
-        )
-        return text.encode( 'utf-8' )
-    if rel_str == 'uninstall.php':
-        text = raw.decode( 'utf-8' )
-        text = replace_once(
-            text,
-            "\ndelete_site_option( 'external_updates-' . basename( __DIR__ ) );\ndelete_site_transient( 'thrg_pc_github_limit' );\n",
-            '',
-            'updater cleanup in uninstall.php',
-        )
-        return text.encode( 'utf-8' )
-    return raw
 
 files = []
 for f in root.rglob( '*' ):
@@ -102,7 +50,7 @@ for f in root.rglob( '*' ):
         continue
     rel = f.relative_to( root )
     rel_posix = str( rel ).replace( '\\', '/' )
-    is_bundled = ( not a.wporg and rel.parts[0] == 'plugin-update-checker' ) or ( len( rel.parts ) >= 2 and rel.parts[0] == 'vendor' and rel.parts[1] == 'thrg-scan-engine' )
+    is_bundled = len( rel.parts ) >= 2 and rel.parts[0] == 'vendor' and rel.parts[1] == 'thrg-scan-engine'
     if not is_bundled and ( rel.parts[0] in excluded or rel.parts[0] == 'vendor' or f.name in excluded_files or any( fnmatch.fnmatch( str( rel ), x ) or str( rel ).startswith( x.rstrip( '/' ) + '/' ) for x in patterns ) ):
         continue
     if any( fnmatch.fnmatch( rel_posix, x ) for x in excluded_paths ):
@@ -111,15 +59,12 @@ for f in root.rglob( '*' ):
         continue
     files.append( f )
 
-main_in_zip = slug + '.php' if a.wporg else 'index.php'
+main_in_zip = slug + '.php'
 
 with zipfile.ZipFile( output, 'w', zipfile.ZIP_DEFLATED ) as z:
     for f in sorted( files ):
         rel_str = str( f.relative_to( root ) ).replace( '\\', '/' )
-        if a.wporg and rel_str == 'readme.txt':
-            data = ( root / 'readme-wporg.txt' ).read_bytes()
-        else:
-            data = transform_wporg( rel_str, f.read_bytes() )
+        data               = f.read_bytes()
         arcname            = slug + '/' + ( main_in_zip if rel_str == 'index.php' else rel_str )
         info               = zipfile.ZipInfo.from_file( f, arcname )
         info.create_system = 3
@@ -147,7 +92,7 @@ with zipfile.ZipFile( output ) as z:
         assert 'THRG_PC_SKIP_UPDATER' not in main_text and 'plugin-update-checker' not in main_text
         assert 'external_updates' not in z.read( slug + '/uninstall.php' ).decode( 'utf-8' )
         assert not [ n for n in names if n.startswith( slug + '/assets/' ) and re.search( r'/(banner|icon)-[0-9x]+\.png$', n ) ], 'store graphics belong in .wordpress-org/'
-        assert readme_text == ( root / 'readme-wporg.txt' ).read_text( encoding='utf-8' )
+        assert readme_text == readme_text_src
         assert 'Plugin Update Checker' not in readme_text and 'Update URI' not in readme_text
         assert re.search( r'^Contributors: hackrepair, tvcnet$', readme_text, flags=re.MULTILINE )
         assert '== External services ==' in readme_text
@@ -180,14 +125,10 @@ with zipfile.ZipFile( output ) as z:
                 continue
             blob = z.read( n ).decode( 'utf-8', errors='ignore' ).lower()
             assert not re.search( r'claude|anthropic|co-authored', blob ), f'wporg gate: forbidden word in {n}'
-    else:
-        assert slug + '/includes/companion-plugins.php' in names
-        assert slug + '/readme-wporg.txt' not in names
-        for f in ( root / 'plugin-update-checker' ).rglob( '*' ):
-            if f.is_file() and f.name != '.DS_Store':
-                assert z.read( slug + '/' + str( f.relative_to( root ) ) ) == f.read_bytes()
 
 digest = hashlib.sha256( output.read_bytes() ).hexdigest()
 output.with_suffix( output.suffix + '.sha256' ).write_text( digest + '  ' + output.name + '\n' )
 print( output )
 print( digest )
+if '-' in version:
+    print( f'NOTE: {version} is a pre-release test build; do not upload it to WordPress.org.' )

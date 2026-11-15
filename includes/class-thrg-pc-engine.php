@@ -47,7 +47,7 @@ final class THRG_PC_Engine {
     }
 
     /**
-     * Whether a directory path inside a component is a bundled PHPCS/updater library that should not be scanned.
+     * Whether a directory path inside a component is a bundled PHPCS library that should not be scanned.
      *
      * @param string $pathname Full directory path.
      * @param string $root_dir Component root directory.
@@ -62,9 +62,6 @@ final class THRG_PC_Engine {
         }
         $lower = strtolower( $rel );
         if ( in_array( $lower, array( 'vendor/thrg-scan-engine', 'vendor/brightlabs-scan-engine', 'vendor/squizlabs/php_codesniffer' ), true ) ) {
-            return true;
-        }
-        if ( 'plugin-update-checker' === $lower && is_file( $root . '/includes/class-thrg-php-checker.php' ) ) {
             return true;
         }
         return false;

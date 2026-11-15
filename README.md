@@ -8,7 +8,7 @@ Your friendly WordPress PHP compatibility checker. Tests your plugins, must-use 
 
 Upgrading PHP is one of the easiest ways to make WordPress faster and safer, right up until an older plugin throws a fatal error and leaves you with a white screen. PHP Checker helps you find that plugin before you switch. PHP Checker runs entirely inside WordPress without `exec()`, automatically filters out guarded fallback code, and prioritizes potential fatal errors and unknown-impact findings for review.
 
-Latest published GitHub release: **1.2.4**. Local release candidate: **1.2.8**, on `release/1.2.8`; unpublished. See [candidate notes](releases/v1.2.8.md).
+Pre-release in testing: **1.2.8-prerelease**, on the `release/1.2.8` branch; not published. `main` holds the version submitted to WordPress.org (1.2.5). See [pre-release notes](releases/v1.2.8.md).
 
 <p align="center">
   <a href="https://github.com/hackrepair/thrg-php-checker/releases/latest" title="Download the latest PHP Checker plugin zip from GitHub"><img src="https://img.shields.io/badge/%E2%AC%87%20%20Download%20the%20latest%20release-b34700?style=for-the-badge&labelColor=b34700" alt="Download the latest release" height="46"></a>
@@ -71,11 +71,11 @@ Scan results and report history are stored locally in non-autoloaded WordPress o
 
 Upload the plugin ZIP under **Plugins → Add New → Upload Plugin**, or place the `thrg-php-checker` folder in `wp-content/plugins/`, then activate it and open **Tools → PHP Checker**.
 
-The plugin lives in the `thrg-php-checker` folder and starts from `index.php`. Updates come from this repository's [GitHub releases](https://github.com/hackrepair/thrg-php-checker/releases "All PHP Checker releases and download files").
+The plugin lives in the `thrg-php-checker` folder and starts from `index.php`. There is no GitHub updater: the plugin is built for WordPress.org, and updates will come from WordPress.org once the plugin is approved.
 
 ### WordPress.org
 
-Submitted to the WordPress.org plugin directory on November 12, 2026 and awaiting review, with the slug `thrg-php-checker`. Once approved, the listing will be at `https://wordpress.org/plugins/thrg-php-checker/`. Copies installed from WordPress.org update through WordPress.org; copies installed from this repository keep updating from GitHub releases. The two editions share one source tree; see [PROJECT.md](PROJECT.md#wordpressorg-edition) for how the WordPress.org build differs.
+Submitted to the WordPress.org plugin directory on November 12, 2026 and awaiting review, with the slug `thrg-php-checker`. Once approved, the listing will be at `https://wordpress.org/plugins/thrg-php-checker/`. Once approved, copies installed from WordPress.org update through WordPress.org. See [PROJECT.md](PROJECT.md#wordpressorg-edition) for how the package is built.
 
 ## Author and support
 

@@ -8,7 +8,6 @@
  */
 
 define( 'ABSPATH', dirname( __DIR__ ) . '/' );
-define( 'THRG_PC_SKIP_UPDATER', true );
 define( 'WP_PLUGIN_DIR', sys_get_temp_dir() . '/thrg-pc-test-plugins' );
 define( 'WPMU_PLUGIN_DIR', sys_get_temp_dir() . '/thrg-pc-test-mu-plugins' );
 define( 'DAY_IN_SECONDS', 86400 );
@@ -1074,58 +1073,7 @@ THRG_PC_Runtime_Log::clear();
 @unlink( $notice_file );
 @rmdir( $notice_dir );
 
-// Release selection must inspect all assets, and uninstall must remove tracked cooldowns.
-require_once dirname( __DIR__ ) . '/includes/class-thrg-pc-updater.php';
-$release = (object) array(
-    'tag_name' => 'v1.2.0',
-    'assets'   => array(
-        (object) array( 'name' => 'thrg-php-checker.1.1.9.zip' ),
-        (object) array( 'name' => 'thrg-php-checker.1.2.0.zip' ),
-    ),
-);
-assert_true( THRG_PC_Updater::release_has_asset( '1.2.0', $release ), 'Matching release asset can follow another version' );
-assert_true( ! THRG_PC_Updater::release_has_asset( '1.2.1', $release ), 'Mismatched release tag is rejected' );
-$release->assets = array( (object) array( 'name' => 'thrg-php-checker.1.1.9.zip' ) );
-assert_true( ! THRG_PC_Updater::release_has_asset( '1.2.0', $release ), 'Release without exact asset is rejected' );
-
-// Exercise the bundled API's actual reference/download selection without HTTP.
-require_once dirname( __DIR__ ) . '/plugin-update-checker/plugin-update-checker.php';
-class THRG_PC_Test_GitHub_Api extends \YahnisElsts\PluginUpdateChecker\v5p7\Vcs\GitHubApi {
-    public $fixture;
-    public $requested = array();
-    protected function api( $url, $query_params = array() ) {
-        unset( $query_params );
-        $this->requested[] = $url;
-        return $this->fixture;
-    }
-}
-$asset_api = new THRG_PC_Test_GitHub_Api( 'https://github.com/hackrepair/thrg-php-checker/' );
-$asset_api->fixture = (object) array(
-    'tag_name' => 'v1.2.8', 'zipball_url' => 'https://example.test/branch.zip', 'created_at' => '2026-11-14T00:00:00Z',
-    'assets' => array(
-        (object) array( 'name' => 'thrg-php-checker.1.2.7.zip', 'url' => 'https://api.github.test/assets/old', 'browser_download_url' => 'https://github.test/old.zip', 'download_count' => 1 ),
-        (object) array( 'name' => 'thrg-php-checker.1.2.8.wporg.zip', 'url' => 'https://api.github.test/assets/wporg', 'browser_download_url' => 'https://github.test/wporg.zip', 'download_count' => 1 ),
-        (object) array( 'name' => 'thrg-php-checker.1.2.8.zip', 'url' => 'https://api.github.test/assets/exact', 'browser_download_url' => 'https://github.test/exact.zip', 'download_count' => 1 ),
-    ),
-);
-THRG_PC_Updater::configure_release_assets( $asset_api );
-$selected_release = $asset_api->getLatestRelease();
-assert_same( '1.2.8', $selected_release->version, 'Bundled update reference retains the accepted release version' );
-assert_same( 'https://github.test/exact.zip', $selected_release->downloadUrl, 'Actual download URL ignores earlier wrong-version and WordPress.org ZIPs' );
-assert_same( '/repos/:user/:repo/releases/latest', $asset_api->requested[0], 'Updater examines only the latest release endpoint' );
-$asset_api->setAuthentication( 'fixture-only' );
-assert_same( 'https://api.github.test/assets/exact', $asset_api->getLatestRelease()->downloadUrl, 'Authenticated selection also binds to the exact asset' );
-$asset_api->fixture->assets = array_slice( $asset_api->fixture->assets, 0, 2 );
-assert_same( null, $asset_api->getLatestRelease(), 'Missing exact asset cannot fall back to another ZIP or source archive' );
-$asset_api->fixture->tag_name = 'v1.2.9';
-$asset_api->fixture->assets[] = (object) array( 'name' => 'thrg-php-checker.1.2.9.zip', 'url' => 'https://api.github.test/assets/next', 'browser_download_url' => 'https://github.test/next.zip', 'download_count' => 1 );
-assert_same( 'https://api.github.test/assets/next', $asset_api->getLatestRelease()->downloadUrl, 'A later release refreshes the exact-name selector on the same API instance' );
-$asset_api->fixture->draft = true;
-assert_same( null, $asset_api->getLatestRelease(), 'Draft release is not offered as an update' );
-$asset_api->fixture->draft = false;
-$asset_api->fixture->prerelease = true;
-assert_same( null, $asset_api->getLatestRelease(), 'Prerelease is not offered as a stable update' );
-
+// Uninstall must remove tracked cooldowns.
 THRG_PC_Email::mark_cooldown( 11 );
 assert_same( 1, get_transient( 'thrg_pc_mail_11' ), 'Email cooldown is created' );
 assert_same( array( 11 => 'thrg_pc_mail_11' ), get_option( 'thrg_pc_mail_cooldowns' ), 'Cooldown key is tracked' );

@@ -74,6 +74,3 @@ if ( is_multisite() ) {
 } else {
     thrg_pc_uninstall_site();
 }
-
-delete_site_option( 'external_updates-' . basename( __DIR__ ) );
-delete_site_transient( 'thrg_pc_github_limit' );

@@ -2,7 +2,6 @@
 """Inventory bundled PHP libraries and declared Actions refs; optionally submit to GitHub."""
 import argparse
 from datetime import datetime, timezone
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -38,31 +37,6 @@ def identity():
 def inventory():
     packages = {}
     manual = []
-    library = ROOT / 'plugin-update-checker/plugin-update-checker.php'
-    if library.exists():
-        match = re.search(r'Plugin Update Checker Library\s+([0-9.]+)', library.read_text())
-        if not match:
-            raise RuntimeError('Cannot determine bundled Plugin Update Checker version.')
-        version = match.group(1)
-        parent = 'pkg:composer/yahnis-elsts/plugin-update-checker@' + version
-        packages[parent] = {'package_url': parent, 'relationship': 'direct', 'scope': 'runtime', 'dependencies': [],
-                            'metadata': {'version_basis': 'bundled declaration; local modifications possible',
-                                         'source_sha256': hashlib.sha256(library.read_bytes()).hexdigest()}}
-        parser = ROOT / 'plugin-update-checker/vendor/ParsedownModern.php'
-        if not parser.exists():
-            raise RuntimeError('Expected bundled Markdown parser is missing; review inventory rules.')
-        match = re.search(r"const\s+version\s*=\s*['\"]([0-9.]+)['\"]", parser.read_text())
-        if not match:
-            raise RuntimeError('Cannot determine bundled Parsedown declaration.')
-        child = 'pkg:composer/erusev/parsedown@' + match.group(1)
-        packages[parent]['dependencies'].append(child)
-        packages[child] = {'package_url': child, 'relationship': 'indirect', 'scope': 'runtime',
-                           'metadata': {'version_basis': 'declared upstream version; bundled copy may be modified',
-                                        'source_sha256': hashlib.sha256(parser.read_bytes()).hexdigest()}}
-        readme = ROOT / 'plugin-update-checker/vendor/PucReadmeParser.php'
-        if readme.exists():
-            manual.append({'path': str(readme.relative_to(ROOT)), 'reason': 'Modified readme parser has no declared package version; manual review required.',
-                           'sha256': hashlib.sha256(readme.read_bytes()).hexdigest()})
     # Only committed workflows are relevant. No YAML execution or third-party parser is needed.
     workflows = git('ls-files', '.github/workflows').splitlines()
     for name in workflows:
@@ -86,7 +60,7 @@ def snapshot(repo, packages):
     tools = {k: v for k, v in packages.items() if v['scope'] == 'development'}
     if runtime:
         manifests['bundled-php-libraries'] = {'name': 'Bundled PHP libraries (declared versions)',
-            'file': {'source_location': 'plugin-update-checker/plugin-update-checker.php'}, 'resolved': runtime}
+            'file': {'source_location': 'vendor/thrg-scan-engine/composer.json'}, 'resolved': runtime}
     if tools:
         manifests['github-actions'] = {'name': 'Declared GitHub Actions refs',
             'file': {'source_location': '.github/workflows/dependency-inventory.yml'}, 'resolved': tools}
