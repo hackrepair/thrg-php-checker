@@ -363,7 +363,8 @@ final class THRG_PC_Engine {
                 token_get_all( $source, TOKEN_PARSE );
             } catch ( CompileError $e ) {
                 // A host older than the target cannot be expected to parse newer syntax; that is not a coverage gap.
-                if ( '' !== $target && version_compare( PHP_VERSION, $target, '>=' ) ) {
+                $host_branch = PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION;
+                if ( '' !== $target && version_compare( $host_branch, $target, '>=' ) ) {
                     $findings[] = self::skipped_note(
                         sprintf(
                             /* translators: %s: PHP version used to run the scanner */

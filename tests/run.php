@@ -1337,4 +1337,48 @@ foreach ( $partial_rows as $r ) {
 assert_true( null !== $partial_overview, 'Partial scan produces the overview row' );
 assert_same( '1/2', $partial_overview['nav_hint'], 'Sidebar hint shows scanned and total counts on a partial scan' );
 assert_same( '1 of 2 scanned', $partial_overview['badge_text'], 'Badge shows scanned and total counts on a partial scan' );
+
+// 1.2.8 review hardening regressions (H-1 through H-4).
+$kw_boot = THRG_PC_Grade::classify(
+    array(
+        'type'   => 'error',
+        'file'   => 'main.php',
+        'source' => 'PHPCompatibility.Keywords.ForbiddenNames.readonlyFound',
+        'scope'  => 'file',
+        'reason' => '',
+    ),
+    array(
+        'target'     => '8.3',
+        'boot_files' => array( 'main.php' ),
+    )
+);
+assert_same( 'fatal', $kw_boot['impact'], 'Reserved keyword collision is classified as fatal impact' );
+assert_same( 1, $kw_boot['grade'], 'Reserved keyword collision at file scope in a boot file reaches grade 1' );
+assert_same( 'startup_file_hint', $kw_boot['evidence_kind'], 'Reserved keyword collision in a boot file carries startup_file_hint' );
+
+$parse_err_boot = THRG_PC_Grade::classify(
+    array(
+        'type'   => 'error',
+        'file'   => 'main.php',
+        'source' => 'Internal.Tokenizer.ParseError',
+        'scope'  => 'function',
+        'reason' => '',
+    ),
+    array(
+        'target'     => '8.3',
+        'boot_files' => array( 'main.php' ),
+    )
+);
+assert_same( 'fatal', $parse_err_boot['impact'], 'Tokenizer ParseError rule is classified as fatal impact' );
+assert_same( 1, $parse_err_boot['grade'], 'Tokenizer ParseError in a boot file reaches grade 1 even inside a function' );
+
+assert_true( THRG_PC_Grade::needs_review( 5 ) && THRG_PC_Grade::needs_review( 6 ), 'Both grade 5 (minor changes) and grade 6 (warnings) belong in the Worth a look review filter' );
+$js_src = file_get_contents( dirname( __DIR__ ) . '/assets/js/checker.js' );
+assert_true( false !== strpos( $js_src, "} else if ( 'review' === mode && isComp ) {\n                        show = grade >= 3;" ), 'Client-side Worth a look filter includes grade 6 warning cards and partial cards' );
+assert_true( false !== strpos( $view_src, '$partial_scan > 0 || $has_overview' ), 'Top verdict banner checks $has_overview so active-only scans do not flag unscanned inactive plugins as incomplete' );
+
+assert_true( THRG_PC_Prescan::is_wporg_package_url( 'https://downloads.wordpress.org/plugin/sample.1.2.3.zip' ), 'Accepts HTTPS downloads.wordpress.org package URL' );
+assert_true( ! THRG_PC_Prescan::is_wporg_package_url( 'http://downloads.wordpress.org/plugin/sample.1.2.3.zip' ), 'Rejects plain HTTP downloads.wordpress.org package URL' );
+assert_true( ! THRG_PC_Prescan::is_wporg_package_url( 'https://vendor.example.com/plugin/sample.1.2.3.zip' ), 'Rejects non-WordPress.org vendor update package URL' );
+
 echo "OK ({$assertions} assertions passed)\n";

@@ -211,14 +211,8 @@ defined( 'ABSPATH' ) || exit;
                                     <?php
                                     $count_hist = count( $history_all );
                                     for ( $i = 0; $i < $count_hist; $i++ ) :
-                                        $item  = $history_all[ $i ];
-                                        $older = null;
-                                        for ( $j = $i + 1; $j < $count_hist; $j++ ) {
-                                            if ( ( isset( $history_all[ $j ]['target'] ) ? $history_all[ $j ]['target'] : '' ) === ( isset( $item['target'] ) ? $item['target'] : '' ) ) {
-                                                $older = $history_all[ $j ];
-                                                break;
-                                            }
-                                        }
+                                        $item     = $history_all[ $i ];
+                                        $older    = THRG_PC_History::previous_for( $item, $history_all, $i );
                                         $diff     = THRG_PC_History::change( $item, $older );
                                         $sum      = isset( $item['summary'] ) ? $item['summary'] : ( isset( $item['attention'], $item['review'], $item['observed'] ) ? array(
 											'attention' => $item['attention'],

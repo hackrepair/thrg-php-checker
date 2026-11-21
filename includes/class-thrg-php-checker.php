@@ -527,6 +527,23 @@ final class THRG_PHP_Checker {
     }
 
     /**
+     * Persist the last non-single scan scope chosen by an administrator.
+     *
+     * @param string $scope Scan scope ('all', 'active', or 'single').
+     * @return void
+     */
+    private static function remember_scope( $scope ) {
+        if ( ! in_array( $scope, array( 'all', 'active' ), true ) ) {
+            return;
+        }
+        $settings = self::settings();
+        if ( $settings['default_scope'] !== $scope ) {
+            $settings['default_scope'] = $scope;
+            update_option( self::SETTINGS_OPTION, $settings, false );
+        }
+    }
+
+    /**
      * AJAX: start a scan job.
      *
      * @return void
@@ -554,6 +571,7 @@ final class THRG_PHP_Checker {
                 $user ? (int) $user->ID : 0,
                 $user ? (string) $user->user_login : ''
             );
+            self::remember_scope( $scope );
         } catch ( InvalidArgumentException $e ) {
             wp_send_json_error( array( 'message' => $e->getMessage() ), 400 );
         }
@@ -694,15 +712,20 @@ final class THRG_PHP_Checker {
             if ( THRG_PC_Scanner::is_running( $current ) && 0 !== (int) $current['user_id'] && get_current_user_id() !== (int) $current['user_id'] ) {
                 wp_die( esc_html__( 'Another scan is already running. Reload later to start yours.', 'thrg-php-checker' ), 409 );
             }
-            $state = THRG_PC_Scanner::start(
-                $target,
-                $rescan,
-                $scope,
-                $single_key,
-                $user ? (int) $user->ID : 0,
-                $user ? (string) $user->user_login : ''
-            );
-            THRG_PC_Scanner::step( microtime( true ) + 5.0, $state['job_id'] );
+            try {
+                $state = THRG_PC_Scanner::start(
+                    $target,
+                    $rescan,
+                    $scope,
+                    $single_key,
+                    $user ? (int) $user->ID : 0,
+                    $user ? (string) $user->user_login : ''
+                );
+                self::remember_scope( $scope );
+                THRG_PC_Scanner::step( microtime( true ) + 5.0, $state['job_id'] );
+            } catch ( InvalidArgumentException $e ) {
+                wp_die( esc_html( $e->getMessage() ), 409 );
+            }
         }
 
         wp_safe_redirect(
@@ -908,12 +931,7 @@ final class THRG_PHP_Checker {
         $all   = THRG_PC_History::all();
         foreach ( $all as $i => $e ) {
             if ( ! empty( $entry['id'] ) && $e['id'] === $entry['id'] ) {
-                for ( $j = $i + 1, $len = count( $all ); $j < $len; $j++ ) {
-                    if ( ( isset( $all[ $j ]['target'] ) ? $all[ $j ]['target'] : '' ) === $entry['target'] ) {
-                        $older = $all[ $j ];
-                        break;
-                    }
-                }
+                $older = THRG_PC_History::previous_for( $entry, $all, $i );
                 break;
             }
         }

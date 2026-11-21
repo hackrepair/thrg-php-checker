@@ -312,7 +312,8 @@ final class THRG_PC_Results {
         if ( ! isset( $all[ $target ] ) || ! is_array( $all[ $target ] ) ) {
             $all[ $target ] = array();
         }
-        $all[ $target ][ self::key( $kind, $slug ) ]     = array(
+        $trimmed = self::trim_findings( $findings );
+        $record  = array(
             'scan_evidence_version' => self::EVIDENCE_VERSION,
             'kind'                  => $kind,
             'slug'                  => $slug,
@@ -329,9 +330,10 @@ final class THRG_PC_Results {
             'boot_files'            => self::clean_boot_files( isset( $component['boot_files'] ) ? $component['boot_files'] : array() ),
             'scanned_at'            => $now > 0 ? (int) $now : time(),
         );
-        $record_key                                      = self::key( $kind, $slug );
-        $all[ $target ][ $record_key ]['classification'] = self::classification( $all[ $target ][ $record_key ] );
-        $all[ $target ][ $record_key ]['findings']       = self::trim_findings( $findings );
+
+        $record['classification']                    = self::classification( $record, $trimmed );
+        $record['findings']                          = $trimmed;
+        $all[ $target ][ self::key( $kind, $slug ) ] = $record;
         update_option( self::OPTION, $all, false );
         return true;
     }
@@ -456,18 +458,22 @@ final class THRG_PC_Results {
     /**
      * Classify retained evidence or reuse a matching aggregate saved before trimming.
      *
-     * @param array $row Stored component or update record.
+     * @param array      $row     Stored component or update record.
+     * @param array|null $trimmed Optional pre-trimmed findings list to avoid a second pass on save.
      * @return array
      */
-    public static function classification( array $row ) {
+    public static function classification( array $row, $trimmed = null ) {
         $source_counts = array();
         foreach ( array( 'errors', 'warnings', 'skipped', 'notes' ) as $key ) {
             $source_counts[ $key ] = isset( $row[ $key ] ) ? (int) $row[ $key ] : 0;
         }
         $target           = isset( $row['target'] ) ? (string) $row['target'] : '';
         $evidence_version = isset( $row['scan_evidence_version'] ) ? (int) $row['scan_evidence_version'] : 0;
+        $retained         = is_array( $trimmed )
+            ? $trimmed
+            : self::trim_findings( isset( $row['findings'] ) && is_array( $row['findings'] ) ? $row['findings'] : array() );
         // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize -- Fingerprint trusted stored evidence; no deserialization.
-        $retained_hash = hash( 'sha256', serialize( array( self::trim_findings( isset( $row['findings'] ) && is_array( $row['findings'] ) ? $row['findings'] : array() ), isset( $row['boot_files'] ) ? $row['boot_files'] : array(), $evidence_version ) ) );
+        $retained_hash = hash( 'sha256', serialize( array( $retained, isset( $row['boot_files'] ) ? $row['boot_files'] : array(), $evidence_version ) ) );
         $saved         = isset( $row['classification'] ) && is_array( $row['classification'] ) ? $row['classification'] : array();
         if ( isset( $saved['classification_version'], $saved['source_counts'], $saved['target'], $saved['grade'], $saved['fatal'], $saved['unknown'], $saved['coverage'], $saved['retained_hash'] ) &&
             THRG_PC_Grade::CLASSIFICATION_VERSION === $saved['classification_version'] && $source_counts === $saved['source_counts'] && $target === $saved['target'] && $retained_hash === $saved['retained_hash'] ) {
@@ -536,6 +542,7 @@ final class THRG_PC_Results {
         $all     = is_array( $raw ) ? $raw : array();
         $key     = $kind . ':' . $slug . ':' . $version . ':' . $target;
 
+        $trimmed                       = self::trim_findings( $findings );
         $all[ $key ]                   = array(
             'scan_evidence_version' => self::EVIDENCE_VERSION,
             'kind'                  => $kind,
@@ -547,13 +554,13 @@ final class THRG_PC_Results {
             'warnings'              => $counts['warnings'],
             'skipped'               => $counts['skipped'],
             'notes'                 => $counts['notes'],
-            'grade'                 => 'breaks' === $verdict ? min( 6, (int) THRG_PC_Grade::component( self::trim_findings( $findings ), array() )['grade'] ) : ( 'warnings' === $verdict ? 6 : 7 ),
+            'grade'                 => 7,
             'findings'              => $findings,
             'scanned_at'            => time(),
         );
-        $all[ $key ]['classification'] = self::classification( $all[ $key ] );
+        $all[ $key ]['classification'] = self::classification( $all[ $key ], $trimmed );
         $all[ $key ]['grade']          = $all[ $key ]['classification']['grade'];
-        $all[ $key ]['findings']       = self::trim_findings( $findings );
+        $all[ $key ]['findings']       = $trimmed;
         if ( count( $all ) > 100 ) {
             $all = array_slice( $all, -100, 100, true );
         }
