@@ -37,7 +37,7 @@ Each finding is ordered by urgency: **fatal incompatibilities appear first** rig
 
 **Weekly or monthly PHP readiness & update-alert email.** Off until you turn it on. Choose a **Weekly** day of the week (default) or **Monthly** day of the month (1–28): PHP Checker rescans against your chosen PHP target (and pre-scans pending updates) and emails administrators on schedule or only when an update or the next PHP version has errors or warnings.
 
-**Support.** A friendly Support container at the bottom of the screen invites questions and feedback (link to the WordPress.org support forum, notional until the plugin is approved) and has a buy-Jim-a-coffee link.
+**Support.** A friendly Support container at the bottom of the screen invites questions and feedback (links to the [WordPress.org support forum](https://wordpress.org/support/plugin/thrg-php-checker/)) and has a buy-Jim-a-coffee link.
 
 ## Email a report to administrators
 
@@ -81,7 +81,9 @@ Listed on the WordPress.org plugin directory under the slug `thrg-php-checker` a
 
 **[Jim Walker](https://hackrepair.com/)** — The Hack Repair Guy. Hi, I'm Jim. I built PHP Checker and I'm happy to help if you get stuck; questions and ideas are always welcome.
 
-[Questions, ideas and community support](https://github.com/hackrepair/thrg-php-checker/discussions) · [Report a bug](https://github.com/hackrepair/thrg-php-checker/issues) · [Security reporting](SECURITY.md) · [Buy Jim a coffee](https://hackrepair.com/donations/buy-jim-a-coffee)
+For questions, help and support, please use the [WordPress.org support forum](https://wordpress.org/support/plugin/thrg-php-checker/ "PHP Checker support forum on WordPress.org"). That is the only place I answer support questions, and it lets other site owners find the answers too.
+
+[Support forum](https://wordpress.org/support/plugin/thrg-php-checker/) · [Report a reproducible bug](https://github.com/hackrepair/thrg-php-checker/issues/new/choose) · [Security reporting](SECURITY.md) · [Buy Jim a coffee](https://hackrepair.com/donations/buy-jim-a-coffee)
 
 ## License and credits
 
