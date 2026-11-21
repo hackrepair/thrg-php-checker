@@ -178,7 +178,7 @@ footer { background: #1a110d; color: #e6dccd; padding: 48px 0; font-size: .95rem
         <a href="#install">Install</a>
         <a href="#faq">FAQ</a>
         <a href="https://wordpress.org/plugins/thrg-php-checker/">WordPress.org</a>
-        <a href="https://github.com/hackrepair/thrg-php-checker">GitHub</a>
+        <a href="https://github.com/hackrepair/thrg-php-checker">Source on GitHub</a>
         <span class="ver-badge" data-version-badge>v1.2.8</span>
       </nav>
     </header>
@@ -189,9 +189,9 @@ footer { background: #1a110d; color: #e6dccd; padding: 48px 0; font-size: .95rem
         <h1>Know before you switch: <em>test PHP 8.1–8.5 safely.</em></h1>
         <p class="lede">Upgrading PHP is the fastest way to boost WordPress speed and security. PHP Checker scans your plugins and themes in the background, filters out false alarms from safe fallback code, and puts real blockers right at the top.</p>
         <div class="actions">
-          <a class="btn" data-download href="https://github.com/hackrepair/thrg-php-checker/releases/latest">
+          <a class="btn" href="https://wordpress.org/plugins/thrg-php-checker/" title="Get The Hack Repair Guy's PHP Checker from the WordPress.org Plugin Directory">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-5-5m5 5 5-5M5 20h14"/></svg>
-            <span data-download-label>Download PHP Checker 1.2.8</span>
+            <span>Get PHP Checker <span data-version>1.2.8</span> on WordPress.org</span>
           </a>
           <a class="btn-ghost" href="#preview">See live screenshots</a>
         </div>
@@ -355,16 +355,16 @@ footer { background: #1a110d; color: #e6dccd; padding: 48px 0; font-size: .95rem
     <section id="install" aria-labelledby="install-h">
       <h2 id="install-h">Install in under a minute</h2>
       <ol class="steps">
-        <li><strong>Download the latest release ZIP</strong> using the button below.</li>
-        <li>In your WordPress dashboard, go to <strong>Plugins › Add New › Upload Plugin</strong> and upload the ZIP.</li>
+        <li>In your WordPress dashboard, go to <strong>Plugins › Add New</strong> and search for <strong>The Hack Repair Guy's PHP Checker</strong>.</li>
+        <li>Click <strong>Install Now</strong>. Installing from the <a href="https://wordpress.org/plugins/thrg-php-checker/">WordPress.org Plugin Directory</a> means future updates arrive through your dashboard like any other plugin.</li>
         <li><strong>Activate</strong> the plugin, open <strong>Tools › PHP Checker</strong>, pick your target PHP version (<strong>8.1–8.5</strong>), and click <strong>Scan</strong>.</li>
       </ol>
       <div class="actions">
-        <a class="btn" data-download href="https://github.com/hackrepair/thrg-php-checker/releases/latest">
+        <a class="btn" href="https://wordpress.org/plugins/thrg-php-checker/" title="Get The Hack Repair Guy's PHP Checker from the WordPress.org Plugin Directory">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-5-5m5 5 5-5M5 20h14"/></svg>
-          <span data-download-label>Download PHP Checker 1.2.4</span>
+          <span>Get PHP Checker <span data-version>1.2.8</span> on WordPress.org</span>
         </a>
-        <a href="https://github.com/hackrepair/thrg-php-checker/releases">View release notes &amp; SHA-256 checksums</a>
+        <a href="https://wordpress.org/plugins/thrg-php-checker/#developers">View the changelog on WordPress.org</a>
       </div>
     </section>
 
@@ -409,8 +409,8 @@ footer { background: #1a110d; color: #e6dccd; padding: 48px 0; font-size: .95rem
       <p>Free, open source WordPress software released under GPL-2.0-or-later. If you find it helpful, please consider <a href="https://hackrepair.com/donations/buy-jim-a-coffee">buying Jim a cup of coffee</a>.</p>
     </div>
     <nav aria-label="Project links">
-      <a href="https://github.com/hackrepair/thrg-php-checker">GitHub</a>
-      <a href="https://github.com/hackrepair/thrg-php-checker/releases">Releases</a>
+      <a href="https://wordpress.org/plugins/thrg-php-checker/">WordPress.org</a>
+      <a href="https://github.com/hackrepair/thrg-php-checker">Source on GitHub</a>
       <a href="https://wordpress.org/support/plugin/thrg-php-checker/">Support forum</a>
       <a href="https://hackrepair.com/">hackrepair.com</a>
     </nav>
@@ -419,16 +419,12 @@ footer { background: #1a110d; color: #e6dccd; padding: 48px 0; font-size: .95rem
 
 <script>
 (function () {
-  fetch('https://api.github.com/repos/hackrepair/thrg-php-checker/releases/latest', { headers: { Accept: 'application/vnd.github+json' } })
+  fetch('https://api.wordpress.org/plugins/info/1.2/?action=plugin_information&request%5Bslug%5D=thrg-php-checker')
     .then(function (r) { return r.ok ? r.json() : null; })
-    .then(function (rel) {
-      if (!rel || !rel.assets) { return; }
-      var zip = rel.assets.filter(function (a) { return /^thrg-php-checker\.\d+\.\d+\.\d+(?:\.wporg)?\.zip$/.test(a.name); })[0];
-      if (!zip) { return; }
-      var version = String(rel.tag_name || '').replace(/^v/, '');
-      document.querySelectorAll('[data-download]').forEach(function (a) { a.href = zip.browser_download_url; });
-      document.querySelectorAll('[data-download-label]').forEach(function (s) { s.textContent = 'Download PHP Checker ' + version; });
-      document.querySelectorAll('[data-version-badge]').forEach(function (s) { s.textContent = 'v' + version; });
+    .then(function (info) {
+      if (!info || !/^\d+\.\d+(\.\d+)?$/.test(String(info.version || ''))) { return; }
+      document.querySelectorAll('[data-version]').forEach(function (s) { s.textContent = info.version; });
+      document.querySelectorAll('[data-version-badge]').forEach(function (s) { s.textContent = 'v' + info.version; });
     })
     .catch(function () {});
 })();
