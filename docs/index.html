@@ -177,8 +177,9 @@ footer { background: #1a110d; color: #e6dccd; padding: 48px 0; font-size: .95rem
         <a href="#features">Features</a>
         <a href="#install">Install</a>
         <a href="#faq">FAQ</a>
+        <a href="https://wordpress.org/plugins/thrg-php-checker/">WordPress.org</a>
         <a href="https://github.com/hackrepair/thrg-php-checker">GitHub</a>
-        <span class="ver-badge" data-version-badge>v1.2.4</span>
+        <span class="ver-badge" data-version-badge>v1.2.8</span>
       </nav>
     </header>
 
@@ -190,7 +191,7 @@ footer { background: #1a110d; color: #e6dccd; padding: 48px 0; font-size: .95rem
         <div class="actions">
           <a class="btn" data-download href="https://github.com/hackrepair/thrg-php-checker/releases/latest">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-5-5m5 5 5-5M5 20h14"/></svg>
-            <span data-download-label>Download PHP Checker 1.2.4</span>
+            <span data-download-label>Download PHP Checker 1.2.8</span>
           </a>
           <a class="btn-ghost" href="#preview">See live screenshots</a>
         </div>
@@ -422,7 +423,7 @@ footer { background: #1a110d; color: #e6dccd; padding: 48px 0; font-size: .95rem
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (rel) {
       if (!rel || !rel.assets) { return; }
-      var zip = rel.assets.filter(function (a) { return /^thrg-php-checker\.\d+\.\d+\.\d+\.zip$/.test(a.name); })[0];
+      var zip = rel.assets.filter(function (a) { return /^thrg-php-checker\.\d+\.\d+\.\d+(?:\.wporg)?\.zip$/.test(a.name); })[0];
       if (!zip) { return; }
       var version = String(rel.tag_name || '').replace(/^v/, '');
       document.querySelectorAll('[data-download]').forEach(function (a) { a.href = zip.browser_download_url; });

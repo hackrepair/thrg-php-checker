@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       The Hack Repair Guy's PHP Checker
  * Description:       In-process PHP 8.1–8.5 static compatibility analyzer for plugins, must-use plugins, themes, and pending updates — powered by PHP_CodeSniffer & PHPCompatibilityWP with version-guard awareness, report history, and scheduled readiness emails.
- * Version:           1.2.8-prerelease
+ * Version:           1.2.8
  * Author:            The Hack Repair Guy
  * Author URI:        https://hackrepair.com/
  * Requires at least: 6.4
@@ -16,7 +16,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const THRG_PHP_CHECKER_VERSION = '1.2.8-prerelease';
+const THRG_PHP_CHECKER_VERSION = '1.2.8';
 const THRG_PHP_CHECKER_FILE    = __FILE__;
 const THRG_PHP_CHECKER_DIR     = __DIR__ . '/';
 
