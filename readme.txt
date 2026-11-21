@@ -5,7 +5,7 @@ Tags: php, compatibility, php 8.3, php 8.4, upgrade
 Requires at least: 6.4
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 1.2.8-prerelease
+Stable tag: 1.2.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -108,19 +108,31 @@ PHP Checker automatically prunes uninstalled plugins/themes and outdated compone
 
 == Changelog ==
 
-= 1.2.8-prerelease =
-* Separate compatibility impact, execution evidence, origin and scan coverage. Logging settings, filenames, fallback hints and bundled origin cannot lower fatal impact.
-* Keep unmapped errors prominent without labeling their impact as proven fatal. Components with code that appears to run when the plugin loads are labelled "Likely to fail on load" and trigger the red "Hold off" banner. Fatal-mapped errors inside functions, classes or bundled libraries are labelled "May fail when used" and get a calmer review banner.
-* Preserve complete aggregate counts before bounding displayed findings, retain coverage-gap reasons, and request refreshed evidence when older results lack required checks.
-* Mark syntax the host cannot validate as incomplete coverage when the server runs at least the target PHP; do not execute scanned code or infer a target-PHP fatal error from the host parser alone. Servers older than the target skip this check.
-* Ignore source PHPCS suppression comments during compatibility scans and handle empty files normally.
-* Align report downloads, email alternatives, history comparisons and update assessments with the same evidence limits. Older snapshots keep their recorded grading rules.
-* Bind the GitHub update download to the exact versioned asset even when another ZIP appears first. Keep the required release asset and latest stable release strategy.
-* Refresh completed single-component rescans on the same page, preserve plugin-owned notices, and align component summary counts.
-* Rescans now queue results saved by older versions, and "active plugins only" scans no longer report the unscanned inactive plugins as incomplete.
-* Old-style (PHP 4) constructors are flagged when you scan for PHP 8.0 or higher, PHP 8.3 is the default target, and scans stop a step early when memory runs low so large plugins scan reliably under a 128 MB limit.
-* Notices from WordPress and other plugins appear below the PHP Checker header and can be shown or hidden.
-* Synchronize version metadata and validate it during package builds.
+= 1.2.8 =
+* Separated compatibility impact, execution evidence, code origin, and scan coverage so logging settings, filenames, fallback hints, and bundled origin cannot hide a fatal error.
+* Split fatal-mapped errors into two tiers: **Likely to fail on load** (triggers the red "Hold off" banner) and **May fail when used** (inside functions, classes, or bundled libraries, shown with a calmer review banner), while keeping unmapped errors prominent for review.
+* Added a **Copy these findings for your developer** button under each component's technical findings and rewrote labels, cards, banners, tiles, emails, and reports in clearer plain language.
+* Preserved complete aggregate counts before bounding displayed findings, retained coverage-gap reasons, and automatically queued older cached results for rescanning when new grading evidence is needed.
+* Showed `scanned/total` counts on partial scans, widened the scan scope dropdown, and stopped "active plugins only" scans from reporting unscanned inactive plugins as incomplete.
+* Marked host-unparseable syntax as incomplete coverage when the server runs at least the target PHP (skipping on older servers), ignored inline PHPCS suppression comments during compatibility scans, and handled empty files cleanly.
+* Aligned report downloads, emails, history comparisons, and update checks with the same evidence rules while keeping older history snapshots under their recorded grading rules.
+* Refreshed single-component rescans in place on the same page and aligned component summary counts.
+* Consolidated packaging to WordPress.org-only distribution with synchronized version metadata and build-time validation.
+
+= 1.2.7 =
+* *(Internal pre-release, rolled into 1.2.8)*
+* Added scope, fallback-path, and load-on-boot analysis with a graded compatibility scale instead of a flat "Incompatible" label.
+* Raised scan memory to the WordPress admin limit and stopped scan steps early near the memory ceiling so large plugins finish reliably under a 128 MB limit.
+* Grouped the left sidebar into **Likely to Break**, **Server**, and **Review** sections; stopped counting the server row as a plugin/theme component and stopped counting review-grade components as clean in quick-switch summaries.
+* Stopped treating behaviour-change sniffs as fatal errors in tile, banner, and quick-switch counts.
+
+= 1.2.6 =
+* *(Internal pre-release, rolled into 1.2.8)*
+* Flagged old-style PHP 4 constructors (`function ClassName()`) as errors when scanning for PHP 8.0 or higher.
+* Made **PHP 8.3** the default target PHP version across the target picker, scheduled email "Recommended PHP" option, and update pre-scan.
+* Printed `<hr class="wp-header-end" />` after the PHP Checker header and tucked third-party WordPress/plugin notices behind a collapsible **Show** bar while keeping PHP Checker's own notices visible.
+* Closed the guard gap for removed `mcrypt_*`, `mysql_*`, and `ereg_*` symbols inside `function_exists()` and `extension_loaded()` checks.
+* Labelled components whose errors exist only inside bundled libraries as **Review: bundled library**.
 
 = 1.2.5 =
 * WordPress.org package checks now accept only HTTPS downloads from downloads.wordpress.org.

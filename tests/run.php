@@ -170,7 +170,7 @@ function wp_date( $format, $timestamp = null ) {
     return gmdate( $format, null === $timestamp ? time() : $timestamp );
 }
 
-require_once dirname( __DIR__ ) . '/index.php';
+require_once dirname( __DIR__ ) . '/thrg-php-checker.php';
 
 $assertions = 0;
 // The scan engine stops a slice early near the memory limit; give the test run room so fixtures scan in one slice.
@@ -1097,7 +1097,7 @@ function is_multisite() { return false; }
 function wp_clear_scheduled_hook( $hook ) { unset( $hook ); }
 function delete_site_option( $name ) { unset( $name ); }
 function delete_site_transient( $name ) { unset( $name ); }
-define( 'WP_UNINSTALL_PLUGIN', 'index.php' );
+define( 'WP_UNINSTALL_PLUGIN', 'thrg-php-checker.php' );
 require dirname( __DIR__ ) . '/uninstall.php';
 assert_same( false, get_transient( 'thrg_pc_mail_11' ), 'Uninstall removes tracked cooldown' );
 assert_same( false, get_option( 'thrg_pc_mail_cooldowns' ), 'Uninstall removes cooldown registry' );

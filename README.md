@@ -8,12 +8,12 @@ Your friendly WordPress PHP compatibility checker. Tests your plugins, must-use 
 
 Upgrading PHP is one of the easiest ways to make WordPress faster and safer, right up until an older plugin throws a fatal error and leaves you with a white screen. PHP Checker helps you find that plugin before you switch. PHP Checker runs entirely inside WordPress without `exec()`, automatically filters out guarded fallback code, and prioritizes potential fatal errors and unknown-impact findings for review.
 
-Pre-release in testing: **1.2.8-prerelease**, on the `release/1.2.8` branch; not published. `main` holds the version submitted to WordPress.org (1.2.5). See [pre-release notes](releases/v1.2.8.md).
+Current release: **1.2.8**, available on the [WordPress.org Plugin Directory](https://wordpress.org/plugins/thrg-php-checker/ "The Hack Repair Guy's PHP Checker on WordPress.org"). See [release notes](releases/v1.2.8.md).
 
 <p align="center">
-  <a href="https://github.com/hackrepair/thrg-php-checker/releases/latest" title="Download the latest PHP Checker plugin zip from GitHub"><img src="https://img.shields.io/badge/%E2%AC%87%20%20Download%20the%20latest%20release-b34700?style=for-the-badge&labelColor=b34700" alt="Download the latest release" height="46"></a>
+  <a href="https://wordpress.org/plugins/thrg-php-checker/" title="Install The Hack Repair Guy's PHP Checker from WordPress.org"><img src="https://img.shields.io/badge/%E2%AC%87%20%20Install%20from%20WordPress.org-b34700?style=for-the-badge&labelColor=b34700" alt="Install from WordPress.org" height="46"></a>
   <br>
-  <sub>Free. Upload the zip in WordPress, and later updates arrive on the Plugins screen.</sub>
+  <sub>Free. Install directly from Plugins → Add New in WordPress, and updates arrive automatically from WordPress.org.</sub>
 </p>
 
 ## What it does

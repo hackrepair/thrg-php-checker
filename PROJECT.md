@@ -2,7 +2,7 @@
 
 Developer notes for contributors. For what the plugin does, see [README.md](README.md "What the plugin does and how to install it").
 
-Current pre-release: **1.2.8-prerelease**, branch `release/1.2.8`, not tagged or published. `main` holds the 1.2.5 version submitted to WordPress.org. The grading work originated on local `prerelease-1.2.7`; see `releases/v1.2.8.md` for current behavior.
+Current release: **1.2.8**, November 21, 2026. Built for WordPress.org (`https://wordpress.org/plugins/thrg-php-checker/`); see `releases/v1.2.8.md`.
 
 ## Scope
 
@@ -10,7 +10,7 @@ An in-process, read-only static PHP 8.1–8.5 compatibility analyzer for install
 
 ## Architecture
 
-- `index.php`: plugin header (`Version: 1.2.8-prerelease`), constants (`THRG_PHP_CHECKER_VERSION`, `THRG_PHP_CHECKER_FILE`, `THRG_PHP_CHECKER_DIR`), class includes, and deactivation cleanup for scheduled hooks and transient scan state.
+- `thrg-php-checker.php`: plugin header (`Version: 1.2.8`), constants (`THRG_PHP_CHECKER_VERSION`, `THRG_PHP_CHECKER_FILE`, `THRG_PHP_CHECKER_DIR`), class includes, and deactivation cleanup for scheduled hooks and transient scan state.
 - `includes/class-thrg-php-checker.php`: main controller (`Tools > PHP Checker`), admin request handlers (with shared `require_admin_ajax()` / `require_admin_post()` helpers), and page bootstrap; delegates evaluation, server advisories, and plain-text formatting to:
   - `includes/class-thrg-pc-server-advisory.php`: server PHP EOL & security advisory checks (`PHP_SUPPORT`, `PHP_ADVISORIES`, `PATCH_LIST_AS_OF`).
   - `includes/class-thrg-pc-evaluator.php`: `collect()` and `evaluate()` pipeline with client-first priority ordering (incompatible components first, warning components second, server/update checks third, clean components last).
