@@ -225,11 +225,11 @@ final class THRG_PC_Scope {
             if ( 'T_STRING' !== $tokens[ $i ]['type'] || ! in_array( strtolower( (string) $tokens[ $i ]['content'] ), self::ENV_CALLS, true ) ) {
                 continue;
             }
-            $next = self::sig( $tokens, $i, 1 );
+            $next = THRG_PC_Context::next( $tokens, $i + 1 );
             if ( null === $next || 'T_OPEN_PARENTHESIS' !== $tokens[ $next ]['type'] ) {
                 continue;
             }
-            $prev = self::sig( $tokens, $i, -1 );
+            $prev = THRG_PC_Context::prev( $tokens, $i - 1 );
             if ( null !== $prev && 'T_BOOLEAN_NOT' === $tokens[ $prev ]['type'] ) {
                 $neg = true;
             } else {
@@ -251,7 +251,7 @@ final class THRG_PC_Scope {
      */
     private static function else_of_positive_check( array $tokens, $branch ) {
         for ( $guard = 0; $guard < 20; $guard++ ) {
-            $prev = self::sig( $tokens, $branch, -1 );
+            $prev = THRG_PC_Context::prev( $tokens, $branch - 1 );
             if ( null === $prev || 'T_CLOSE_CURLY_BRACKET' !== $tokens[ $prev ]['type'] || ! isset( $tokens[ $prev ]['scope_condition'] ) ) {
                 return false;
             }
@@ -271,16 +271,13 @@ final class THRG_PC_Scope {
     /**
      * Whether every call to a function in this file sits on a fallback path.
      *
-     * @param array $tokens   PHPCS tokens.
+     * @param array $tokens       PHPCS tokens.
      * @param int   $function_ptr Pointer of the function keyword.
      * @return bool
      */
     private static function called_only_from_fallbacks( array $tokens, $function_ptr ) {
-        $name_ptr = self::sig( $tokens, $function_ptr, 1 );
-        if ( null !== $name_ptr && 'T_BITWISE_AND' === $tokens[ $name_ptr ]['type'] ) {
-            $name_ptr = self::sig( $tokens, $name_ptr, 1 );
-        }
-        if ( null === $name_ptr || 'T_STRING' !== $tokens[ $name_ptr ]['type'] ) {
+        $name_ptr = THRG_PC_Context::function_name_ptr( $tokens, $function_ptr );
+        if ( null === $name_ptr ) {
             return false;
         }
         $name  = strtolower( (string) $tokens[ $name_ptr ]['content'] );
@@ -289,8 +286,8 @@ final class THRG_PC_Scope {
             if ( $i === $name_ptr || 'T_STRING' !== $token['type'] || strtolower( (string) $token['content'] ) !== $name ) {
                 continue;
             }
-            $next = self::sig( $tokens, $i, 1 );
-            $prev = self::sig( $tokens, $i, -1 );
+            $next = THRG_PC_Context::next( $tokens, $i + 1 );
+            $prev = THRG_PC_Context::prev( $tokens, $i - 1 );
             if ( null === $next || 'T_OPEN_PARENTHESIS' !== $tokens[ $next ]['type'] ) {
                 continue;
             }
@@ -321,10 +318,7 @@ final class THRG_PC_Scope {
         if ( 'T_STRING' !== $tokens[ $ptr ]['type'] ) {
             return '';
         }
-        if ( preg_match( '/^(mysql|mcrypt|ereg)_/', strtolower( (string) $tokens[ $ptr ]['content'] ), $m ) ) {
-            return $m[1];
-        }
-        return '';
+        return THRG_PC_Context::removed_ext_prefix( (string) $tokens[ $ptr ]['content'] );
     }
 
     /**
@@ -409,7 +403,7 @@ final class THRG_PC_Scope {
      */
     private static function else_of_modern_twin( array $tokens, $branch, $prefix ) {
         $twins = isset( self::TWINS[ $prefix ] ) ? self::TWINS[ $prefix ] : array();
-        $prev  = self::sig( $tokens, $branch, -1 );
+        $prev  = THRG_PC_Context::prev( $tokens, $branch - 1 );
         if ( ! $twins || null === $prev || 'T_CLOSE_CURLY_BRACKET' !== $tokens[ $prev ]['type'] || ! isset( $tokens[ $prev ]['scope_condition'] ) ) {
             return false;
         }
@@ -424,7 +418,7 @@ final class THRG_PC_Scope {
             $name = strtolower( (string) $tokens[ $i ]['content'] );
             foreach ( $twins as $twin ) {
                 if ( 0 === strpos( $name, $twin ) ) {
-                    $next = self::sig( $tokens, $i, 1 );
+                    $next = THRG_PC_Context::next( $tokens, $i + 1 );
                     if ( null !== $next && 'T_OPEN_PARENTHESIS' === $tokens[ $next ]['type'] ) {
                         return true;
                     }
@@ -432,23 +426,5 @@ final class THRG_PC_Scope {
             }
         }
         return false;
-    }
-
-    /**
-     * Previous (-1) or next (+1) token that is not whitespace or a comment.
-     *
-     * @param array $tokens PHPCS tokens.
-     * @param int   $i      Start pointer.
-     * @param int   $step   1 or -1.
-     * @return int|null
-     */
-    private static function sig( array $tokens, $i, $step ) {
-        $count = count( $tokens );
-        for ( $j = $i + $step; $j >= 0 && $j < $count; $j += $step ) {
-            if ( ! in_array( (string) $tokens[ $j ]['type'], array( 'T_WHITESPACE', 'T_COMMENT', 'T_DOC_COMMENT', 'T_DOC_COMMENT_OPEN_TAG', 'T_DOC_COMMENT_CLOSE_TAG', 'T_DOC_COMMENT_STRING', 'T_DOC_COMMENT_STAR', 'T_DOC_COMMENT_WHITESPACE', 'T_DOC_COMMENT_TAG' ), true ) ) {
-                return $j;
-            }
-        }
-        return null;
     }
 }

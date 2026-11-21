@@ -549,23 +549,9 @@ final class THRG_PC_Prescan {
                 )
             );
 
-            $out  = THRG_PC_Engine::scan(
-                $active['remaining'],
-                $active['target'],
-                (float) $deadline,
-                static function ( $entry, $limit ) use ( $zip ) {
-                    return THRG_PC_Prescan::zip_read( $zip, $entry, $limit );
-                }
-            );
-            $root = (string) $active['root'];
-            foreach ( $out['scanned'] as $entry => $findings ) {
-                $path = str_replace( '\\', '/', (string) $entry );
-                $rel  = '' !== $root && 0 === strpos( $path, $root ) ? substr( $path, strlen( $root ) ) : $path;
-                foreach ( $findings as $finding ) {
-                    $active['findings'][] = THRG_PC_Context::place_finding( $finding, $rel );
-                }
-            }
-            $active['remaining'] = $out['remaining'];
+            $batch               = self::scan_zip_batch( $zip, (string) $active['root'], $active['remaining'], $active['target'], (float) $deadline );
+            $active['findings']  = array_merge( $active['findings'], $batch['findings'] );
+            $active['remaining'] = $batch['remaining'];
             $active['busy']      = false;
 
             if ( ! $active['remaining'] ) {
@@ -782,6 +768,50 @@ final class THRG_PC_Prescan {
     }
 
     /**
+     * Whether a package URL is an HTTPS download from downloads.wordpress.org.
+     *
+     * @param string $url Package URL.
+     * @return bool
+     */
+    public static function is_wporg_package_url( $url ) {
+        $url = (string) $url;
+        return 0 === strpos( $url, 'https://' ) && 'downloads.wordpress.org' === (string) wp_parse_url( $url, PHP_URL_HOST );
+    }
+
+    /**
+     * Scan a batch of in-memory zip entries and normalize relative file paths on findings.
+     *
+     * @param string   $zip       Path to temporary zip file.
+     * @param string   $root      Detected top-level archive prefix.
+     * @param string[] $remaining Archive entry names remaining to scan.
+     * @param string   $target    Target PHP version.
+     * @param float    $deadline  Unix timestamp cutoff.
+     * @return array{findings:array[],remaining:string[]}
+     */
+    private static function scan_zip_batch( $zip, $root, array $remaining, $target, $deadline ) {
+        $out      = THRG_PC_Engine::scan(
+            $remaining,
+            $target,
+            (float) $deadline,
+            static function ( $entry, $limit ) use ( $zip ) {
+                return THRG_PC_Prescan::zip_read( $zip, $entry, $limit );
+            }
+        );
+        $findings = array();
+        foreach ( $out['scanned'] as $entry => $file_findings ) {
+            $path = str_replace( '\\', '/', (string) $entry );
+            $rel  = '' !== $root && 0 === strpos( $path, $root ) ? substr( $path, strlen( $root ) ) : $path;
+            foreach ( $file_findings as $finding ) {
+                $findings[] = THRG_PC_Context::place_finding( $finding, $rel );
+            }
+        }
+        return array(
+            'findings'  => $findings,
+            'remaining' => $out['remaining'],
+        );
+    }
+
+    /**
      * Resolve the latest WordPress.org version and download URL for a plugin slug.
      *
      * @param string $slug  Plugin file slug (dir/file.php).
@@ -792,9 +822,9 @@ final class THRG_PC_Prescan {
         $remote_version = '';
         $package_url    = '';
 
-        // 1. Check WordPress update_plugins transient first.
+        // 1. Check WordPress update_plugins transient first (only accepting downloads.wordpress.org packages).
         foreach ( self::entries() as $offer ) {
-            if ( 'plugin' === $offer['kind'] && ( $offer['slug'] === $short || $offer['file_key'] === $slug ) ) {
+            if ( 'plugin' === $offer['kind'] && ( $offer['slug'] === $short || $offer['file_key'] === $slug ) && self::is_wporg_package_url( $offer['package'] ) ) {
                 $remote_version = (string) $offer['new_version'];
                 $package_url    = (string) $offer['package'];
                 break;
@@ -865,8 +895,7 @@ final class THRG_PC_Prescan {
      * @return array|null Saved update record or null when incomplete.
      */
     private static function scan_wporg_package( $short, $remote_version, $package_url, $target, $deadline ) {
-        $host = (string) wp_parse_url( $package_url, PHP_URL_HOST );
-        if ( 0 !== strpos( $package_url, 'https://' ) || 'downloads.wordpress.org' !== $host ) {
+        if ( ! self::is_wporg_package_url( $package_url ) ) {
             return null;
         }
 
@@ -883,32 +912,16 @@ final class THRG_PC_Prescan {
             return null;
         }
 
-        $zip      = (string) $opened['zip'];
-        $root     = (string) $opened['root'];
-        $out      = THRG_PC_Engine::scan(
-            $opened['remaining'],
-            $target,
-            (float) $deadline,
-            static function ( $entry, $limit ) use ( $zip ) {
-                return THRG_PC_Prescan::zip_read( $zip, $entry, $limit );
-            }
-        );
-        $findings = array();
-        foreach ( $out['scanned'] as $entry => $file_findings ) {
-            $path = str_replace( '\\', '/', (string) $entry );
-            $rel  = '' !== $root && 0 === strpos( $path, $root ) ? substr( $path, strlen( $root ) ) : $path;
-            foreach ( $file_findings as $finding ) {
-                $findings[] = THRG_PC_Context::place_finding( $finding, $rel );
-            }
-        }
+        $zip   = (string) $opened['zip'];
+        $batch = self::scan_zip_batch( $zip, (string) $opened['root'], $opened['remaining'], $target, (float) $deadline );
         self::delete_zip( $zip );
         self::zip_close();
 
-        if ( ! empty( $out['remaining'] ) ) {
+        if ( ! empty( $batch['remaining'] ) ) {
             return null;
         }
 
-        THRG_PC_Results::save_update( 'plugin', $short, $remote_version, $target, $findings );
+        THRG_PC_Results::save_update( 'plugin', $short, $remote_version, $target, $batch['findings'] );
         return THRG_PC_Results::get_update( 'plugin', $short, $remote_version, $target );
     }
 

@@ -2,5 +2,5 @@
 /**
  * Silence is golden.
  *
- * @package HackRepair_Plugin_Detective
+ * @package THRG_PHP_Checker
  */

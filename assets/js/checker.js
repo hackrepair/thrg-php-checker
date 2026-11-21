@@ -587,7 +587,7 @@
                     if ( 'breaks' === mode && isComp ) {
                         show = grade >= 1 && grade <= 2;
                     } else if ( 'review' === mode && isComp ) {
-                        show = grade >= 3 && grade <= 5;
+                        show = grade >= 3;
                     } else if ( 'own' === mode && isComp ) {
                         show = ownCount > 0;
                     }
@@ -608,7 +608,7 @@
     var cfg = window.thrgPcData || {};
     var text = cfg.i18n || {};
     var body = document.body;
-    var selector = '#wpbody-content > .notice, #wpbody-content > .update-nag, .thrg-pc-wrap > .notice:not(.thrg-pc-own), .thrg-pc-wrap > .updated:not(.thrg-pc-own), .thrg-pc-wrap > .error:not(.thrg-pc-own)';
+    var selector = '#wpbody-content > .notice, #wpbody-content > .updated, #wpbody-content > .error, #wpbody-content > .update-nag, .thrg-pc-wrap > .notice:not(.thrg-pc-own), .thrg-pc-wrap > .updated:not(.thrg-pc-own), .thrg-pc-wrap > .error:not(.thrg-pc-own), .thrg-pc-wrap > .update-nag:not(.thrg-pc-own)';
     var bar = null;
     var message = null;
     var toggle = null;

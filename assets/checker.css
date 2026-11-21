@@ -664,7 +664,6 @@
     color: #646970;
 }
 
-.thrg-pc-meta- badges .thrg-pc-origin-badge,
 .thrg-card-meta .thrg-pc-origin-badge {
     margin-top: 0;
 }
@@ -1119,10 +1118,13 @@
 
 /* Tuck other plugins' admin notices away on this screen (shown again with the Show link). Needs JavaScript so the notices stay visible without it. */
 body.js.thrg-pc-screen:not(.thrg-pc-notices-shown) #wpbody-content > .notice,
+body.js.thrg-pc-screen:not(.thrg-pc-notices-shown) #wpbody-content > .updated,
+body.js.thrg-pc-screen:not(.thrg-pc-notices-shown) #wpbody-content > .error,
 body.js.thrg-pc-screen:not(.thrg-pc-notices-shown) #wpbody-content > .update-nag,
 body.js.thrg-pc-screen:not(.thrg-pc-notices-shown) .thrg-pc-wrap > .notice:not(.thrg-pc-own),
 body.js.thrg-pc-screen:not(.thrg-pc-notices-shown) .thrg-pc-wrap > .updated:not(.thrg-pc-own),
-body.js.thrg-pc-screen:not(.thrg-pc-notices-shown) .thrg-pc-wrap > .error:not(.thrg-pc-own) {
+body.js.thrg-pc-screen:not(.thrg-pc-notices-shown) .thrg-pc-wrap > .error:not(.thrg-pc-own),
+body.js.thrg-pc-screen:not(.thrg-pc-notices-shown) .thrg-pc-wrap > .update-nag:not(.thrg-pc-own) {
     display: none !important;
 }
 

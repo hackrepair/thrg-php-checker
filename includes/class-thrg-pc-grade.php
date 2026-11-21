@@ -62,12 +62,16 @@ final class THRG_PC_Grade {
             'PHPCompatibility.Constants.RemovedConstants.',
             'PHPCompatibility.Classes.RemovedClasses.',
             'PHPCompatibility.Extensions.RemovedExtensions.',
+            'PHPCompatibility.Keywords.',
             'PHPCompatibility.Syntax.',
             'Generic.PHP.Syntax',
         ) as $prefix ) {
             if ( 0 === strpos( (string) $source, $prefix ) ) {
                 return 'fatal';
             }
+        }
+        if ( false !== strpos( (string) $source, 'ParseError' ) ) {
+            return 'fatal';
         }
         return 'unknown';
     }
@@ -131,7 +135,7 @@ final class THRG_PC_Grade {
             $out['reachability']  = 'conditional';
             $out['evidence_kind'] = 'environment_condition';
         }
-        $parse_rule = 0 === strpos( $source, 'Generic.PHP.Syntax' ) || 0 === strpos( $source, 'PHPCompatibility.Syntax.' );
+        $parse_rule = 0 === strpos( $source, 'Generic.PHP.Syntax' ) || 0 === strpos( $source, 'PHPCompatibility.Syntax.' ) || false !== strpos( $source, 'ParseError' );
         if ( 'fatal' === $out['impact'] && ( $parse_rule || in_array( $scope, array( 'file', 'class-body' ), true ) ) && self::load_time_rule( $source ) && '' !== $file && in_array( $file, $boot, true ) && '' === $reason ) {
             $out['evidence_kind'] = 'startup_file_hint';
             $out['grade']         = 1;
@@ -296,7 +300,7 @@ final class THRG_PC_Grade {
      * @return bool
      */
     public static function needs_review( $grade ) {
-        return (int) $grade >= 3 && (int) $grade <= 5;
+        return (int) $grade >= 3 && (int) $grade <= 6;
     }
 
     /**
@@ -308,11 +312,11 @@ final class THRG_PC_Grade {
      * @param bool   $active         Whether the component is active.
      * @param string $running_php    Running PHP major.minor.
      * @param string $target         Target PHP major.minor.
-     * @param bool   $runtime_log_on Whether the runtime log is enabled.
+     * @param bool   $runtime_log_on Deprecated unused flag kept for signature compatibility.
      * @param bool   $paused         Whether WordPress recovery mode paused the component.
-     * @return array{marker:bool,strong:bool}
+     * @return array{marker:bool,strong:bool,running_php:string}
      */
-    public static function evidence( $active, $running_php, $target, $runtime_log_on, $paused ) {
+    public static function evidence( $active, $running_php, $target, $runtime_log_on = false, $paused = false ) {
         $marker = (bool) $active && '' !== (string) $running_php && version_compare( (string) $running_php, (string) $target, '>=' ) && ! $paused;
         return array(
             'marker'      => $marker,

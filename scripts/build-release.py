@@ -46,12 +46,13 @@ if ( root / '.distignore' ).exists():
 
 files = []
 for f in root.rglob( '*' ):
-    if not f.is_file():
+    if not f.is_file() or f.is_symlink():
         continue
     rel = f.relative_to( root )
     rel_posix = str( rel ).replace( '\\', '/' )
     is_bundled = len( rel.parts ) >= 2 and rel.parts[0] == 'vendor' and rel.parts[1] == 'thrg-scan-engine'
-    if not is_bundled and ( rel.parts[0] in excluded or rel.parts[0] == 'vendor' or f.name in excluded_files or any( fnmatch.fnmatch( str( rel ), x ) or str( rel ).startswith( x.rstrip( '/' ) + '/' ) for x in patterns ) ):
+    is_root_md = len( rel.parts ) == 1 and f.suffix.lower() == '.md'
+    if not is_bundled and ( rel.parts[0] in excluded or rel.parts[0] == 'vendor' or is_root_md or f.name in excluded_files or any( fnmatch.fnmatch( str( rel ), x ) or str( rel ).startswith( x.rstrip( '/' ) + '/' ) for x in patterns ) ):
         continue
     if any( fnmatch.fnmatch( rel_posix, x ) for x in excluded_paths ):
         continue
@@ -83,6 +84,8 @@ with zipfile.ZipFile( output ) as z:
         main_text   = z.read( slug + '/' + main_in_zip ).decode( 'utf-8' )
         readme_text = z.read( slug + '/readme.txt' ).decode( 'utf-8' )
         assert slug + '/index.php' not in names, 'wporg ZIP must name its main file after the slug'
+        assert not any( part.startswith( '.' ) for n in names for part in n.split( '/' ) ), 'wporg ZIP must not contain hidden dotfiles'
+        assert not any( n.count( '/' ) == 1 and n.lower().endswith( '.md' ) for n in names ), 'wporg ZIP must not contain root markdown files'
         assert not any( n.startswith( slug + '/plugin-update-checker/' ) for n in names ), 'wporg ZIP must not contain plugin-update-checker'
         assert slug + '/includes/class-thrg-pc-updater.php' not in names
         assert slug + '/includes/class-thrg-pc-update-notices.php' not in names

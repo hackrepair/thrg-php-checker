@@ -52,11 +52,8 @@ class THRG_PC_Legacy_Constructors {
                 if ( 'T_FUNCTION' !== $tokens[ $i ]['type'] || ! self::is_direct_member( $tokens, $i, $ptr ) ) {
                     continue;
                 }
-                $fn_ptr = THRG_PC_Context::next( $tokens, $i + 1 );
-                if ( null !== $fn_ptr && 'T_BITWISE_AND' === $tokens[ $fn_ptr ]['type'] ) {
-                    $fn_ptr = THRG_PC_Context::next( $tokens, $fn_ptr + 1 );
-                }
-                if ( null === $fn_ptr || ! isset( $tokens[ $fn_ptr ]['content'] ) ) {
+                $fn_ptr = THRG_PC_Context::function_name_ptr( $tokens, $i );
+                if ( null === $fn_ptr ) {
                     continue;
                 }
                 $method_lc = strtolower( $tokens[ $fn_ptr ]['content'] );

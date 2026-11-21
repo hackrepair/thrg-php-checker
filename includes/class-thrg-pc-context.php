@@ -167,9 +167,12 @@ final class THRG_PC_Context {
             $removed            = self::removed_finding( $finding );
             $ctx['missing']     = $removed ? array( self::full_name( (string) $tokens[ $ptr ]['content'] ) ) : array();
             $ctx['missing_ext'] = $removed && isset( $extensions[ $key ] ) ? $extensions[ $key ] : array();
-            if ( $removed && ! $ctx['missing_ext'] && $ctx['missing'] && preg_match( '/^\\\\?(mcrypt|mysql|ereg)_/i', $ctx['missing'][0], $ext_match ) ) {
+            if ( $removed && ! $ctx['missing_ext'] && $ctx['missing'] ) {
                 // A removed mcrypt_*/mysql_*/ereg_* symbol means the whole extension is gone on this target.
-                $ctx['missing_ext'] = array( strtolower( $ext_match[1] ) );
+                $gone_prefix = self::removed_ext_prefix( $ctx['missing'][0] );
+                if ( '' !== $gone_prefix ) {
+                    $ctx['missing_ext'] = array( $gone_prefix );
+                }
             }
             if ( null === $ctx['dead_vars'] && '' !== $target ) {
                 $ctx['dead_vars'] = self::collect_dead_branch_vars( $tokens, $ctx );
@@ -657,10 +660,9 @@ final class THRG_PC_Context {
                 return false;
             }
             if ( in_array( $call, array( 'function_exists', 'is_callable', 'defined' ), true ) ) {
-                foreach ( $ctx['missing_ext'] as $gone_ext ) {
-                    if ( in_array( $gone_ext, array( 'mcrypt', 'mysql', 'ereg' ), true ) && 0 === strpos( strtolower( ltrim( $name, '\\' ) ), $gone_ext . '_' ) ) {
-                        return false;
-                    }
+                $prefix = self::removed_ext_prefix( $name );
+                if ( '' !== $prefix && in_array( $prefix, $ctx['missing_ext'], true ) ) {
+                    return false;
                 }
             }
             return null;
@@ -1037,13 +1039,27 @@ final class THRG_PC_Context {
     }
 
     /**
+     * Removed-extension prefix (mysql, mcrypt, ereg) for a symbol name, or ''.
+     *
+     * @param string $symbol Function or constant name.
+     * @return string
+     */
+    public static function removed_ext_prefix( $symbol ) {
+        $clean = self::full_name( $symbol );
+        if ( preg_match( '/^(mysql|mcrypt|ereg)_/', $clean, $m ) ) {
+            return $m[1];
+        }
+        return '';
+    }
+
+    /**
      * Previous non-empty token pointer at or before $i.
      *
      * @param array $tokens PHPCS tokens.
      * @param int   $i      Start index.
      * @return int|null
      */
-    private static function prev( array $tokens, $i ) {
+    public static function prev( array $tokens, $i ) {
         for ( ; $i >= 0; $i-- ) {
             if ( ! isset( \PHP_CodeSniffer\Util\Tokens::EMPTY_TOKENS[ $tokens[ $i ]['code'] ] ) ) {
                 return $i;
@@ -1066,6 +1082,21 @@ final class THRG_PC_Context {
             }
         }
         return null;
+    }
+
+    /**
+     * Token pointer of a declared function or method's T_STRING identifier, skipping any reference ampersand.
+     *
+     * @param array $tokens PHPCS tokens.
+     * @param int   $fn_ptr Pointer to T_FUNCTION.
+     * @return int|null
+     */
+    public static function function_name_ptr( array $tokens, $fn_ptr ) {
+        $name_ptr = self::next( $tokens, $fn_ptr + 1 );
+        if ( null !== $name_ptr && 'T_BITWISE_AND' === $tokens[ $name_ptr ]['type'] ) {
+            $name_ptr = self::next( $tokens, $name_ptr + 1 );
+        }
+        return ( null !== $name_ptr && 'T_STRING' === $tokens[ $name_ptr ]['type'] ) ? $name_ptr : null;
     }
 
     /**

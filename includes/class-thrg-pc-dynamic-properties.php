@@ -234,13 +234,8 @@ class THRG_PC_Dynamic_Properties {
             }
 
             if ( 'T_FUNCTION' === $ttype ) {
-                $fn_name_ptr = THRG_PC_Context::next( $tokens, $i + 1 );
-                if ( null !== $fn_name_ptr && 'T_BITWISE_AND' === $tokens[ $fn_name_ptr ]['type'] ) {
-                    $fn_name_ptr = THRG_PC_Context::next( $tokens, $fn_name_ptr + 1 );
-                }
-                $fn_name = ( null !== $fn_name_ptr && 'T_STRING' === $tokens[ $fn_name_ptr ]['type'] )
-                    ? strtolower( $tokens[ $fn_name_ptr ]['content'] )
-                    : '';
+                $fn_name_ptr = THRG_PC_Context::function_name_ptr( $tokens, $i );
+                $fn_name     = null !== $fn_name_ptr ? strtolower( $tokens[ $fn_name_ptr ]['content'] ) : '';
                 if ( '__set' === $fn_name ) {
                     $has_magic_set = true;
                 } elseif ( '__construct' === $fn_name && isset( $tokens[ $i ]['parenthesis_opener'], $tokens[ $i ]['parenthesis_closer'] ) ) {

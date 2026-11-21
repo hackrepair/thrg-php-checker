@@ -45,8 +45,12 @@ $review_names  = array();
 $has_tech_rows = 0;
 $partial_scan  = 0;
 $stale_scan    = 0;
+$has_overview  = false;
 
 foreach ( $rows as $row ) {
+    if ( isset( $row['id'] ) && 'scan-overview' === $row['id'] ) {
+        $has_overview = true;
+    }
     if ( 'Potential weakness' === $row['status'] ) {
         if ( empty( $row['comp_key'] ) ) {
             ++$counts['server'];
@@ -253,7 +257,7 @@ if ( ! empty( $observations['engine_reason'] ) ) {
     $verdict_tone  = 'neutral';
     $verdict_title = __( 'Some saved results are out of date', 'thrg-php-checker' );
     $verdict_desc  = __( 'Some results were saved by an older version of the scanner. Rescan those plugins and themes to refresh them. The earlier findings are still shown.', 'thrg-php-checker' );
-} elseif ( ! $viewed_entry && ( $partial_scan > 0 || $scanned_now < $total_comps ) ) {
+} elseif ( ! $viewed_entry && ( $partial_scan > 0 || $has_overview ) ) {
     $verdict_tone  = 'neutral';
     $verdict_title = __( 'Compatibility scan incomplete', 'thrg-php-checker' );
     $verdict_desc  = __( 'Some plugins or themes have not been scanned, or had files that could not be checked. Look at what was found, then finish the scan before relying on the results.', 'thrg-php-checker' );
