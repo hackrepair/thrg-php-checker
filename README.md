@@ -79,9 +79,7 @@ Listed on the WordPress.org plugin directory under the slug `thrg-php-checker` a
 
 ## Author and support
 
-**[Jim Walker](https://hackrepair.com/)** — The Hack Repair Guy. Hi, I'm Jim. I built PHP Checker and I'm happy to help if you get stuck; questions and ideas are always welcome.
-
-For questions, help and support, please use the [WordPress.org support forum](https://wordpress.org/support/plugin/thrg-php-checker/ "PHP Checker support forum on WordPress.org"). That is the only place I answer support questions, and it lets other site owners find the answers too.
+**[Jim Walker](https://hackrepair.com/)**, The Hack Repair Guy. Hi, I'm Jim, the author. Questions, ideas, or stuck on something? I'd love to hear from you and I'm happy to help. Please post in the plugin's [support forum on WordPress.org](https://wordpress.org/support/plugin/thrg-php-checker/ "PHP Checker support forum on WordPress.org"), so other site owners can find the answers too.
 
 [Support forum](https://wordpress.org/support/plugin/thrg-php-checker/) · [Report a reproducible bug](https://github.com/hackrepair/thrg-php-checker/issues/new/choose) · [Security reporting](SECURITY.md) · [Buy Jim a coffee](https://hackrepair.com/donations/buy-jim-a-coffee)
 
