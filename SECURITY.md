@@ -8,7 +8,7 @@ Please do not disclose vulnerabilities, exploit details or sensitive data in pub
 
 Use [GitHub private vulnerability reporting](https://github.com/hackrepair/thrg-php-checker/security/advisories/new). A free GitHub account is required. If that route is unavailable or you prefer email, contact **[Jim Walker at jim@hackrepair.com](mailto:jim@hackrepair.com)**. For email, use the subject **Security report: The Hack Repair Guy's PHP Checker**. Start with a minimal description; arrange a suitable private channel before sharing particularly sensitive material.
 
-For general questions and non-security bugs, use the support links in the README.
+For general questions and support, use the [WordPress.org support forum](https://wordpress.org/support/plugin/thrg-php-checker/). For reproducible non-security bugs, open a GitHub issue.
 
 ## What to include
 
