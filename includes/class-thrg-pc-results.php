@@ -345,7 +345,8 @@ final class THRG_PC_Results {
      * @return bool
      */
     public static function is_current( $item ) {
-        return is_array( $item ) && isset( $item['scan_evidence_version'] ) && self::EVIDENCE_VERSION === (int) $item['scan_evidence_version'];
+        return is_array( $item ) && isset( $item['scan_evidence_version'] ) && self::EVIDENCE_VERSION === (int) $item['scan_evidence_version'] &&
+            'stale' !== self::classification( $item )['coverage'];
     }
 
     /**
@@ -528,23 +529,24 @@ final class THRG_PC_Results {
      * @param array  $findings Findings list.
      * @return bool
      */
-    public static function save_update( $kind, $slug, $version, $target, array $findings ) {
+    public static function save_update( $kind, $slug, $version, $target, array $findings, $source = '' ) {
         $kind    = (string) $kind;
         $slug    = (string) $slug;
         $version = (string) $version;
         $target  = (string) $target;
-        if ( ! in_array( $kind, array( 'plugin', 'theme' ), true ) || '' === $slug || '' === $version || ! preg_match( '/^[5-9]\.\d{1,2}$/', $target ) ) {
+        if ( '' === $source || ! in_array( $kind, array( 'plugin', 'theme' ), true ) || '' === $slug || '' === $version || ! preg_match( '/^[5-9]\.\d{1,2}$/', $target ) ) {
             return false;
         }
         $counts  = self::count( $findings );
         $verdict = self::verdict( $counts['errors'], $counts['warnings'], $counts['skipped'] );
         $raw     = get_option( self::UPDATE_OPTION, array() );
         $all     = is_array( $raw ) ? $raw : array();
-        $key     = $kind . ':' . $slug . ':' . $version . ':' . $target;
+        $key     = $kind . ':' . $slug . ':' . $version . ':' . $target . ':' . $source;
 
         $trimmed                       = self::trim_findings( $findings );
         $all[ $key ]                   = array(
             'scan_evidence_version' => self::EVIDENCE_VERSION,
+            'package_source'        => $source,
             'kind'                  => $kind,
             'slug'                  => $slug,
             'version'               => $version,
@@ -577,13 +579,13 @@ final class THRG_PC_Results {
      * @param string $target  Target PHP version.
      * @return array|null
      */
-    public static function get_update( $kind, $slug, $version, $target ) {
+    public static function get_update( $kind, $slug, $version, $target, $source = '' ) {
         $raw = get_option( self::UPDATE_OPTION, array() );
         if ( ! is_array( $raw ) ) {
             return null;
         }
-        $key = (string) $kind . ':' . (string) $slug . ':' . (string) $version . ':' . (string) $target;
-        if ( ! isset( $raw[ $key ] ) || ! is_array( $raw[ $key ] ) ) {
+        $key = (string) $kind . ':' . (string) $slug . ':' . (string) $version . ':' . (string) $target . ':' . $source;
+        if ( '' === $source || ! isset( $raw[ $key ]['package_source'] ) || $source !== $raw[ $key ]['package_source'] ) {
             return null;
         }
         $row                   = $raw[ $key ];

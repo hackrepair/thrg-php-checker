@@ -24,7 +24,7 @@ final class THRG_PC_Evaluator {
 
         $update_items = array();
         foreach ( $offers as $offer ) {
-            $res            = THRG_PC_Results::get_update( $offer['kind'], $offer['slug'], $offer['new_version'], $guard );
+            $res            = THRG_PC_Results::get_update( $offer['kind'], $offer['slug'], $offer['new_version'], $guard, $offer['source'] );
             $update_items[] = array(
                 'kind'        => $offer['kind'],
                 'slug'        => $offer['slug'],
@@ -75,7 +75,7 @@ final class THRG_PC_Evaluator {
     public static function evaluate( array $o ) {
         $now         = isset( $o['now'] ) ? (int) $o['now'] : time();
         $php_version = isset( $o['php_version'] ) ? (string) $o['php_version'] : PHP_VERSION;
-        $target      = isset( $o['target'] ) && in_array( (string) $o['target'], THRG_PHP_Checker::scan_targets(), true ) ? (string) $o['target'] : '8.4';
+        $target      = isset( $o['target'] ) && in_array( (string) $o['target'], THRG_PHP_Checker::scan_targets(), true ) ? (string) $o['target'] : THRG_PHP_Checker::default_target();
         $comps       = isset( $o['components'] ) && is_array( $o['components'] ) ? $o['components'] : array();
         $results     = isset( $o['results'] ) && is_array( $o['results'] ) ? $o['results'] : array();
         $mig_link    = THRG_PC_Server_Advisory::migration_link_key( $target );
@@ -545,7 +545,7 @@ final class THRG_PC_Evaluator {
         if ( '' === $check_ver ) {
             return $out;
         }
-        $upd_res = THRG_PC_Results::get_update( 'plugin', sanitize_key( $short_slug ), $check_ver, $target );
+        $upd_res = THRG_PC_Results::get_update( 'plugin', sanitize_key( $short_slug ), $check_ver, $target, 'wporg' );
         if ( is_array( $upd_res ) && isset( $upd_res['verdict'] ) ) {
             $assessment    = THRG_PC_Prescan::summarize_wporg_fix( $upd_res, $check_ver, $target );
             $labels        = array(

@@ -268,6 +268,41 @@
     }
 
     // Copy, Download, and Print buttons.
+    function copyText( area, status, message ) {
+        function announce( text ) {
+            if ( status ) {
+                status.textContent = text;
+            }
+        }
+        function selectForCopy() {
+            var details = area.closest( 'details' );
+            if ( details ) {
+                details.open = true;
+            }
+            area.classList.add( 'thrg-pc-manual-copy' );
+            area.removeAttribute( 'aria-hidden' );
+            area.removeAttribute( 'tabindex' );
+            area.focus();
+            area.select();
+        }
+        function manualCopy() {
+            selectForCopy();
+            announce( cfg.i18n.manualCopy );
+        }
+        if ( navigator.clipboard && navigator.clipboard.writeText ) {
+            navigator.clipboard.writeText( area.value ).then( function () {
+                announce( message );
+            } ).catch( manualCopy );
+            return;
+        }
+        selectForCopy();
+        try {
+            announce( document.execCommand( 'copy' ) ? message : cfg.i18n.manualCopy );
+        } catch ( error ) {
+            announce( cfg.i18n.manualCopy );
+        }
+    }
+
     document.addEventListener( 'click', function ( e ) {
         var btn = e.target.closest ? e.target.closest( '.thrg-pc-copy-findings' ) : null;
         if ( ! btn ) {
@@ -279,18 +314,7 @@
         if ( ! src ) {
             return;
         }
-        var done = function () {
-            if ( status ) {
-                status.textContent = 'Copied. Paste it into an email or support ticket.';
-            }
-        };
-        if ( navigator.clipboard && navigator.clipboard.writeText ) {
-            navigator.clipboard.writeText( src.value ).then( done );
-        } else {
-            src.select();
-            document.execCommand( 'copy' );
-            done();
-        }
+        copyText( src, status, cfg.i18n.copiedFindings );
     } );
 
     var copyBtn = document.getElementById( 'thrg-pc-copy-btn' );
@@ -301,20 +325,7 @@
 
     if ( copyBtn && plainArea ) {
         copyBtn.addEventListener( 'click', function () {
-            var text = plainArea.value;
-            if ( navigator.clipboard && navigator.clipboard.writeText ) {
-                navigator.clipboard.writeText( text ).then( function () {
-                    if ( copyStatus ) {
-                        copyStatus.textContent = 'Copied to clipboard.';
-                    }
-                } );
-            } else {
-                plainArea.select();
-                document.execCommand( 'copy' );
-                if ( copyStatus ) {
-                    copyStatus.textContent = 'Copied to clipboard.';
-                }
-            }
+            copyText( plainArea, copyStatus, cfg.i18n.copiedReport );
         } );
     }
 

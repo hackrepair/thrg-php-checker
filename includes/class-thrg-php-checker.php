@@ -137,7 +137,7 @@ final class THRG_PHP_Checker {
         return THRG_PC_Text_Report::plain_text( $rows, $site_host, $timestamp, $version, $target );
     }
 
-    const VERSION               = '1.2.8';
+    const VERSION               = '1.2.9';
     const SLUG                  = 'thrg-php-checker';
     const PAGE_URL              = 'tools.php?page=thrg-php-checker';
     const NEW_TAB_HINT          = '<span class="screen-reader-text"> (opens in a new tab)</span>';
@@ -473,11 +473,14 @@ final class THRG_PHP_Checker {
                 'jobId'        => $owned ? (string) $state['job_id'] : '',
                 'target'       => $target,
                 'i18n'         => array(
-                    'noticesOne'  => __( '1 notice from another plugin or WordPress is hidden on this page.', 'thrg-php-checker' ),
+                    'copiedFindings' => __( 'Copied. Paste it into an email or support ticket.', 'thrg-php-checker' ),
+                    'copiedReport'   => __( 'Copied to clipboard.', 'thrg-php-checker' ),
+                    'manualCopy'     => __( 'Text selected. Use your device’s Copy command.', 'thrg-php-checker' ),
+                    'noticesOne'     => __( '1 notice from another plugin or WordPress is hidden on this page.', 'thrg-php-checker' ),
                     /* translators: %d: number of hidden notices */
-                    'noticesMany' => __( '%d notices from other plugins or WordPress are hidden on this page.', 'thrg-php-checker' ),
-                    'show'        => __( 'Show', 'thrg-php-checker' ),
-                    'hide'        => __( 'Hide', 'thrg-php-checker' ),
+                    'noticesMany'    => __( '%d notices from other plugins or WordPress are hidden on this page.', 'thrg-php-checker' ),
+                    'show'           => __( 'Show', 'thrg-php-checker' ),
+                    'hide'           => __( 'Hide', 'thrg-php-checker' ),
                 ),
                 'state'        => array(
                     'total'       => isset( $state['total'] ) ? (int) $state['total'] : 0,
@@ -543,6 +546,20 @@ final class THRG_PHP_Checker {
         }
     }
 
+    /** Start or resume the administrator's job and remember its effective scope. */
+    private static function start_admin_scan( $target, $rescan, $scope, $single_key, $user ) {
+        $state = THRG_PC_Scanner::start(
+            $target,
+            $rescan,
+            $scope,
+            $single_key,
+            $user ? (int) $user->ID : 0,
+            $user ? (string) $user->user_login : ''
+        );
+        self::remember_scope( isset( $state['scope'] ) ? (string) $state['scope'] : $scope );
+        return $state;
+    }
+
     /**
      * AJAX: start a scan job.
      *
@@ -563,15 +580,7 @@ final class THRG_PHP_Checker {
         $user       = wp_get_current_user();
 
         try {
-            $state = THRG_PC_Scanner::start(
-                $target,
-                $rescan,
-                $scope,
-                $single_key,
-                $user ? (int) $user->ID : 0,
-                $user ? (string) $user->user_login : ''
-            );
-            self::remember_scope( $scope );
+            $state = self::start_admin_scan( $target, $rescan, $scope, $single_key, $user );
         } catch ( InvalidArgumentException $e ) {
             wp_send_json_error( array( 'message' => $e->getMessage() ), 400 );
         }
@@ -713,15 +722,7 @@ final class THRG_PHP_Checker {
                 wp_die( esc_html__( 'Another scan is already running. Reload later to start yours.', 'thrg-php-checker' ), 409 );
             }
             try {
-                $state = THRG_PC_Scanner::start(
-                    $target,
-                    $rescan,
-                    $scope,
-                    $single_key,
-                    $user ? (int) $user->ID : 0,
-                    $user ? (string) $user->user_login : ''
-                );
-                self::remember_scope( $scope );
+                $state = self::start_admin_scan( $target, $rescan, $scope, $single_key, $user );
                 THRG_PC_Scanner::step( microtime( true ) + 5.0, $state['job_id'] );
             } catch ( InvalidArgumentException $e ) {
                 wp_die( esc_html( $e->getMessage() ), 409 );

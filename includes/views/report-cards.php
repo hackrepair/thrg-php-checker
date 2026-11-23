@@ -257,7 +257,7 @@ defined( 'ABSPATH' ) || exit;
                                             <?php esc_html_e( 'Copy these findings for your developer', 'thrg-php-checker' ); ?>
                                         </button>
                                         <span class="thrg-pc-copy-status" aria-live="polite"></span>
-                                        <textarea class="thrg-pc-copy-findings-source" readonly tabindex="-1" aria-hidden="true"><?php echo esc_textarea( implode( "\n", $copy_lines ) ); ?></textarea>
+                                        <textarea class="thrg-pc-copy-findings-source" aria-label="<?php esc_attr_e( 'Findings to copy', 'thrg-php-checker' ); ?>" readonly tabindex="-1" aria-hidden="true"><?php echo esc_textarea( implode( "\n", $copy_lines ) ); ?></textarea>
                                     </div>
                                 </div>
                             </details>

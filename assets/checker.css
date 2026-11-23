@@ -1151,7 +1151,7 @@ body.js.thrg-pc-screen:not(.thrg-pc-notices-shown) .thrg-pc-wrap > .update-nag:n
     margin-top: 12px;
 }
 
-.thrg-pc-copy-findings-source {
+.thrg-pc-copy-findings-source:not(.thrg-pc-manual-copy) {
     position: absolute;
     left: -9999px;
     width: 1px;

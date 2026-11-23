@@ -55,7 +55,7 @@ defined( 'ABSPATH' ) || exit;
             </div>
 
             <div class="thrg-pc-toolbar__actions">
-                <?php $all_scanned = $scanned_now > 0 && $scanned_now >= $total_comps; ?>
+                <?php $all_scanned = $scanned_now > 0 && $scanned_now >= $total_comps && empty( $summaries[ $selected_target ]['stale'] ); ?>
                 <button type="submit" id="thrg-pc-btn-scan" class="button button-primary" <?php disabled( $scan_running && ! $scan_owned ); ?> <?php echo $all_scanned ? 'hidden' : ''; ?>>
                     <?php
                     if ( 0 === $scanned_now ) {

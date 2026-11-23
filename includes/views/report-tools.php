@@ -148,13 +148,13 @@ defined( 'ABSPATH' ) || exit;
                     <div class="thrg-card-meta">
                         <span class="thrg-area-badge"><?php esc_html_e( 'Local History', 'thrg-php-checker' ); ?></span>
                         <span class="thrg-status-pill <?php echo $history_enabled ? 'thrg-status-ok' : 'thrg-status-review'; ?>">
-                            <?php echo $history_enabled ? esc_html__( 'Recording (max 25)', 'thrg-php-checker' ) : esc_html__( 'Paused', 'thrg-php-checker' ); ?>
+                            <?php echo $history_enabled ? esc_html__( 'Recording', 'thrg-php-checker' ) : esc_html__( 'Paused', 'thrg-php-checker' ); ?>
                         </span>
                     </div>
                     <h2 class="thrg-card-title"><?php esc_html_e( 'Saved Compatibility Reports', 'thrg-php-checker' ); ?></h2>
                 </header>
                 <p class="thrg-pc-section-desc">
-                    <?php esc_html_e( 'Completed scans are stored locally in a single non-autoloaded WordPress option (up to 25 reports, capped at 600 KB) so you can track progress as you update or replace plugins.', 'thrg-php-checker' ); ?>
+                    <?php esc_html_e( 'History keeps up to 25 reports within a 3 MB budget. When space runs low, the latest scan for each day and PHP target takes priority over repeat scans.', 'thrg-php-checker' ); ?>
                 </p>
 
                 <details id="pc-history-details" class="thrg-pc-tech-details" <?php echo ( '' !== $hist_flag || $viewed_entry ) ? 'open' : ''; ?>>
@@ -202,7 +202,7 @@ defined( 'ABSPATH' ) || exit;
                                         <th><?php esc_html_e( 'Date', 'thrg-php-checker' ); ?></th>
                                         <th><?php esc_html_e( 'Target', 'thrg-php-checker' ); ?></th>
                                         <th><?php esc_html_e( 'Summary', 'thrg-php-checker' ); ?></th>
-                                        <th><?php esc_html_e( 'Change vs Prior', 'thrg-php-checker' ); ?></th>
+                                        <th><?php esc_html_e( 'Change since prior scan', 'thrg-php-checker' ); ?></th>
                                         <th><?php esc_html_e( 'Run By', 'thrg-php-checker' ); ?></th>
                                         <th><?php esc_html_e( 'Actions', 'thrg-php-checker' ); ?></th>
                                     </tr>
@@ -258,6 +258,14 @@ defined( 'ABSPATH' ) || exit;
                                                         esc_html__( '+%1$d new / %2$d no longer flagged', 'thrg-php-checker' ),
                                                         (int) $diff['new'],
                                                         (int) $diff['resolved']
+                                                    );
+                                                }
+                                                if ( $older ) {
+                                                    echo '<br />';
+                                                    printf(
+                                                        /* translators: %s: local date and time of the comparison report. */
+                                                        esc_html__( 'Compared with %s', 'thrg-php-checker' ),
+                                                        esc_html( wp_date( 'Y-m-d H:i', (int) $older['time'] ) )
                                                     );
                                                 }
                                                 ?>

@@ -5,7 +5,7 @@ Tags: php, compatibility, php 8.3, php 8.4, upgrade
 Requires at least: 6.4
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 1.2.8
+Stable tag: 1.2.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -28,7 +28,7 @@ Open **Tools > PHP Checker**, pick your target PHP version (**8.1, 8.2, 8.3, 8.4
 
 **Designed for first-time users and seasoned developers alike.** A plain-English readiness banner at the top of the report helps you identify findings that need review before upgrading. Fatal incompatibilities sit at the very top with their `file:line` error tables open; minor deprecation warnings are grouped below with collapsible technical drawers so you are never overwhelmed by a wall of stack traces.
 
-**Your scans build a local history.** Completed scans are saved on your own site (up to 25 reports within a 600,000-byte limit), showing what is new and what you have fixed since your previous check for that PHP version. Pause, reopen, delete, or clear history anytime.
+**Your scans build a local history.** Completed scans are saved on your own site (up to 25 reports within a 3 MB storage budget), showing what is new and what you have fixed since the most recent earlier day scanned for that PHP version, or the previous scan if all scans are from today. Pause, reopen, delete, or clear history anytime.
 
 **Share or email a report.** Copy the plain-text report for a developer or support ticket, download a `.txt` file, print a clean summary, or email a formatted HTML and plain-text PHP readiness briefing to site administrators with `[domain] [PHP Checker]` subject tags.
 
@@ -107,6 +107,15 @@ PHP Checker automatically prunes uninstalled plugins/themes and outdated compone
 3. Start screen: choose a PHP target version and scan scope.
 
 == Changelog ==
+
+= 1.2.9 =
+* Report history now keeps up to 25 reports with a 3 MB storage budget, up from 600 KB. When history fills up, it drops repeat scans first so you can compare different days for the same PHP target.
+* The history table shows the date and time of the report used for comparison. It uses the latest scan from an earlier day for that PHP target, or the previous scan if all saved scans for that target fall on the same day.
+* “Check if fixed on WP.org” now uses results from the WordPress.org package. A vendor ZIP with the same plugin slug and version gets its own scan result.
+* Old-style PHP constructors are now reported as a change in behavior on PHP 8. Older results are regraded where enough detail was saved. Scan Unchecked refreshes results that need a new scan.
+* Resuming a scan keeps its original scope. Reports with a missing or invalid PHP target use the scanner's default.
+* Both copy buttons show translated feedback and select the text for manual copying if clipboard access fails.
+* Release builds validate the ZIP and prepare its checksum before replacing the previous files. A failed validation preserves the last good build.
 
 = 1.2.8 =
 * Separated compatibility impact, execution evidence, code origin, and scan coverage so logging settings, filenames, fallback hints, and bundled origin cannot hide a fatal error.

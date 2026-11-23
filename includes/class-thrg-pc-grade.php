@@ -13,7 +13,8 @@ defined( 'ABSPATH' ) || exit;
 /** Grade calculation shared by the report, email and history. */
 final class THRG_PC_Grade {
 
-    const CLASSIFICATION_VERSION = 4;
+    // Bump when rule mappings or grading semantics change so saved aggregates are re-evaluated.
+    const CLASSIFICATION_VERSION = 5;
 
     /**
      * Rules eligible for a potential startup hint when the operation is at file scope.
@@ -45,6 +46,9 @@ final class THRG_PC_Grade {
      * @return string
      */
     public static function rule_impact( $source ) {
+        if ( THRG_PC_Legacy_Constructors::SOURCE === $source ) {
+            return 'behavior_change';
+        }
         foreach ( array(
             'PHPCompatibility.IniDirectives.RemovedIniDirectives.',
             'PHPCompatibility.FunctionUse.ArgumentFunctionsReportCurrentValue.',

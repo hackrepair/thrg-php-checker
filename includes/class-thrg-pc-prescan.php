@@ -53,8 +53,8 @@ final class THRG_PC_Prescan {
      * @param string $version Offered version.
      * @return string
      */
-    public static function offer_key( $kind, $slug, $version ) {
-        return (string) $kind . ':' . (string) $slug . ':' . (string) $version;
+    public static function offer_key( $kind, $slug, $version, $source = '' ) {
+        return (string) $kind . ':' . (string) $slug . ':' . (string) $version . ':' . $source;
     }
 
     /**
@@ -106,10 +106,19 @@ final class THRG_PC_Prescan {
                     'file_key'    => (string) $key,
                     'new_version' => $version,
                     'package'     => $package,
+                    'source'      => self::package_source( $package ),
                 );
             }
         }
         return $out;
+    }
+
+    /** Return a source identifier without retaining credentials, paths or query parameters. */
+    public static function package_source( $url ) {
+        if ( self::is_wporg_package_url( $url ) ) {
+            return 'wporg';
+        }
+        return 'vendor:' . strtolower( (string) wp_parse_url( $url, PHP_URL_HOST ) );
     }
 
     /**
@@ -133,8 +142,8 @@ final class THRG_PC_Prescan {
      * @param string $version Offered version.
      * @return string
      */
-    public static function update_verdict( $kind, $slug, $version ) {
-        $row = THRG_PC_Results::get_update( $kind, $slug, $version, self::guard_target() );
+    public static function update_verdict( $kind, $slug, $version, $source = '' ) {
+        $row = THRG_PC_Results::get_update( $kind, $slug, $version, self::guard_target(), $source );
         return null === $row ? '' : (string) $row['verdict'];
     }
 
@@ -146,13 +155,13 @@ final class THRG_PC_Prescan {
      * @param string $version Offered version.
      * @return string
      */
-    public static function status( $kind, $slug, $version ) {
-        if ( '' !== self::update_verdict( $kind, $slug, $version ) ) {
+    public static function status( $kind, $slug, $version, $source = '' ) {
+        if ( '' !== self::update_verdict( $kind, $slug, $version, $source ) ) {
             return 'checked';
         }
         $state = self::get_state();
         $tries = isset( $state['tries'] ) && is_array( $state['tries'] ) ? $state['tries'] : array();
-        $key   = self::offer_key( $kind, $slug, $version );
+        $key   = self::offer_key( $kind, $slug, $version, $source );
         if ( isset( $tries[ $key ] ) && (int) $tries[ $key ] >= self::MAX_TRIES ) {
             return 'could_not_check';
         }
@@ -169,10 +178,10 @@ final class THRG_PC_Prescan {
         $tries = isset( $state['tries'] ) && is_array( $state['tries'] ) ? $state['tries'] : array();
         $out   = array();
         foreach ( self::entries() as $offer ) {
-            if ( '' !== self::update_verdict( $offer['kind'], $offer['slug'], $offer['new_version'] ) ) {
+            if ( '' !== self::update_verdict( $offer['kind'], $offer['slug'], $offer['new_version'], $offer['source'] ) ) {
                 continue;
             }
-            $key = self::offer_key( $offer['kind'], $offer['slug'], $offer['new_version'] );
+            $key = self::offer_key( $offer['kind'], $offer['slug'], $offer['new_version'], $offer['source'] );
             if ( isset( $tries[ $key ] ) && (int) $tries[ $key ] >= self::MAX_TRIES ) {
                 continue;
             }
@@ -203,8 +212,8 @@ final class THRG_PC_Prescan {
         $target = self::guard_target();
         $rows   = array();
         foreach ( self::entries() as $offer ) {
-            $status = self::status( $offer['kind'], $offer['slug'], $offer['new_version'] );
-            $result = 'checked' === $status ? THRG_PC_Results::get_update( $offer['kind'], $offer['slug'], $offer['new_version'], $target ) : null;
+            $status = self::status( $offer['kind'], $offer['slug'], $offer['new_version'], $offer['source'] );
+            $result = 'checked' === $status ? THRG_PC_Results::get_update( $offer['kind'], $offer['slug'], $offer['new_version'], $target, $offer['source'] ) : null;
             $comp   = isset( $installed[ $offer['kind'] . ':' . $offer['slug'] ] ) ? $installed[ $offer['kind'] . ':' . $offer['slug'] ] : null;
             if ( ! $comp && isset( $installed[ $offer['kind'] . ':' . $offer['file_key'] ] ) ) {
                 $comp = $installed[ $offer['kind'] . ':' . $offer['file_key'] ];
@@ -450,6 +459,7 @@ final class THRG_PC_Prescan {
             'version'   => $offer['new_version'],
             'target'    => $resolved_tgt,
             'zip'       => $file,
+            'source'    => self::package_source( $offer['package'] ),
             'root'      => $listed['root'],
             'remaining' => $listed['files'],
             'findings'  => array(),
@@ -479,7 +489,7 @@ final class THRG_PC_Prescan {
 
         $listed = array();
         foreach ( self::entries() as $offer ) {
-            $listed[ self::offer_key( $offer['kind'], $offer['slug'], $offer['new_version'] ) ] = true;
+            $listed[ self::offer_key( $offer['kind'], $offer['slug'], $offer['new_version'], $offer['source'] ) ] = true;
         }
         $kept = array_intersect_key( $tries, $listed );
         if ( $kept !== $tries ) {
@@ -496,7 +506,7 @@ final class THRG_PC_Prescan {
             if ( null === $active ) {
                 $next = null;
                 foreach ( self::pending_offers() as $offer ) {
-                    $key = self::offer_key( $offer['kind'], $offer['slug'], $offer['new_version'] );
+                    $key = self::offer_key( $offer['kind'], $offer['slug'], $offer['new_version'], $offer['source'] );
                     if ( ! isset( $failed[ $key ] ) && (int) ( isset( $tries[ $key ] ) ? $tries[ $key ] : 0 ) < self::MAX_TRIES ) {
                         $next = $offer;
                         break;
@@ -507,7 +517,7 @@ final class THRG_PC_Prescan {
                 }
                 $opened = self::open_offer( $next );
                 if ( is_wp_error( $opened ) ) {
-                    $key            = self::offer_key( $next['kind'], $next['slug'], $next['new_version'] );
+                    $key            = self::offer_key( $next['kind'], $next['slug'], $next['new_version'], $next['source'] );
                     $tries[ $key ]  = (int) ( isset( $tries[ $key ] ) ? $tries[ $key ] : 0 ) + 1;
                     $failed[ $key ] = true;
                     self::set_state( array( 'tries' => $tries ) );
@@ -517,13 +527,13 @@ final class THRG_PC_Prescan {
                     continue;
                 }
                 $active         = $opened;
-                $key            = self::offer_key( $active['kind'], $active['slug'], $active['version'] );
+                $key            = self::offer_key( $active['kind'], $active['slug'], $active['version'], $active['source'] ?? '' );
                 $tries[ $key ]  = (int) ( isset( $tries[ $key ] ) ? $tries[ $key ] : 0 ) + 1;
                 $active['busy'] = false;
             }
 
             $name = (string) $active['slug'];
-            $key  = self::offer_key( $active['kind'], $active['slug'], $active['version'] );
+            $key  = self::offer_key( $active['kind'], $active['slug'], $active['version'], $active['source'] ?? '' );
             $zip  = isset( $active['zip'] ) ? (string) $active['zip'] : '';
             if ( '' === $zip || ! is_file( $zip ) ) {
                 $failed[ $key ] = true;
@@ -555,7 +565,7 @@ final class THRG_PC_Prescan {
             $active['busy']      = false;
 
             if ( ! $active['remaining'] ) {
-                if ( THRG_PC_Results::save_update( $active['kind'], $active['slug'], $active['version'], $active['target'], $active['findings'] ) ) {
+                if ( THRG_PC_Results::save_update( $active['kind'], $active['slug'], $active['version'], $active['target'], $active['findings'], $active['source'] ?? '' ) ) {
                     unset( $tries[ $key ] );
                 } else {
                     $failed[ $key ] = true;
@@ -579,7 +589,7 @@ final class THRG_PC_Prescan {
         if ( null === $active ) {
             $pending = false;
             foreach ( self::pending_offers() as $offer ) {
-                if ( ! isset( $failed[ self::offer_key( $offer['kind'], $offer['slug'], $offer['new_version'] ) ] ) ) {
+                if ( ! isset( $failed[ self::offer_key( $offer['kind'], $offer['slug'], $offer['new_version'], $offer['source'] ) ] ) ) {
                     $pending = true;
                     break;
                 }
@@ -703,7 +713,7 @@ final class THRG_PC_Prescan {
         }
 
         // Check if we already scanned this newer version against $target.
-        $existing = THRG_PC_Results::get_update( 'plugin', $short, $remote_version, $target );
+        $existing = THRG_PC_Results::get_update( 'plugin', $short, $remote_version, $target, 'wporg' );
         if ( is_array( $existing ) && 'stale' === THRG_PC_Results::classification( $existing )['coverage'] ) {
             $existing = null;
         }
@@ -921,8 +931,8 @@ final class THRG_PC_Prescan {
             return null;
         }
 
-        THRG_PC_Results::save_update( 'plugin', $short, $remote_version, $target, $batch['findings'] );
-        return THRG_PC_Results::get_update( 'plugin', $short, $remote_version, $target );
+        THRG_PC_Results::save_update( 'plugin', $short, $remote_version, $target, $batch['findings'], 'wporg' );
+        return THRG_PC_Results::get_update( 'plugin', $short, $remote_version, $target, 'wporg' );
     }
 
     /**

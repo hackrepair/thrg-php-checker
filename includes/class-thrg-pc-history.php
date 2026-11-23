@@ -20,7 +20,7 @@ final class THRG_PC_History {
     const OPTION      = 'thrg_pc_history';
     const PAUSED      = 'thrg_pc_history_paused';
     const MAX_ENTRIES = 25;
-    const MAX_BYTES   = 600000;
+    const MAX_BYTES   = 3000000;
     const SCHEMA      = 1;
 
     /** Identical results within this window are not saved twice. */
@@ -147,7 +147,8 @@ final class THRG_PC_History {
         $entries = self::all();
         // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize -- Hashing a trusted internal array; no data is unserialized here.
         $hash = md5( $target . ':' . serialize( $rows ) );
-        if ( $entries && isset( $entries[0]['hash'] ) && $entries[0]['hash'] === $hash && ( $now - (int) $entries[0]['time'] ) < self::DEDUPE_SECONDS ) {
+        if ( $entries && isset( $entries[0]['hash'] ) && $entries[0]['hash'] === $hash && ( $now - (int) $entries[0]['time'] ) < self::DEDUPE_SECONDS &&
+            wp_date( 'Y-m-d', $now ) === wp_date( 'Y-m-d', (int) $entries[0]['time'] ) ) {
             return $entries[0]['id'];
         }
         $summary = self::summarize( $rows );
@@ -173,39 +174,73 @@ final class THRG_PC_History {
                 'rows'                   => $rows,
             )
         );
-        $entries     = array_slice( $entries, 0, self::MAX_ENTRIES );
-        $entry_count = count( $entries );
-        while ( $entry_count > 1 ) {
-            // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize -- Measures the trusted option's serialized storage size.
-            $serialized = serialize( $entries );
-            if ( strlen( $serialized ) <= self::MAX_BYTES ) {
-                break;
-            }
-            array_pop( $entries );
-            --$entry_count;
-        }
+        $entries = self::retain( $entries );
         update_option( self::OPTION, $entries, false );
         return $id;
     }
 
     /**
-     * Find the next older report for the same target PHP version (or next older overall if none).
+     * Under either limit, drop older repeats before dropping the last report for a day and target.
+     * The newest snapshot always survives, even if it alone exceeds the storage budget.
      *
-     * @param array   $entry   Current entry.
+     * @param array[] $entries Snapshots, newest first.
+     * @return array[]
+     */
+    private static function retain( array $entries ) {
+        // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize -- Measure the trusted WordPress option as stored.
+        $bytes = strlen( serialize( $entries ) );
+        if ( count( $entries ) <= self::MAX_ENTRIES && $bytes <= self::MAX_BYTES ) {
+            return $entries;
+        }
+        $days       = array();
+        $daily      = array();
+        $duplicates = array();
+        foreach ( $entries as $i => $entry ) {
+            $key = ( $entry['target'] ?? '' ) . ':' . wp_date( 'Y-m-d', (int) $entry['time'] );
+            if ( isset( $days[ $key ] ) ) {
+                $duplicates[] = $i;
+            } else {
+                $days[ $key ] = true;
+                $daily[]      = $i;
+            }
+        }
+        foreach ( array_merge( array_reverse( $duplicates ), array_reverse( $daily ) ) as $i ) {
+            if ( 0 === $i || ( count( $entries ) <= self::MAX_ENTRIES && $bytes <= self::MAX_BYTES ) ) {
+                break;
+            }
+            unset( $entries[ $i ] );
+            // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize -- Reindex to measure the final option accurately.
+            $bytes = strlen( serialize( array_values( $entries ) ) );
+        }
+        return array_values( $entries );
+    }
+
+    /**
+     * Prefer the latest matching scan from a previous local day, then a same-day scan.
+     *
+     * @param array   $entry   Current report.
      * @param array[] $history Full history list.
      * @param int     $start_i Index of $entry in $history.
      * @return array|null
      */
     public static function previous_for( array $entry, array $history, $start_i = 0 ) {
-        $target = isset( $entry['target'] ) ? (string) $entry['target'] : '';
-        $count  = count( $history );
+        $target   = $entry['target'] ?? '';
+        $day      = wp_date( 'Y-m-d', (int) $entry['time'] );
+        $same_day = null;
+        $count    = count( $history );
         for ( $j = (int) $start_i + 1; $j < $count; $j++ ) {
-            $cand_target = isset( $history[ $j ]['target'] ) ? (string) $history[ $j ]['target'] : '';
-            if ( '' === $target || $cand_target === $target ) {
-                return $history[ $j ];
+            $candidate = $history[ $j ];
+            if ( ( $candidate['target'] ?? '' ) !== $target ) {
+                continue;
+            }
+            if ( wp_date( 'Y-m-d', (int) $candidate['time'] ) !== $day ) {
+                return $candidate;
+            }
+            if ( null === $same_day ) {
+                $same_day = $candidate;
             }
         }
-        return null;
+        return $same_day;
     }
 
     /**

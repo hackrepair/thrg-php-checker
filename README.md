@@ -4,11 +4,13 @@
 
 <h1 align="center">The Hack Repair Guy's PHP Checker</h1>
 
-Your friendly WordPress PHP compatibility checker. Tests your plugins, must-use plugins, themes, and pending updates against PHP 8.1 through 8.5, downgrades version-guarded code to notes, and keeps a history of every report — all in my voice, Jim Walker, The Hack Repair Guy.
+Your friendly WordPress PHP compatibility checker. Tests your plugins, must-use plugins, themes, and pending updates against PHP 8.1 through 8.5, downgrades version-guarded code to notes, and keeps a local history of recent reports — all in my voice, Jim Walker, The Hack Repair Guy.
 
 Upgrading PHP is one of the easiest ways to make WordPress faster and safer, right up until an older plugin throws a fatal error and leaves you with a white screen. PHP Checker helps you find that plugin before you switch. PHP Checker runs entirely inside WordPress without `exec()`, automatically filters out guarded fallback code, and prioritizes potential fatal errors and unknown-impact findings for review.
 
-Current release: **1.2.8**, available on the [WordPress.org Plugin Directory](https://wordpress.org/plugins/thrg-php-checker/ "The Hack Repair Guy's PHP Checker on WordPress.org"). See the [v1.2.8 release notes](https://github.com/hackrepair/thrg-php-checker/releases/tag/v1.2.8).
+This branch contains **1.2.9**. See the changes in the [plugin changelog](readme.txt).
+
+**1.2.8** is available on the [WordPress.org Plugin Directory](https://wordpress.org/plugins/thrg-php-checker/ "The Hack Repair Guy's PHP Checker on WordPress.org"). See the [v1.2.8 release notes](https://github.com/hackrepair/thrg-php-checker/releases/tag/v1.2.8).
 
 <p align="center">
   <a href="https://wordpress.org/plugins/thrg-php-checker/" title="Install The Hack Repair Guy's PHP Checker from WordPress.org"><img src="https://img.shields.io/badge/%E2%AC%87%20%20Install%20from%20WordPress.org-b34700?style=for-the-badge&labelColor=b34700" alt="Install from WordPress.org" height="46"></a>
@@ -31,7 +33,7 @@ Current release: **1.2.8**, available on the [WordPress.org Plugin Directory](ht
 
 Each finding is ordered by urgency: **fatal incompatibilities appear first** right at the top of the report, followed by deprecation warnings (with collapsible technical code tables so you aren't overwhelmed), server lifecycle checks, and a collapsed list of compatible components.
 
-**Report history.** When history is enabled, completed scans are saved locally on your own site (up to 25 reports within a 600,000-byte storage limit), tracking what is new and what has been resolved for that PHP target since the previous check. Reopen, delete, clear, or pause history at any time.
+**Report history.** When history is enabled, completed scans are saved locally on your own site (up to 25 reports within a 3 MB storage budget), tracking what is new and what has been resolved for that PHP target since the latest earlier day scanned, or the previous scan if all scans are from the same day. Reopen, delete, clear, or pause history at any time.
 
 **Share a report.** Copy it as plain text for a developer or support ticket, download a `.txt` report, print a clean summary, or email a formatted "PHP readiness" briefing to some or all of the site's administrators.
 
