@@ -5,7 +5,7 @@ Tags: php, compatibility, php 8.3, php 8.4, upgrade
 Requires at least: 6.4
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 1.2.9
+Stable tag: 1.2.10
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -107,6 +107,11 @@ PHP Checker automatically prunes uninstalled plugins/themes and outdated compone
 3. Start screen: choose a PHP target version and scan scope.
 
 == Changelog ==
+
+= 1.2.10 =
+* Updated server PHP patch tracking (`PATCH_LIST_AS_OF` 2026-11-23) for the November 19, 2026 critical PHP security releases: PHP 8.2.36, 8.3.37, 8.4.28, and 8.5.13.
+* Added security advisories for CVE-2026-115560 (session serialization RCE), CVE-2026-126714 (session files RCE), and CVE-2026-129474 (on PHP 8.5.13) with an allowlisted PHP.net ChangeLog link.
+* Added PHP 8.6.0 to the server PHP lifecycle table (security support through December 31, 2030) so PHP 8.6 servers are recognized as supported.
 
 = 1.2.9 =
 * Report history now keeps up to 25 reports with a 3 MB storage budget, up from 600 KB. When history fills up, it drops repeat scans first so you can compare different days for the same PHP target.

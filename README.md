@@ -8,7 +8,7 @@ Your friendly WordPress PHP compatibility checker. Tests your plugins, must-use 
 
 Upgrading PHP is one of the easiest ways to make WordPress faster and safer, right up until an older plugin throws a fatal error and leaves you with a white screen. PHP Checker helps you find that plugin before you switch. PHP Checker runs entirely inside WordPress without `exec()`, automatically filters out guarded fallback code, and prioritizes potential fatal errors and unknown-impact findings for review.
 
-**Version 1.2.9** adds dated report comparisons and keeps more scan history. See the [changelog](#changelog) for the full list of changes. Install PHP Checker from the [WordPress.org Plugin Directory](https://wordpress.org/plugins/thrg-php-checker/).
+**Version 1.2.10** adds the November 19, 2026 critical PHP security release advisories (8.2.36, 8.3.37, 8.4.28, 8.5.13) and PHP 8.6.0 lifecycle support. See the [changelog](#changelog) for the full list of changes. Install PHP Checker from the [WordPress.org Plugin Directory](https://wordpress.org/plugins/thrg-php-checker/).
 
 <p align="center">
   <a href="https://wordpress.org/plugins/thrg-php-checker/" title="Install The Hack Repair Guy's PHP Checker from WordPress.org"><img src="https://img.shields.io/badge/%E2%AC%87%20%20Install%20from%20WordPress.org-b34700?style=for-the-badge&labelColor=b34700" alt="Install from WordPress.org" height="46"></a>
@@ -92,6 +92,12 @@ Static analysis uses [PHP_CodeSniffer](https://github.com/PHPCSStandards/PHP_Cod
 Made by [The Hack Repair Guy](https://hackrepair.com/ "The Hack Repair Guy: WordPress security and hack repair").
 
 ## Changelog
+
+### 1.2.10
+
+- Updated server PHP patch tracking (`2026-11-23`) for the November 19, 2026 critical PHP security releases (`8.2.36`, `8.3.37`, `8.4.28`, `8.5.13`).
+- Added security advisories for `CVE-2026-115560` (session serialization RCE), `CVE-2026-126714` (session files RCE), and `CVE-2026-129474` (PHP 8.5) with an allowlisted PHP.net ChangeLog link.
+- Added PHP `8.6.0` to the server PHP lifecycle table (security support through `2030-12-31`).
 
 ### 1.2.9
 

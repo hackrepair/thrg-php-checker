@@ -137,12 +137,12 @@ final class THRG_PHP_Checker {
         return THRG_PC_Text_Report::plain_text( $rows, $site_host, $timestamp, $version, $target );
     }
 
-    const VERSION               = '1.2.9';
+    const VERSION               = '1.2.10';
     const SLUG                  = 'thrg-php-checker';
     const PAGE_URL              = 'tools.php?page=thrg-php-checker';
     const NEW_TAB_HINT          = '<span class="screen-reader-text"> (opens in a new tab)</span>';
     const SETTINGS_OPTION       = 'thrg_pc_settings';
-    const PATCH_LIST_AS_OF      = '2026-11-11';
+    const PATCH_LIST_AS_OF      = '2026-11-23';
     const PATCH_LIST_STALE_DAYS = 90;
 
     /**
@@ -165,19 +165,23 @@ final class THRG_PHP_Checker {
         ),
         '8.2' => array(
             'eol'     => '2026-12-31',
-            'patched' => '8.2.30',
+            'patched' => '8.2.36',
         ),
         '8.3' => array(
             'eol'     => '2027-12-31',
-            'patched' => '8.3.30',
+            'patched' => '8.3.37',
         ),
         '8.4' => array(
             'eol'     => '2028-12-31',
-            'patched' => '8.4.20',
+            'patched' => '8.4.28',
         ),
         '8.5' => array(
             'eol'     => '2029-12-31',
-            'patched' => '8.5.5',
+            'patched' => '8.5.13',
+        ),
+        '8.6' => array(
+            'eol'     => '2030-12-31',
+            'patched' => '8.6.0',
         ),
     );
 
@@ -196,7 +200,23 @@ final class THRG_PHP_Checker {
      * @var array<string,array<int,array{fixed:string,cve:string,name:string,summary:string,link:string}>>
      */
     const PHP_ADVISORIES = array(
+        '8.2' => array(
+            array(
+                'fixed'   => '8.2.36',
+                'cve'     => 'CVE-2026-115560 / CVE-2026-126714',
+                'name'    => 'November 2026 Critical PHP Security Release (session RCE)',
+                'summary' => 'Fixed in PHP 8.2.36 (November 19, 2026). Addresses critical remote code execution flaws in session serialization (CVE-2026-115560) and session files (CVE-2026-126714) along with additional security fixes.',
+                'link'    => 'php-changelog-8',
+            ),
+        ),
         '8.3' => array(
+            array(
+                'fixed'   => '8.3.37',
+                'cve'     => 'CVE-2026-115560 / CVE-2026-126714',
+                'name'    => 'November 2026 Critical PHP Security Release (session RCE)',
+                'summary' => 'Fixed in PHP 8.3.37 (November 19, 2026). Addresses critical remote code execution flaws in session serialization (CVE-2026-115560) and session files (CVE-2026-126714) along with additional security fixes.',
+                'link'    => 'php-changelog-8',
+            ),
             array(
                 'fixed'   => '8.3.31',
                 'cve'     => 'CVE-2026-109618 / CVE-2026-109619',
@@ -207,6 +227,13 @@ final class THRG_PHP_Checker {
         ),
         '8.4' => array(
             array(
+                'fixed'   => '8.4.28',
+                'cve'     => 'CVE-2026-115560 / CVE-2026-126714',
+                'name'    => 'November 2026 Critical PHP Security Release (session RCE)',
+                'summary' => 'Fixed in PHP 8.4.28 (November 19, 2026). Addresses critical remote code execution flaws in session serialization (CVE-2026-115560) and session files (CVE-2026-126714) along with additional security fixes.',
+                'link'    => 'php-changelog-8',
+            ),
+            array(
                 'fixed'   => '8.4.20',
                 'cve'     => 'CVE-2026-109618 / CVE-2026-109619',
                 'name'    => 'PHP2Shell (filter_var bypass & mail injection)',
@@ -215,6 +242,13 @@ final class THRG_PHP_Checker {
             ),
         ),
         '8.5' => array(
+            array(
+                'fixed'   => '8.5.13',
+                'cve'     => 'CVE-2026-115560 / CVE-2026-126714 / CVE-2026-129474',
+                'name'    => 'November 2026 Critical PHP Security Release (session & RCE)',
+                'summary' => 'Fixed in PHP 8.5.13 (November 19, 2026). Addresses critical remote code execution flaws in session serialization (CVE-2026-115560), session files (CVE-2026-126714), and CVE-2026-129474 along with additional security fixes.',
+                'link'    => 'php-changelog-8',
+            ),
             array(
                 'fixed'   => '8.5.5',
                 'cve'     => 'CVE-2026-109618 / CVE-2026-109619',
@@ -266,6 +300,10 @@ final class THRG_PHP_Checker {
         'php2shell-advisory'          => array(
             'label' => 'THRG: PHP2Shell (CVE-2026-109618 / CVE-2026-109619) Advisory',
             'url'   => 'https://hackrepair.com/news/php2shell-php-vulnerability-wordpress',
+        ),
+        'php-changelog-8'             => array(
+            'label' => 'PHP.net: PHP 8 ChangeLog (Security Releases)',
+            'url'   => 'https://www.php.net/ChangeLog-8.php',
         ),
     );
 
