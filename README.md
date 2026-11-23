@@ -95,4 +95,13 @@ Made by [The Hack Repair Guy](https://hackrepair.com/ "The Hack Repair Guy: Word
 
 ## Changelog
 
-See the **Changelog** section of [`readme.txt`](readme.txt).
+### 1.2.9
+
+- Saved Compatibility Reports now keeps up to 25 reports within a 3 MB budget. When space runs low, it drops repeat scans first. Each comparison shows the date and time of the earlier scan for the same PHP target.
+- WordPress.org and vendor update packages have separate scan results, even when the plugin slug and version match.
+- The scanner flags old-style PHP constructors as a change in behavior on PHP 8. Scan Unchecked refreshes older results when their saved details are insufficient to update the grade.
+- Resuming a scan preserves its scope. Reports use the scanner’s default target when the PHP target is missing or invalid.
+- Both copy buttons give translated feedback and select the text for manual copying if clipboard access fails.
+- Release builds validate the ZIP and prepare its checksum before replacing the previous files.
+
+See the [full WordPress changelog](readme.txt) for earlier versions.
